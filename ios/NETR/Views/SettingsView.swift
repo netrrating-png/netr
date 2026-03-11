@@ -1,0 +1,376 @@
+import SwiftUI
+import PhotosUI
+
+struct SettingsView: View {
+    let store: MockDataStore
+    @Bindable var appearance: AppearanceManager
+    @Bindable var courtsViewModel: CourtsViewModel
+    @Environment(SupabaseManager.self) private var supabase
+    @Environment(BiometricAuthManager.self) private var biometrics
+    @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
+    @State private var showPlayerCard: Bool = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var showSignOutConfirm: Bool = false
+
+    private var user: Player { store.currentUser }
+
+    var body: some View {
+        ZStack {
+            NETRTheme.background.ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 16) {
+                    profileCard
+                    playerCardButton
+                    appearanceSection
+                    securitySection
+                    accountSection
+                    aboutSection
+                    signOutSection
+                    Spacer(minLength: 100)
+                }
+                .padding(.top, 8)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .sheet(isPresented: $showPlayerCard) {
+            PlayerCardView(player: user, courts: Array(courtsViewModel.courts.prefix(3)))
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .onChange(of: selectedPhotoItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    store.currentUser.profileImageData = data
+                }
+            }
+        }
+    }
+
+    private var profileCard: some View {
+        VStack(spacing: 14) {
+            HStack(alignment: .top) {
+                Text("SETTINGS")
+                    .font(NETRTheme.headingFont(size: .title2))
+                    .foregroundStyle(NETRTheme.text)
+                Spacer()
+            }
+
+            HStack(spacing: 16) {
+                ZStack(alignment: .bottomTrailing) {
+                    ZStack {
+                        Circle()
+                            .stroke(
+                                NETRTheme.tierColor(for: user),
+                                style: StrokeStyle(
+                                    lineWidth: 3,
+                                    dash: user.isProvisional && !user.isProspect ? [6, 4] : []
+                                )
+                            )
+                            .frame(width: 72, height: 72)
+                            .neonGlow(NETRTheme.tierColor(for: user), radius: 6)
+
+                        if let imageData = user.profileImageData,
+                           let uiImage = UIImage(data: imageData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 64, height: 64)
+                                .clipShape(Circle())
+                        } else {
+                            Text(user.avatar)
+                                .font(.system(size: 24, weight: .bold))
+                                .foregroundStyle(NETRTheme.text)
+                                .frame(width: 64, height: 64)
+                                .background(NETRTheme.card, in: Circle())
+                        }
+                    }
+
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(NETRTheme.background)
+                            .frame(width: 24, height: 24)
+                            .background(NETRTheme.neonGreen, in: Circle())
+                            .overlay(Circle().stroke(NETRTheme.background, lineWidth: 2))
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 5) {
+                        Text(user.name)
+                            .font(.headline.weight(.bold))
+                            .foregroundStyle(NETRTheme.text)
+                        if user.isVerified {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                    }
+                    Text(user.username)
+                        .font(.subheadline)
+                        .foregroundStyle(NETRTheme.subtext)
+                    HStack(spacing: 6) {
+                        Text(user.position.rawValue)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(NETRTheme.neonGreen)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+                        Text(user.city)
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+
+                Spacer()
+
+                if let rating = user.rating {
+                    VStack(spacing: 2) {
+                        Text(String(format: "%.1f", rating))
+                            .font(.title2.weight(.black))
+                            .foregroundStyle(NETRTheme.ratingColor(for: rating))
+                        Text("NETR")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    private var playerCardButton: some View {
+        Button {
+            showPlayerCard = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(NETRTheme.neonGreen.opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "person.text.rectangle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("View Player Card")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Your basketball card with stats & scouting report")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            .padding(14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PressButtonStyle())
+        .padding(.horizontal, 16)
+    }
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("APPEARANCE")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Image(systemName: appearance.isDarkMode ? "moon.fill" : "sun.max.fill")
+                        .font(.body)
+                        .foregroundStyle(appearance.isDarkMode ? NETRTheme.purple : NETRTheme.gold)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Dark Mode")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(appearance.isDarkMode ? "Midnight court vibes" : "Daylight game mode")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $appearance.isDarkMode)
+                        .labelsHidden()
+                        .tint(NETRTheme.neonGreen)
+                }
+                .padding(14)
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var securitySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("SECURITY")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            if biometrics.isBiometricsAvailable {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Image(systemName: biometrics.biometricType.iconName)
+                            .font(.body)
+                            .foregroundStyle(NETRTheme.neonGreen)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(biometrics.biometricType.displayName)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(NETRTheme.text)
+                            Text("Require \(biometrics.biometricType.displayName) to unlock")
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+
+                        Spacer()
+
+                        Toggle("", isOn: $biometricsEnabled)
+                            .labelsHidden()
+                            .tint(NETRTheme.neonGreen)
+                            .onChange(of: biometricsEnabled) { _, enabled in
+                                if !enabled { biometrics.isUnlocked = true }
+                            }
+                    }
+                    .padding(14)
+                }
+                .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+                .padding(.horizontal, 16)
+            }
+        }
+    }
+
+    private var accountSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ACCOUNT")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                SettingsRow(icon: "person.fill", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
+                Divider().padding(.leading, 50)
+                SettingsRow(icon: "bell.fill", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
+                Divider().padding(.leading, 50)
+                SettingsRow(icon: "lock.fill", iconColor: NETRTheme.red, title: "Privacy", subtitle: "Profile visibility & data")
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var aboutSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("ABOUT")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                SettingsRow(icon: "info.circle.fill", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version 1.0")
+                Divider().padding(.leading, 50)
+                SettingsRow(icon: "doc.text.fill", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil)
+                Divider().padding(.leading, 50)
+                SettingsRow(icon: "hand.raised.fill", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil)
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var signOutSection: some View {
+        Button {
+            showSignOutConfirm = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.body)
+                    .foregroundStyle(NETRTheme.red)
+                    .frame(width: 24)
+                Text("Sign Out")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NETRTheme.red)
+                Spacer()
+            }
+            .padding(14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+        }
+        .buttonStyle(PressButtonStyle())
+        .padding(.horizontal, 16)
+        .alert("Sign Out?", isPresented: $showSignOutConfirm) {
+            Button("Sign Out", role: .destructive) {
+                Task { try? await supabase.signOut() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You'll need to sign in again to access your account.")
+        }
+    }
+}
+
+struct SettingsRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let subtitle: String?
+
+    var body: some View {
+        Button {} label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body)
+                    .foregroundStyle(iconColor)
+                    .frame(width: 24)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            .padding(14)
+        }
+        .buttonStyle(.plain)
+    }
+}

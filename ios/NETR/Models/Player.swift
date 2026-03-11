@@ -1,0 +1,104 @@
+import Foundation
+
+nonisolated struct SkillRatings: Sendable, Equatable {
+    var shooting: Double?
+    var finishing: Double?
+    var ballHandling: Double?
+    var playmaking: Double?
+    var defense: Double?
+    var rebounding: Double?
+    var basketballIQ: Double?
+
+    var overall: Double? {
+        let values = [shooting, finishing, ballHandling, playmaking, defense, rebounding, basketballIQ].compactMap { $0 }
+        guard !values.isEmpty else { return nil }
+        return values.reduce(0, +) / Double(values.count)
+    }
+}
+
+nonisolated enum PlayerTier: String, Sendable {
+    case verified
+    case basic
+    case prospect
+}
+
+nonisolated enum Position: String, Sendable, CaseIterable, Identifiable {
+    case pg = "PG"
+    case sg = "SG"
+    case sf = "SF"
+    case pf = "PF"
+    case c = "C"
+    case unknown = "?"
+
+    var id: String { rawValue }
+
+    var fullName: String {
+        switch self {
+        case .pg: return "Point Guard"
+        case .sg: return "Shooting Guard"
+        case .sf: return "Small Forward"
+        case .pf: return "Power Forward"
+        case .c: return "Center"
+        case .unknown: return "I Don't Know Yet"
+        }
+    }
+
+    var shortDesc: String {
+        switch self {
+        case .pg: return "Floor general, runs the offense"
+        case .sg: return "Scorer, wings, handles the ball"
+        case .sf: return "Versatile, attacks from anywhere"
+        case .pf: return "Physical, interior and stretch"
+        case .c: return "Paint presence, rebounding, rim protection"
+        case .unknown: return "No worries, you can update this later"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .pg: return "point.topleft.down.to.point.bottomright.curvepath"
+        case .sg: return "scope"
+        case .sf: return "arrow.triangle.branch"
+        case .pf: return "figure.basketball"
+        case .c: return "shield.fill"
+        case .unknown: return "questionmark"
+        }
+    }
+}
+
+nonisolated enum TrendDirection: String, Sendable {
+    case up, down, stable, none
+}
+
+struct Player: Identifiable, Equatable {
+    let id: Int
+    var name: String
+    var username: String
+    var avatar: String
+    var rating: Double?
+    var reviews: Int
+    var age: Int
+    var tier: PlayerTier
+    var city: String
+    var position: Position
+    var trend: TrendDirection
+    var games: Int
+    var isProspect: Bool
+    var skills: SkillRatings
+    var profileImageData: Data?
+
+    var isProvisional: Bool { reviews < 5 }
+    var isVerified: Bool { tier == .verified && reviews >= 5 }
+
+    var ratingTierName: String {
+        guard let r = rating else { return "Unrated" }
+        if isProspect { return "Prospect" }
+        switch r {
+        case 8.5...10.0: return "Elite"
+        case 7.0..<8.5: return "Advanced"
+        case 5.5..<7.0: return "Competitive"
+        case 3.5..<5.5: return "Recreational"
+        default: return "Beginner"
+        }
+    }
+}

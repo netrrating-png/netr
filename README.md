@@ -1,2 +1,0 @@
-# netr
-Created by Rork
