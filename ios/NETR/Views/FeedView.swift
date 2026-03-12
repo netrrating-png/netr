@@ -105,7 +105,11 @@ struct FeedView: View {
                     }
 
                     if viewModel.posts.isEmpty {
-                        emptyFeedState
+                        if viewModel.activeTab == .forYou {
+                            forYouEmptyState
+                        } else {
+                            emptyFeedState
+                        }
                     } else {
                         LazyVStack(spacing: 0) {
                             ForEach(viewModel.posts) { post in
@@ -171,6 +175,22 @@ struct FeedView: View {
             .scrollIndicators(.hidden)
         }
         .padding(.vertical, 12)
+    }
+
+    private var forYouEmptyState: some View {
+        VStack(spacing: 16) {
+            LucideIcon("users", size: 44)
+                .foregroundStyle(NETRTheme.muted)
+            Text("Your feed is empty")
+                .font(.headline)
+                .foregroundStyle(NETRTheme.text)
+            Text("Follow players to see their posts here.\nFind ballers on the courts tab.")
+                .font(.subheadline)
+                .foregroundStyle(NETRTheme.subtext)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
     }
 
     private var emptyFeedState: some View {

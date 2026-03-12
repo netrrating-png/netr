@@ -9,6 +9,8 @@ struct PostCardView: View {
     let onDelete: () -> Void
     let onBlock: () -> Void
 
+    @State private var showFullPhoto: Bool = false
+
     private var author: FeedAuthor? { post.author }
 
     var body: some View {
@@ -19,6 +21,10 @@ struct PostCardView: View {
                     authorLine
                     contentView
                 }
+            }
+
+            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
+                postPhoto(url: url)
             }
 
             if !post.hashtags.isEmpty {
@@ -48,6 +54,11 @@ struct PostCardView: View {
                 } label: {
                     Label("Block \(author?.handle ?? "user")", systemImage: "person.slash")
                 }
+            }
+        }
+        .fullScreenCover(isPresented: $showFullPhoto) {
+            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
+                FullScreenPhotoView(url: url)
             }
         }
     }
@@ -158,6 +169,29 @@ struct PostCardView: View {
         return result
     }
 
+    private func postPhoto(url: URL) -> some View {
+        Button { showFullPhoto = true } label: {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(maxHeight: 260)
+                        .clipShape(.rect(cornerRadius: 12))
+                } else if phase.error != nil {
+                    EmptyView()
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(NETRTheme.card)
+                        .frame(height: 180)
+                        .overlay(ProgressView().tint(NETRTheme.neonGreen))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 50)
+    }
+
     private var hashtagRow: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 6) {
@@ -240,6 +274,38 @@ struct PostCardView: View {
            let root = scene.windows.first?.rootViewController {
             root.present(activityVC, animated: true)
         }
+    }
+}
+
+// MARK: - Full Screen Photo
+
+struct FullScreenPhotoView: View {
+    let url: URL
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    ProgressView().tint(.white)
+                }
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .padding(16)
+            }
+        }
+        .statusBarHidden()
     }
 }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ComposePostView: View {
     @Bindable var viewModel: FeedViewModel
@@ -6,11 +7,14 @@ struct ComposePostView: View {
     @State private var postText: String = ""
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtSearch: Bool = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
 
     private let maxChars = 280
 
     private var charCount: Int { postText.count }
     private var isOverLimit: Bool { charCount > maxChars }
+    private var charsRemaining: Int { maxChars - charCount }
     private var canPost: Bool { !postText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isOverLimit && !viewModel.isPosting }
 
     var body: some View {
@@ -27,6 +31,11 @@ struct ComposePostView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
+
+                        if let image = selectedImage {
+                            photoPreview(image)
+                                .padding(.horizontal, 16)
+                        }
 
                         if let court = selectedCourt {
                             selectedCourtChip(court)
@@ -52,7 +61,8 @@ struct ComposePostView: View {
                         Task {
                             await viewModel.createPost(
                                 content: postText,
-                                courtId: selectedCourt.map { String($0.id) }
+                                courtId: selectedCourt.map { String($0.id) },
+                                photoImage: selectedImage
                             )
                         }
                     } label: {
@@ -73,6 +83,15 @@ struct ComposePostView: View {
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.surface)
             }
+            .onChange(of: selectedPhotoItem) { _, newValue in
+                guard let item = newValue else { return }
+                Task {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        selectedImage = image
+                    }
+                }
+            }
         }
     }
 
@@ -92,7 +111,7 @@ struct ComposePostView: View {
                     }
                     .clipShape(Circle())
             } else {
-                let name = SupabaseManager.shared.currentProfile?.fullName ?? "You"
+                let name = SupabaseManager.shared.currentProfile?.fullName ?? "Player"
                 let parts = name.split(separator: " ")
                 let initials = parts.count >= 2
                     ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
@@ -111,7 +130,7 @@ struct ComposePostView: View {
         Group {
             if let profile = SupabaseManager.shared.currentProfile {
                 HStack(spacing: 4) {
-                    Text(profile.fullName ?? profile.username ?? "You")
+                    Text(profile.fullName ?? profile.username ?? "Player")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(NETRTheme.text)
                     if let username = profile.username {
@@ -138,6 +157,27 @@ struct ComposePostView: View {
                 .foregroundStyle(NETRTheme.text)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 120)
+        }
+    }
+
+    private func photoPreview(_ image: UIImage) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxHeight: 200)
+                .clipShape(.rect(cornerRadius: 12))
+
+            Button {
+                selectedImage = nil
+                selectedPhotoItem = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .shadow(radius: 4)
+            }
+            .padding(8)
         }
     }
 
@@ -179,14 +219,24 @@ struct ComposePostView: View {
                 .foregroundStyle(NETRTheme.blue)
             }
 
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                HStack(spacing: 4) {
+                    LucideIcon("image", size: 14)
+                    Text("Photo")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(selectedImage != nil ? NETRTheme.neonGreen : NETRTheme.purple)
+            }
+            .disabled(selectedImage != nil)
+
             Spacer()
 
             Text("\(charCount)/\(maxChars)")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundStyle(
-                    charCount >= 260
-                    ? (isOverLimit ? NETRTheme.red : NETRTheme.gold)
-                    : NETRTheme.subtext
+                    charsRemaining < 0
+                    ? NETRTheme.red
+                    : (charsRemaining < 20 ? NETRTheme.red : (charsRemaining < 50 ? NETRTheme.gold : NETRTheme.subtext))
                 )
 
             if viewModel.isPosting {
