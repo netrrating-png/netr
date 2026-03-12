@@ -5,6 +5,7 @@ struct SelfAssessmentView: View {
     @Binding var categoryScores: [String: Double]
     var onComplete: () -> Void
     var onBack: (() -> Void)? = nil
+    var preselectedPosition: PlayerPosition? = nil
 
     @State private var phase: AssessmentPhase = .age
     @State private var selectedAgeGroup: AgeGroup? = nil
@@ -61,6 +62,11 @@ struct SelfAssessmentView: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: phase)
+        .onAppear {
+            if let pos = preselectedPosition {
+                selectedPosition = pos
+            }
+        }
     }
 
     // MARK: - Age Phase
@@ -70,8 +76,7 @@ struct SelfAssessmentView: View {
             HStack {
                 Button(action: { onBack?() }) {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -149,8 +154,7 @@ struct SelfAssessmentView: View {
                     withAnimation { phase = .age }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -227,8 +231,7 @@ struct SelfAssessmentView: View {
                     withAnimation { phase = .level }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -272,7 +275,7 @@ struct SelfAssessmentView: View {
                     }
 
                     Button {
-                        withAnimation { phase = .position }
+                        withAnimation { phase = preselectedPosition != nil ? .questions : .position }
                     } label: {
                         Text("NEXT")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -305,8 +308,7 @@ struct SelfAssessmentView: View {
                     withAnimation { phase = .frequency }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -381,8 +383,7 @@ struct SelfAssessmentView: View {
             HStack {
                 Button(action: handleBack) {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         if currentIndex == 0 {
                             Text("Back")
                                 .font(.system(size: 15, weight: .semibold))
@@ -420,8 +421,7 @@ struct SelfAssessmentView: View {
 
                     HStack(spacing: 8) {
                         if let icon = AssessmentResult.categoryIcons[currentQuestion.category] {
-                            Image(systemName: icon)
-                                .font(.system(size: 14, weight: .semibold))
+                            LucideIcon(icon, size: 14)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                         if let label = AssessmentResult.categoryDisplayNames[currentQuestion.category] {
@@ -527,8 +527,7 @@ struct SelfAssessmentView: View {
 
                         if selectedAgeGroup?.athleticModifier ?? 1.0 < 1.0 {
                             HStack(spacing: 6) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 12))
+                                LucideIcon("info", size: 12)
                                     .foregroundStyle(NETRTheme.gold)
                                 Text("Age-adjusted for fair calibration")
                                     .font(.system(size: 12))
@@ -601,7 +600,7 @@ struct SelfAssessmentView: View {
                 selectedAnswer = answers[questions[currentIndex].id]
             }
         } else {
-            withAnimation { phase = .position }
+            withAnimation { phase = preselectedPosition != nil ? .frequency : .position }
         }
     }
 
@@ -669,7 +668,7 @@ struct SelfAssessmentView: View {
         return order.map { cat in
             let raw = result.categoryScores[cat] ?? 1.0
             let label = AssessmentResult.categoryDisplayNames[cat] ?? cat
-            let icon = AssessmentResult.categoryIcons[cat] ?? "questionmark"
+            let icon = AssessmentResult.categoryIcons[cat] ?? "help-circle"
             let value = (raw - 1.0) / 9.0
             return RadarSkill(label: label, icon: icon, raw: raw, value: value)
         }
@@ -734,8 +733,7 @@ struct PlayingLevelRow: View {
                     Circle()
                         .fill(isSelected ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.card)
                         .frame(width: 40, height: 40)
-                    Image(systemName: level.icon)
-                        .font(.system(size: 16, weight: .semibold))
+                    LucideIcon(level.icon, size: 16)
                         .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
                 }
 
@@ -844,8 +842,7 @@ struct PositionRow: View {
                     Circle()
                         .fill(isSelected ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.card)
                         .frame(width: 40, height: 40)
-                    Image(systemName: position.icon)
-                        .font(.system(size: 16, weight: .semibold))
+                    LucideIcon(position.icon, size: 16)
                         .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
                 }
 

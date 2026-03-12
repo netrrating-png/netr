@@ -37,8 +37,7 @@ struct CreateGameView: View {
                             Circle()
                                 .fill(NETRTheme.muted.opacity(0.6))
                                 .frame(width: 30, height: 30)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .bold))
+                            LucideIcon("x", size: 11)
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                     }
@@ -99,7 +98,7 @@ struct CreateGameView: View {
                     VStack(alignment: .leading, spacing: 28) {
                         courtSectionView(
                             title: "NEAREST TO YOU",
-                            icon: "location.fill",
+                            icon: "map-pin",
                             iconColor: NETRTheme.neonGreen,
                             courts: viewModel.nearestCourts,
                             emptyMessage: nearestEmptyMessage
@@ -107,15 +106,14 @@ struct CreateGameView: View {
 
                         courtSectionView(
                             title: "YOUR FAVORITES",
-                            icon: "star.fill",
+                            icon: "star",
                             iconColor: NETRTheme.gold,
                             courts: viewModel.favoriteCourtsOnly,
                             emptyMessage: "Star a court to pin it here for quick access."
                         )
 
                         HStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 12))
+                            LucideIcon("search", size: 12)
                                 .foregroundStyle(NETRTheme.muted)
                             Text("Search above to find any other court")
                                 .font(.system(size: 13))
@@ -140,8 +138,7 @@ struct CreateGameView: View {
 
     private var courtSearchBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
+            LucideIcon("search", size: 14)
                 .foregroundStyle(courtSearchQuery.isEmpty ? NETRTheme.muted : NETRTheme.neonGreen)
 
             TextField("Search all courts\u{2026}", text: $courtSearchQuery)
@@ -158,8 +155,7 @@ struct CreateGameView: View {
                     courtSearchQuery = ""
                     courtSearchResults = []
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                    LucideIcon("x-circle", size: 14)
                         .foregroundStyle(NETRTheme.muted)
                 }
             }
@@ -184,8 +180,7 @@ struct CreateGameView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 7) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                LucideIcon(icon, size: 11)
                     .foregroundStyle(iconColor)
                 Text(title)
                     .font(.system(size: 11, weight: .bold))
@@ -195,8 +190,7 @@ struct CreateGameView: View {
 
             if courts.isEmpty {
                 HStack(spacing: 10) {
-                    Image(systemName: icon == "location.fill" ? "location.slash" : "star")
-                        .font(.system(size: 14))
+                    LucideIcon(icon == "map-pin" ? "map-pin-off" : "star", size: 14)
                         .foregroundStyle(NETRTheme.muted)
                     Text(emptyMessage)
                         .font(.system(size: 13))
@@ -238,8 +232,7 @@ struct CreateGameView: View {
                     Circle()
                         .fill(NETRTheme.neonGreen.opacity(court.verified ? 0.15 : 0.06))
                         .frame(width: 36, height: 36)
-                    Image(systemName: "basketball.fill")
-                        .font(.system(size: 16))
+                    LucideIcon("circle-dot", size: 16)
                         .foregroundStyle(court.verified ? NETRTheme.neonGreen : NETRTheme.muted)
                 }
 
@@ -250,8 +243,7 @@ struct CreateGameView: View {
                             .foregroundStyle(NETRTheme.text)
                             .lineLimit(1)
                         if court.verified {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 11))
+                            LucideIcon("badge-check", size: 11)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                     }
@@ -274,16 +266,14 @@ struct CreateGameView: View {
                 Button {
                     Task { await viewModel.toggleFavorite(courtId: court.id) }
                 } label: {
-                    Image(systemName: viewModel.isFavorite(court.id) ? "star.fill" : "star")
-                        .font(.system(size: 14))
+                    LucideIcon(viewModel.isFavorite(court.id) ? "star" : "star", size: 14)
                         .foregroundStyle(viewModel.isFavorite(court.id) ? NETRTheme.gold : NETRTheme.muted)
                         .frame(width: 32, height: 32)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
+                LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)
             }
             .padding(.horizontal, 16)
@@ -297,8 +287,7 @@ struct CreateGameView: View {
         Group {
             if courtSearchResults.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 36))
+                    LucideIcon("search", size: 36)
                         .foregroundStyle(NETRTheme.muted)
                     Text("No courts found")
                         .font(NETRTheme.headingFont(size: .title3))
@@ -366,7 +355,7 @@ struct CreateGameView: View {
                                     .foregroundStyle(NETRTheme.subtext)
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
+                            LucideIcon("chevron-right")
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                         .padding(16)
@@ -399,7 +388,7 @@ struct CreateGameView: View {
                                 .foregroundStyle(selectedSkill == skill ? NETRTheme.neonGreen : NETRTheme.text)
                             Spacer()
                             if selectedSkill == skill {
-                                Image(systemName: "checkmark.circle.fill")
+                                LucideIcon("check-circle")
                                     .foregroundStyle(NETRTheme.neonGreen)
                             }
                         }
@@ -496,8 +485,7 @@ struct GameLobbyView: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
                 .padding(.horizontal, 16)
 
-                Image(systemName: "qrcode")
-                    .font(.system(size: 80))
+                LucideIcon("qr-code", size: 80)
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(width: 120, height: 120)
                     .background(NETRTheme.card, in: .rect(cornerRadius: 12))

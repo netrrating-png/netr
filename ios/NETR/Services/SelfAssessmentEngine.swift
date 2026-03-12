@@ -62,16 +62,16 @@ nonisolated enum PlayingLevel: String, CaseIterable, Identifiable, Sendable {
 
     var icon: String {
         switch self {
-        case .brandNew:        return "figure.walk"
-        case .casual:          return "figure.basketball"
-        case .parkRegular:     return "basketball.fill"
-        case .exMiddleSchool:  return "graduationcap"
-        case .exJuniorVarsity: return "graduationcap.fill"
+        case .brandNew:        return "footprints"
+        case .casual:          return "dumbbell"
+        case .parkRegular:     return "circle-dot"
+        case .exMiddleSchool:  return "graduation-cap"
+        case .exJuniorVarsity: return "graduation-cap"
         case .exHighSchool:    return "trophy"
-        case .exJucoOrD3:      return "trophy.fill"
-        case .exD1D2:          return "star.fill"
-        case .currentLeague:   return "sportscourt.fill"
-        case .currentSemiPro:  return "bolt.fill"
+        case .exJucoOrD3:      return "trophy"
+        case .exD1D2:          return "star"
+        case .currentLeague:   return "layout-grid"
+        case .currentSemiPro:  return "zap"
         }
     }
 
@@ -236,11 +236,11 @@ nonisolated enum PlayerPosition: String, CaseIterable, Identifiable, Sendable {
 
     var icon: String {
         switch self {
-        case .pg: return "point.topleft.down.to.point.bottomright.curvepath"
-        case .sg: return "scope"
-        case .sf: return "arrow.triangle.branch"
-        case .pf: return "figure.basketball"
-        case .c:  return "shield.fill"
+        case .pg: return "route"
+        case .sg: return "crosshair"
+        case .sf: return "git-branch"
+        case .pf: return "dumbbell"
+        case .c:  return "shield"
         }
     }
 
@@ -639,13 +639,13 @@ nonisolated struct AssessmentResult: Sendable {
     ]
 
     static let categoryIcons: [String: String] = [
-        "scoring": "scope",
+        "scoring": "crosshair",
         "iq": "brain",
-        "defense": "shield.fill",
-        "handles": "hand.raised.fill",
-        "playmaking": "bolt.fill",
-        "finishing": "flame.fill",
-        "rebounding": "arrow.up.circle",
+        "defense": "shield",
+        "handles": "hand",
+        "playmaking": "zap",
+        "finishing": "flame",
+        "rebounding": "arrow-up-circle",
     ]
 
     func radarDotColorHex(for cat: String) -> String {

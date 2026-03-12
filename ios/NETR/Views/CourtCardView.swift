@@ -18,24 +18,21 @@ struct CourtCardView: View {
                 Spacer()
 
                 if isHomeCourt {
-                    Image(systemName: "house.fill")
-                        .font(.caption)
+                    LucideIcon("home", size: 12)
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
                 Button {
                     onFavoriteToggle()
                 } label: {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.system(size: 16))
+                    LucideIcon(isFavorite ? "heart" : "heart", size: 16)
                         .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
                 }
                 .buttonStyle(.plain)
 
                 if court.verified {
-                    Image(systemName: "checkmark.seal.fill")
+                    LucideIcon("badge-check", size: 12)
                         .foregroundStyle(NETRTheme.blue)
-                        .font(.caption)
                 } else {
                     Text("PENDING")
                         .font(.system(size: 9, weight: .bold))
@@ -83,8 +80,7 @@ struct CourtCardView: View {
 
                 if court.cosignCount > 0 {
                     HStack(spacing: 3) {
-                        Image(systemName: "hand.thumbsup.fill")
-                            .font(.system(size: 10))
+                        LucideIcon("thumbs-up", size: 10)
                         Text("\(court.cosignCount)")
                             .font(.caption.weight(.bold))
                     }

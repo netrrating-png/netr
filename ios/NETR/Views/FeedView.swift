@@ -40,8 +40,7 @@ struct FeedView: View {
                 .foregroundStyle(NETRTheme.text)
             Spacer()
             Button {} label: {
-                Image(systemName: "bell.fill")
-                    .font(.body)
+                LucideIcon("bell")
                     .foregroundStyle(NETRTheme.subtext)
             }
         }
@@ -176,8 +175,7 @@ struct FeedView: View {
 
     private var emptyFeedState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "bubble.left.and.text.bubble.right")
-                .font(.system(size: 44))
+            LucideIcon("messages-square", size: 44)
                 .foregroundStyle(NETRTheme.muted)
             Text("Nothing here yet")
                 .font(.headline)
@@ -194,8 +192,7 @@ struct FeedView: View {
         Button {
             viewModel.showCompose = true
         } label: {
-            Image(systemName: "plus")
-                .font(.title3.weight(.bold))
+            LucideIcon("plus", size: 20)
                 .foregroundStyle(NETRTheme.background)
                 .frame(width: 56, height: 56)
                 .background(NETRTheme.neonGreen, in: Circle())

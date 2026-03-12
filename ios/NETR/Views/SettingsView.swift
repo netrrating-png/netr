@@ -88,8 +88,7 @@ struct SettingsView: View {
                     }
 
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 10, weight: .bold))
+                        LucideIcon("camera", size: 10)
                             .foregroundStyle(NETRTheme.background)
                             .frame(width: 24, height: 24)
                             .background(NETRTheme.neonGreen, in: Circle())
@@ -103,8 +102,7 @@ struct SettingsView: View {
                             .font(.headline.weight(.bold))
                             .foregroundStyle(NETRTheme.text)
                         if user.isVerified {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.caption)
+                            LucideIcon("badge-check", size: 12)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                     }
@@ -157,8 +155,7 @@ struct SettingsView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(NETRTheme.neonGreen.opacity(0.1))
                         .frame(width: 40, height: 40)
-                    Image(systemName: "person.text.rectangle.fill")
-                        .font(.body.weight(.semibold))
+                    LucideIcon("id-card")
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
@@ -173,8 +170,7 @@ struct SettingsView: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)
             }
             .padding(14)
@@ -198,8 +194,7 @@ struct SettingsView: View {
 
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
-                    Image(systemName: appearance.isDarkMode ? "moon.fill" : "sun.max.fill")
-                        .font(.body)
+                    LucideIcon(appearance.isDarkMode ? "moon" : "sun")
                         .foregroundStyle(appearance.isDarkMode ? NETRTheme.purple : NETRTheme.gold)
                         .frame(width: 24)
 
@@ -278,11 +273,11 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "person.fill", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
+                SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "bell.fill", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
+                SettingsRow(icon: "bell", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "lock.fill", iconColor: NETRTheme.red, title: "Privacy", subtitle: "Profile visibility & data")
+                SettingsRow(icon: "lock", iconColor: NETRTheme.red, title: "Privacy", subtitle: "Profile visibility & data")
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
@@ -299,11 +294,11 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "info.circle.fill", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version 1.0")
+                SettingsRow(icon: "info", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version 1.0")
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "doc.text.fill", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil)
+                SettingsRow(icon: "file-text", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil)
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "hand.raised.fill", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil)
+                SettingsRow(icon: "hand", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil)
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
@@ -316,8 +311,7 @@ struct SettingsView: View {
             showSignOutConfirm = true
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.body)
+                LucideIcon("log-out")
                     .foregroundStyle(NETRTheme.red)
                     .frame(width: 24)
                 Text("Sign Out")
@@ -351,8 +345,7 @@ struct SettingsRow: View {
     var body: some View {
         Button {} label: {
             HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.body)
+                LucideIcon(icon)
                     .foregroundStyle(iconColor)
                     .frame(width: 24)
 
@@ -369,8 +362,7 @@ struct SettingsRow: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)
             }
             .padding(14)

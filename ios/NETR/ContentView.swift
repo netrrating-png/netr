@@ -23,11 +23,11 @@ struct ContentView: View {
 
         var icon: String {
             switch self {
-            case .courts: return "map.fill"
-            case .rate: return "star.fill"
-            case .feed: return "bubble.left.and.text.bubble.right.fill"
-            case .profile: return "person.fill"
-            case .settings: return "gearshape.fill"
+            case .courts: return "map"
+            case .rate: return "star"
+            case .feed: return "messages-square"
+            case .profile: return "user"
+            case .settings: return "settings"
             }
         }
     }
@@ -119,8 +119,7 @@ struct ContentView: View {
                     }
                 } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 18))
+                        LucideIcon(tab.icon, size: 18)
                             .foregroundStyle(selectedTab == tab ? NETRTheme.neonGreen : NETRTheme.subtext)
 
                         Text(tab.rawValue)

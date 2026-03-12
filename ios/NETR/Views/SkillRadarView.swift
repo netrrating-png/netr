@@ -108,8 +108,7 @@ struct SkillRadarView: View {
                             Text(skill.icon)
                                 .font(.system(size: 13))
                         } else {
-                            Image(systemName: skill.icon)
-                                .font(.system(size: 12, weight: .semibold))
+                            LucideIcon(skill.icon, size: 12)
                                 .foregroundStyle(color)
                         }
                         Text(skill.label.uppercased())
@@ -165,7 +164,7 @@ struct SkillRadarView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     if !strengths.isEmpty {
                         InsightRow(
-                            icon: "bolt.fill",
+                            icon: "zap",
                             color: NETRTheme.neonGreen,
                             label: "Strengths",
                             items: Array(strengths.prefix(2).map(\.label))
@@ -198,8 +197,7 @@ struct SkillRadarView: View {
                         Text(skill.icon)
                             .font(.system(size: 14))
                     } else {
-                        Image(systemName: skill.icon)
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon(skill.icon, size: 14)
                             .foregroundStyle(color)
                     }
                     Text(String(format: "%.1f", skill.raw))
@@ -258,8 +256,7 @@ private struct InsightRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
+            LucideIcon(icon, size: 12)
                 .foregroundStyle(color)
             Text(label)
                 .font(.system(size: 13, weight: .semibold))
@@ -401,12 +398,12 @@ struct ScoreInfoSheet: View {
 
 func buildRadarSkills(from skillRatings: SkillRatings) -> [RadarSkill] {
     let items: [(String, String, Double?)] = [
-        ("Scoring", "scope", skillRatings.shooting),
-        ("Finishing", "flame.fill", skillRatings.finishing),
-        ("Handles", "hand.raised.fill", skillRatings.ballHandling),
-        ("Playmaking", "bolt.fill", skillRatings.playmaking),
-        ("Defense", "shield.fill", skillRatings.defense),
-        ("Rebounding", "arrow.up.circle", skillRatings.rebounding),
+        ("Scoring", "crosshair", skillRatings.shooting),
+        ("Finishing", "flame", skillRatings.finishing),
+        ("Handles", "hand", skillRatings.ballHandling),
+        ("Playmaking", "zap", skillRatings.playmaking),
+        ("Defense", "shield", skillRatings.defense),
+        ("Rebounding", "arrow-up-circle", skillRatings.rebounding),
         ("IQ", "brain", skillRatings.basketballIQ),
     ]
     return items.map { label, icon, val in
@@ -418,12 +415,12 @@ func buildRadarSkills(from skillRatings: SkillRatings) -> [RadarSkill] {
 
 func buildRadarSkills(from categoryScores: [String: Double]) -> [RadarSkill] {
     let order: [(key: String, label: String, icon: String)] = [
-        ("scoring", "Scoring", "scope"),
-        ("finishing", "Finishing", "flame.fill"),
-        ("handles", "Handles", "hand.raised.fill"),
-        ("playmaking", "Playmaking", "bolt.fill"),
-        ("defense", "Defense", "shield.fill"),
-        ("rebounding", "Rebounding", "arrow.up.circle"),
+        ("scoring", "Scoring", "crosshair"),
+        ("finishing", "Finishing", "flame"),
+        ("handles", "Handles", "hand"),
+        ("playmaking", "Playmaking", "zap"),
+        ("defense", "Defense", "shield"),
+        ("rebounding", "Rebounding", "arrow-up-circle"),
         ("iq", "IQ", "brain"),
     ]
     return order.map { item in
