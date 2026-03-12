@@ -52,7 +52,7 @@ struct ComposePostView: View {
                         Task {
                             await viewModel.createPost(
                                 content: postText,
-                                courtId: selectedCourt.map { String($0.id) }
+                                courtId: selectedCourt?.id
                             )
                         }
                     } label: {
