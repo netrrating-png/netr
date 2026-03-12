@@ -1,6 +1,5 @@
 import SwiftUI
 import Supabase
-import Auth
 
 struct CommentsView: View {
     let post: SupabaseFeedPost

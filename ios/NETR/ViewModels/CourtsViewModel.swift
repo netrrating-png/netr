@@ -2,7 +2,6 @@ import SwiftUI
 import MapKit
 import CoreLocation
 import Supabase
-import Auth
 
 @Observable
 class CourtsViewModel: NSObject, CLLocationManagerDelegate {

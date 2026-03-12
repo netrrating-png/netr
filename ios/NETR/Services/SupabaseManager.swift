@@ -3,6 +3,7 @@ import Supabase
 import Auth
 
 @Observable
+@MainActor
 class SupabaseManager {
 
     static let shared = SupabaseManager()
