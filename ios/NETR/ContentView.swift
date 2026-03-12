@@ -10,7 +10,8 @@ struct ContentView: View {
     @State private var dismissedAssessmentBanner: Bool = false
 
     private var isUnrated: Bool {
-        supabase.currentProfile?.netrScore == nil && SelfAssessmentStore.savedScore == nil
+        guard let profile = supabase.currentProfile else { return false }
+        return profile.netrScore == nil && SelfAssessmentStore.savedScore == nil
     }
 
     enum Tab: String, CaseIterable {
@@ -66,49 +67,47 @@ struct ContentView: View {
     }
 
     private var assessmentBanner: some View {
-        Button {
-            showSelfAssessment = true
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "star.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(NETRTheme.neonGreen)
+        HStack(spacing: 10) {
+            Image(systemName: "star.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(NETRTheme.neonGreen)
 
-                Text("Complete your self-assessment to get your NETR score")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(NETRTheme.text)
-                    .lineLimit(1)
+            Text("Complete your self-assessment to get your NETR score")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(NETRTheme.text)
+                .lineLimit(1)
 
-                Spacer(minLength: 4)
+            Spacer(minLength: 4)
 
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
+            Image(systemName: "arrow.right")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(NETRTheme.neonGreen)
 
-                Button {
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        dismissedAssessmentBanner = true
-                    }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(NETRTheme.subtext)
-                        .frame(width: 22, height: 22)
-                        .background(NETRTheme.muted, in: Circle())
+            Button {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    dismissedAssessmentBanner = true
                 }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .frame(width: 22, height: 22)
+                    .background(NETRTheme.muted, in: Circle())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(NETRTheme.neonGreen.opacity(0.08))
-            .overlay(
-                Rectangle()
-                    .fill(NETRTheme.neonGreen.opacity(0.3))
-                    .frame(height: 1),
-                alignment: .bottom
-            )
         }
-        .buttonStyle(.plain)
-        .transition(.move(edge: .top).combined(with: .opacity))
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(NETRTheme.neonGreen.opacity(0.08))
+        .overlay(
+            Rectangle()
+                .fill(NETRTheme.neonGreen.opacity(0.3))
+                .frame(height: 1),
+            alignment: .bottom
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            showSelfAssessment = true
+        }
     }
 
     private var customTabBar: some View {
