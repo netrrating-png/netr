@@ -5,6 +5,7 @@ struct CourtDetailView: View {
     @Bindable var viewModel: CourtsViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: Int = 0
+    @State private var weatherService = WeatherService.shared
 
     private var distance: String { viewModel.distanceString(for: court) }
     private var isFav: Bool { viewModel.isFavorite(court.id) }
@@ -15,6 +16,7 @@ struct CourtDetailView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     courtHeader
+                    weatherBadge
                     actionButtons
                     chipDetails
                     tabSelector
@@ -102,6 +104,50 @@ struct CourtDetailView: View {
             }
         }
         .padding(16)
+    }
+
+    private var weatherBadge: some View {
+        Group {
+            if let w = weatherService.weather[court.id] {
+                HStack(spacing: 10) {
+                    Text("\(w.emoji) \(Int(w.temperatureF))°F")
+                        .font(.system(.subheadline, design: .default, weight: .bold))
+                        .foregroundStyle(NETRTheme.text)
+
+                    Text("·")
+                        .foregroundStyle(NETRTheme.muted)
+
+                    Text(w.label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NETRTheme.subtext)
+
+                    if w.showWind {
+                        Text("·")
+                            .foregroundStyle(NETRTheme.muted)
+                        Text("💨 \(Int(w.windSpeedMph))mph")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    Spacer()
+
+                    Text(w.condition)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(w.condition == "Good conditions" ? NETRTheme.neonGreen : NETRTheme.gold)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 4)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .animation(.easeOut(duration: 0.3), value: weatherService.weather[court.id] != nil)
+        .onAppear {
+            weatherService.fetch(courtId: court.id, lat: court.lat, lng: court.lng)
+        }
     }
 
     private var actionButtons: some View {
