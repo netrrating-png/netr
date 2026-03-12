@@ -11,12 +11,25 @@ class MockDataStore {
 
     init() {
         currentUser = Player(
-            id: 99, name: "You", username: "@you", avatar: "YO",
+            id: 99, name: "Player", username: "@player", avatar: "??",
             rating: nil, reviews: 3, age: 24, tier: .basic, city: "New York, NY",
             position: .pg, trend: .none, games: 5, isProspect: false,
             skills: SkillRatings(), profileImageData: nil
         )
         loadMockData()
+    }
+
+    func syncFromProfile(_ profile: UserProfile) {
+        let player = profile.toPlayer()
+        currentUser.name = player.name
+        currentUser.username = player.username
+        currentUser.avatar = player.avatar
+        currentUser.avatarUrl = player.avatarUrl
+        currentUser.rating = player.rating
+        currentUser.position = player.position
+        if player.skills.overall != nil {
+            currentUser.skills = player.skills
+        }
     }
 
     private func loadMockData() {
