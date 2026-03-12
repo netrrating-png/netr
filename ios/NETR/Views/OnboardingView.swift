@@ -581,6 +581,12 @@ struct OnboardingView: View {
                     }
                 }
 
+                // Sign-up may succeed without returning a session (e.g. email
+                // confirmation enabled). Explicitly sign in to establish one.
+                if supabase.session == nil {
+                    try await supabase.signInWithEmail(email: email, password: password)
+                }
+
                 if let score {
                     try await supabase.saveSelfAssessmentScore(
                         score: score,
