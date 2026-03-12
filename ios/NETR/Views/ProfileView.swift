@@ -4,6 +4,7 @@ import PhotosUI
 struct ProfileView: View {
     var profileUserId: String? = nil
     var courtsViewModel: CourtsViewModel? = nil
+    @Binding var showSelfAssessment: Bool
 
     @State private var viewModel = ProfileViewModel()
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -13,6 +14,12 @@ struct ProfileView: View {
     @State private var showFollowers: Bool = false
     @State private var showFollowing: Bool = false
     @State private var showBioEdit: Bool = false
+
+    init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
+        self.profileUserId = profileUserId
+        self.courtsViewModel = courtsViewModel
+        self._showSelfAssessment = showSelfAssessment
+    }
 
     var body: some View {
         ZStack {
@@ -127,6 +134,11 @@ struct ProfileView: View {
                    let image = UIImage(data: data) {
                     await viewModel.uploadAvatar(image)
                 }
+            }
+        }
+        .onChange(of: showSelfAssessment) { _, isShowing in
+            if !isShowing {
+                Task { await viewModel.loadProfile(userId: profileUserId) }
             }
         }
         .sheet(isPresented: $showScoreInfo) { ScoreInfoSheet() }
@@ -405,9 +417,10 @@ struct ProfileView: View {
                         .foregroundStyle(color)
                     if !isPeerRated {
                         HStack(spacing: 5) {
-                            LucideIcon("lock", size: 10)
+                            Image(systemName: user.rating == nil ? "questionmark.circle.fill" : "lock.fill")
+                                .font(.system(size: 10))
                                 .foregroundStyle(NETRTheme.subtext)
-                            Text("Self-assessed · updates at 5 ratings")
+                            Text(user.rating == nil ? "No self-assessment yet" : "Self-assessed · updates at 5 ratings")
                                 .font(.system(size: 11))
                                 .foregroundStyle(NETRTheme.subtext)
                         }
@@ -452,12 +465,13 @@ struct ProfileView: View {
                                 .font(.system(size: 36, weight: .black, design: .default).width(.compressed))
                                 .foregroundStyle(color)
                         } else {
-                            Text("—")
-                                .font(.system(size: 36, weight: .black, design: .default).width(.compressed))
+                            Text("UNRATED")
+                                .font(.system(size: 20, weight: .black, design: .default).width(.compressed))
                                 .foregroundStyle(NETRTheme.subtext)
                         }
-                        if !isPeerRated {
-                            LucideIcon("lock", size: 9)
+                        if user.rating != nil && !isPeerRated {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 9))
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                     }
@@ -495,6 +509,39 @@ struct ProfileView: View {
                 .background(NETRTheme.surface)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
+            }
+
+            if viewModel.isCurrentUser {
+                if user.rating == nil {
+                    Button {
+                        showSelfAssessment = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "star.circle.fill")
+                                .font(.system(size: 16))
+                            Text("TAKE SELF ASSESSMENT")
+                                .font(.system(.subheadline, design: .default, weight: .bold).width(.compressed))
+                                .tracking(1)
+                        }
+                        .foregroundStyle(NETRTheme.background)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
+                    }
+                    .buttonStyle(PressButtonStyle())
+                } else if !isPeerRated {
+                    Button {
+                        showSelfAssessment = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 11, weight: .semibold))
+                            Text("Retake Self Assessment")
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    }
+                }
             }
 
             if user.trend == .up {

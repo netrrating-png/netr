@@ -133,6 +133,10 @@ struct SettingsView: View {
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(NETRTheme.subtext)
                     }
+                } else {
+                    Text("UNRATED")
+                        .font(.system(size: 12, weight: .black, design: .default).width(.compressed))
+                        .foregroundStyle(NETRTheme.subtext)
                 }
             }
         }

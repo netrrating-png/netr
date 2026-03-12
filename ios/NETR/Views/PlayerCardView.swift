@@ -206,8 +206,8 @@ struct PlayerCardView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                     } else {
-                        Text("—")
-                            .font(.system(size: 64, weight: .black, design: .default).width(.compressed))
+                        Text("UNRATED")
+                            .font(.system(size: 28, weight: .black, design: .default).width(.compressed))
                             .foregroundStyle(NETRTheme.subtext)
                     }
 
