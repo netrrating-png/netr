@@ -149,6 +149,8 @@ class ProfileViewModel {
 
             avatarImage = image
             isUploadingAvatar = false
+
+            await SupabaseManager.shared.loadProfile(userId: userId)
         } catch {
             isUploadingAvatar = false
             print("Avatar upload error: \(error)")
@@ -204,7 +206,8 @@ class ProfileViewModel {
             trend: .none,
             games: 0,
             isProspect: false,
-            skills: localSkills
+            skills: localSkills,
+            avatarUrl: SupabaseManager.shared.currentProfile?.avatarUrl
         )
     }
 

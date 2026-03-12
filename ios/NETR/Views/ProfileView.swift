@@ -190,19 +190,22 @@ struct ProfileView: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 76, height: 76)
                         .clipShape(Circle())
-                } else if let imageData = user.profileImageData,
-                          let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 76, height: 76)
-                        .clipShape(Circle())
+                } else if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image.resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 76, height: 76)
+                                .clipShape(Circle())
+                        } else if phase.error != nil {
+                            avatarInitials(user: user, color: color)
+                        } else {
+                            ProgressView()
+                                .frame(width: 76, height: 76)
+                        }
+                    }
                 } else {
-                    Text(user.avatar)
-                        .font(.system(size: 28, weight: .black, design: .default).width(.compressed))
-                        .foregroundStyle(color)
-                        .frame(width: 76, height: 76)
-                        .background(NETRTheme.card, in: Circle())
+                    avatarInitials(user: user, color: color)
                 }
 
                 if let vibeScore = viewModel.vibeScore, vibeScore > 0 {
@@ -745,6 +748,14 @@ struct ProfileView: View {
     }
 
     // MARK: - Helpers
+
+    private func avatarInitials(user: Player, color: Color) -> some View {
+        Text(user.avatar)
+            .font(.system(size: 28, weight: .black, design: .default).width(.compressed))
+            .foregroundStyle(color)
+            .frame(width: 76, height: 76)
+            .background(NETRTheme.card, in: Circle())
+    }
 
     private func ratingColor(for user: Player) -> Color {
         NETRTheme.ratingColor(for: user.rating)

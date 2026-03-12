@@ -274,9 +274,24 @@ struct PlayerCardView: View {
             Circle()
                 .stroke(ratingColor.opacity(0.5), lineWidth: 1.5)
                 .frame(width: 38, height: 38)
-            Text(player.avatar)
-                .font(.system(size: 13, weight: .black, design: .default).width(.compressed))
-                .foregroundStyle(ratingColor)
+            if let urlStr = player.avatarUrl, let url = URL(string: urlStr) {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 34, height: 34)
+                            .clipShape(Circle())
+                    } else {
+                        Text(player.avatar)
+                            .font(.system(size: 13, weight: .black, design: .default).width(.compressed))
+                            .foregroundStyle(ratingColor)
+                    }
+                }
+            } else {
+                Text(player.avatar)
+                    .font(.system(size: 13, weight: .black, design: .default).width(.compressed))
+                    .foregroundStyle(ratingColor)
+            }
         }
     }
 

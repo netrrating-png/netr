@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showPlayerCard: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
+    @State private var profileViewModel = ProfileViewModel()
 
     private var user: Player { store.currentUser }
 
@@ -41,7 +42,9 @@ struct SettingsView: View {
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await profileViewModel.uploadAvatar(image)
                     store.currentUser.profileImageData = data
                 }
             }
@@ -71,8 +74,23 @@ struct SettingsView: View {
                             .frame(width: 72, height: 72)
                             .neonGlow(NETRTheme.tierColor(for: user), radius: 6)
 
-                        if let imageData = user.profileImageData,
-                           let uiImage = UIImage(data: imageData) {
+                        if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 64, height: 64)
+                                        .clipShape(Circle())
+                                } else {
+                                    Text(user.avatar)
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundStyle(NETRTheme.text)
+                                        .frame(width: 64, height: 64)
+                                        .background(NETRTheme.card, in: Circle())
+                                }
+                            }
+                        } else if let imageData = user.profileImageData,
+                                  let uiImage = UIImage(data: imageData) {
                             Image(uiImage: uiImage)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)

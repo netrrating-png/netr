@@ -64,6 +64,21 @@ struct ContentView: View {
                 dismissedAssessmentBanner = true
             })
         }
+        .onChange(of: supabase.currentProfile?.fullName) { _, _ in
+            if let profile = supabase.currentProfile {
+                store.syncFromProfile(profile)
+            }
+        }
+        .onChange(of: supabase.currentProfile?.avatarUrl) { _, _ in
+            if let profile = supabase.currentProfile {
+                store.syncFromProfile(profile)
+            }
+        }
+        .onAppear {
+            if let profile = supabase.currentProfile {
+                store.syncFromProfile(profile)
+            }
+        }
     }
 
     private var assessmentBanner: some View {

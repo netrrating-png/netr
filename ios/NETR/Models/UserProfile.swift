@@ -113,7 +113,8 @@ extension UserProfile {
                 rebounding: catRebounding,
                 basketballIQ: catBasketballIq
             ),
-            profileImageData: nil
+            profileImageData: nil,
+            avatarUrl: avatarUrl
         )
     }
 
