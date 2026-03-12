@@ -1,69 +1,71 @@
 import SwiftUI
 
 struct SelfAssessmentView: View {
-    let position: PlayerPosition
-    var onComplete: (Double, Gender, AgeBracket, [String: Double]) -> Void
+    @Binding var estimatedScore: Double?
+    @Binding var categoryScores: [String: Double]
+    var onComplete: () -> Void
     var onBack: (() -> Void)? = nil
 
-    @State private var phase: SAPhase = .gender
-    @State private var selectedGender: Gender? = nil
-    @State private var selectedAgeBracket: AgeBracket? = nil
-    @State private var currentQIndex: Int = 0
-    @State private var answers: [Int: Int] = [:]
-    @State private var selectedOption: Int? = nil
-    @State private var finalScore: Double = 0
-    @State private var categoryScores: [String: Double] = [:]
+    @State private var phase: AssessmentPhase = .age
+    @State private var selectedAgeGroup: AgeGroup? = nil
+    @State private var selectedPlayingLevel: PlayingLevel? = nil
+    @State private var selectedFrequency: PlayFrequency? = nil
+    @State private var selectedPosition: PlayerPosition? = nil
+    @State private var currentIndex: Int = 0
+    @State private var answers: [String: Int] = [:]
+    @State private var selectedAnswer: Int? = nil
+    @State private var assessmentResult: AssessmentResult? = nil
     @State private var showScoreInfo: Bool = false
 
-    private enum SAPhase: Equatable {
-        case gender, age, questions, result
+    private enum AssessmentPhase: Equatable {
+        case age, level, frequency, position, questions, result
     }
 
-    private let questions = SAQuestionBank.all
-    private var currentQ: SAQuestion { questions[currentQIndex] }
-    private var isLastQ: Bool { currentQIndex == questions.count - 1 }
+    private let questions = AssessmentQuestionBank.all
+
+    private var currentQuestion: AssessmentQuestion {
+        questions[currentIndex]
+    }
 
     private var progress: Double {
-        Double(currentQIndex) / Double(questions.count)
+        Double(currentIndex) / Double(questions.count)
     }
 
-    private let categoryDisplayNames: [String: String] = [
-        "scoring": "Scoring", "iq": "IQ", "defense": "Defense",
-        "handles": "Handles", "playmaking": "Playmaking",
-        "finishing": "Finishing", "rebounding": "Rebounding",
-    ]
-
-    private let categoryIcons: [String: String] = [
-        "scoring": "scope", "iq": "brain", "defense": "shield.fill",
-        "handles": "hand.raised.fill", "playmaking": "bolt.fill",
-        "finishing": "flame.fill", "rebounding": "arrow.up.circle",
-    ]
+    private var isLast: Bool {
+        currentIndex == questions.count - 1
+    }
 
     var body: some View {
         ZStack {
             NETRTheme.background.ignoresSafeArea()
 
             switch phase {
-            case .gender:
-                genderPhase
-                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
             case .age:
-                agePhase
+                ageView
+                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+            case .level:
+                levelView
+                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+            case .frequency:
+                frequencyView
+                    .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+            case .position:
+                positionView
                     .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
             case .questions:
-                questionsPhase
+                questionView
                     .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
             case .result:
-                resultPhase
+                assessmentResultView
                     .transition(.opacity)
             }
         }
         .animation(.snappy(duration: 0.3), value: phase)
     }
 
-    // MARK: - Gender Phase
+    // MARK: - Age Phase
 
-    private var genderPhase: some View {
+    private var ageView: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Button(action: { onBack?() }) {
@@ -85,50 +87,51 @@ struct SelfAssessmentView: View {
                     Spacer().frame(height: 20)
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("ONE QUICK THING")
+                        Text("FIRST THINGS FIRST")
                             .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
                             .tracking(2)
                             .foregroundStyle(NETRTheme.subtext)
 
-                        Text("What's your gender?")
+                        Text("How old are you?")
                             .font(.system(.title, design: .default, weight: .black).width(.compressed))
                             .foregroundStyle(NETRTheme.text)
 
-                        Text("Used only for context. Won't affect your score.")
+                        Text("Helps calibrate your score fairly across age groups.")
                             .font(.subheadline)
                             .foregroundStyle(NETRTheme.subtext)
                     }
 
-                    VStack(spacing: 12) {
-                        ForEach(Gender.allCases, id: \.self) { g in
-                            SASelectionRow(
-                                label: g.rawValue,
-                                isSelected: selectedGender == g
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                        ForEach(AgeGroup.allCases) { bracket in
+                            AgeBracketCard(
+                                label: bracket.label,
+                                sublabel: bracket.sublabel,
+                                isSelected: selectedAgeGroup == bracket
                             ) {
                                 withAnimation(.snappy(duration: 0.2)) {
-                                    selectedGender = g
+                                    selectedAgeGroup = bracket
                                 }
                             }
                         }
                     }
 
                     Button {
-                        withAnimation { phase = .age }
+                        withAnimation { phase = .level }
                     } label: {
                         Text("NEXT")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
                             .tracking(1)
-                            .foregroundStyle(selectedGender != nil ? NETRTheme.background : NETRTheme.text)
+                            .foregroundStyle(selectedAgeGroup != nil ? NETRTheme.background : NETRTheme.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(
-                                selectedGender != nil ? NETRTheme.neonGreen : NETRTheme.muted,
+                                selectedAgeGroup != nil ? NETRTheme.neonGreen : NETRTheme.muted,
                                 in: .rect(cornerRadius: 14)
                             )
                     }
                     .buttonStyle(PressButtonStyle())
-                    .disabled(selectedGender == nil)
-                    .sensoryFeedback(.impact(flexibility: .soft), trigger: selectedGender)
+                    .disabled(selectedAgeGroup == nil)
+                    .sensoryFeedback(.impact(flexibility: .soft), trigger: selectedAgeGroup)
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, 20)
@@ -137,13 +140,13 @@ struct SelfAssessmentView: View {
         }
     }
 
-    // MARK: - Age Phase
+    // MARK: - Playing Level Phase
 
-    private var agePhase: some View {
+    private var levelView: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Button {
-                    withAnimation { phase = .gender }
+                    withAnimation { phase = .age }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
@@ -163,24 +166,184 @@ struct SelfAssessmentView: View {
                     Spacer().frame(height: 20)
 
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("How old are you?")
+                        Text("YOUR BACKGROUND")
+                            .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                            .tracking(2)
+                            .foregroundStyle(NETRTheme.subtext)
+
+                        Text("What level do you play at?")
                             .font(.system(.title, design: .default, weight: .black).width(.compressed))
                             .foregroundStyle(NETRTheme.text)
 
-                        Text("Helps calibrate your score fairly across age groups.")
+                        Text("This anchors your score to a realistic range.")
                             .font(.subheadline)
                             .foregroundStyle(NETRTheme.subtext)
                     }
 
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                        ForEach(AgeBracket.allCases) { bracket in
-                            AgeBracketCard(
-                                label: bracket.rawValue,
-                                sublabel: bracket.sublabel,
-                                isSelected: selectedAgeBracket == bracket
+                    VStack(spacing: 10) {
+                        ForEach(PlayingLevel.allCases) { level in
+                            PlayingLevelRow(
+                                level: level,
+                                isSelected: selectedPlayingLevel == level
                             ) {
                                 withAnimation(.snappy(duration: 0.2)) {
-                                    selectedAgeBracket = bracket
+                                    selectedPlayingLevel = level
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        withAnimation { phase = .frequency }
+                    } label: {
+                        Text("NEXT")
+                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                            .tracking(1)
+                            .foregroundStyle(selectedPlayingLevel != nil ? NETRTheme.background : NETRTheme.text)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                selectedPlayingLevel != nil ? NETRTheme.neonGreen : NETRTheme.muted,
+                                in: .rect(cornerRadius: 14)
+                            )
+                    }
+                    .buttonStyle(PressButtonStyle())
+                    .disabled(selectedPlayingLevel == nil)
+                    .sensoryFeedback(.impact(flexibility: .soft), trigger: selectedPlayingLevel)
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+
+    // MARK: - Frequency Phase
+
+    private var frequencyView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Button {
+                    withAnimation { phase = .level }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Back")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundStyle(NETRTheme.subtext)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Spacer().frame(height: 20)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("STAY SHARP")
+                            .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                            .tracking(2)
+                            .foregroundStyle(NETRTheme.subtext)
+
+                        Text("How often do you hoop?")
+                            .font(.system(.title, design: .default, weight: .black).width(.compressed))
+                            .foregroundStyle(NETRTheme.text)
+
+                        Text("Skill fades without reps. This keeps your score honest.")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    VStack(spacing: 10) {
+                        ForEach(PlayFrequency.allCases) { freq in
+                            FrequencyRow(
+                                frequency: freq,
+                                isSelected: selectedFrequency == freq
+                            ) {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    selectedFrequency = freq
+                                }
+                            }
+                        }
+                    }
+
+                    Button {
+                        withAnimation { phase = .position }
+                    } label: {
+                        Text("NEXT")
+                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                            .tracking(1)
+                            .foregroundStyle(selectedFrequency != nil ? NETRTheme.background : NETRTheme.text)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(
+                                selectedFrequency != nil ? NETRTheme.neonGreen : NETRTheme.muted,
+                                in: .rect(cornerRadius: 14)
+                            )
+                    }
+                    .buttonStyle(PressButtonStyle())
+                    .disabled(selectedFrequency == nil)
+                    .sensoryFeedback(.impact(flexibility: .soft), trigger: selectedFrequency)
+                    .padding(.top, 8)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+
+    // MARK: - Position Phase
+
+    private var positionView: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Button {
+                    withAnimation { phase = .frequency }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 14, weight: .semibold))
+                        Text("Back")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .foregroundStyle(NETRTheme.subtext)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 10)
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Spacer().frame(height: 20)
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("YOUR POSITION")
+                            .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                            .tracking(2)
+                            .foregroundStyle(NETRTheme.subtext)
+
+                        Text("What position do you play?")
+                            .font(.system(.title, design: .default, weight: .black).width(.compressed))
+                            .foregroundStyle(NETRTheme.text)
+
+                        Text("Your score is weighted based on what matters most for your position.")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    VStack(spacing: 10) {
+                        ForEach(PlayerPosition.allCases) { pos in
+                            PositionRow(
+                                position: pos,
+                                isSelected: selectedPosition == pos
+                            ) {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    selectedPosition = pos
                                 }
                             }
                         }
@@ -192,17 +355,17 @@ struct SelfAssessmentView: View {
                         Text("START ASSESSMENT")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
                             .tracking(1)
-                            .foregroundStyle(selectedAgeBracket != nil ? NETRTheme.background : NETRTheme.text)
+                            .foregroundStyle(selectedPosition != nil ? NETRTheme.background : NETRTheme.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(
-                                selectedAgeBracket != nil ? NETRTheme.neonGreen : NETRTheme.muted,
+                                selectedPosition != nil ? NETRTheme.neonGreen : NETRTheme.muted,
                                 in: .rect(cornerRadius: 14)
                             )
                     }
                     .buttonStyle(PressButtonStyle())
-                    .disabled(selectedAgeBracket == nil)
-                    .sensoryFeedback(.impact(flexibility: .soft), trigger: selectedAgeBracket)
+                    .disabled(selectedPosition == nil)
+                    .sensoryFeedback(.impact(flexibility: .soft), trigger: selectedPosition)
                     .padding(.top, 8)
                 }
                 .padding(.horizontal, 20)
@@ -213,14 +376,14 @@ struct SelfAssessmentView: View {
 
     // MARK: - Questions Phase
 
-    private var questionsPhase: some View {
+    private var questionView: some View {
         VStack(spacing: 0) {
             HStack {
                 Button(action: handleBack) {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 14, weight: .semibold))
-                        if currentQIndex == 0 {
+                        if currentIndex == 0 {
                             Text("Back")
                                 .font(.system(size: 15, weight: .semibold))
                         }
@@ -230,7 +393,7 @@ struct SelfAssessmentView: View {
 
                 Spacer()
 
-                Text("\(currentQIndex + 1) / \(questions.count)")
+                Text("\(currentIndex + 1) / \(questions.count)")
                     .font(.system(size: 13))
                     .foregroundStyle(NETRTheme.subtext)
             }
@@ -252,15 +415,16 @@ struct SelfAssessmentView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Spacer().frame(height: 8)
+                    Spacer()
+                        .frame(height: 8)
 
                     HStack(spacing: 8) {
-                        if let icon = categoryIcons[currentQ.category] {
+                        if let icon = AssessmentResult.categoryIcons[currentQuestion.category] {
                             Image(systemName: icon)
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
-                        if let label = categoryDisplayNames[currentQ.category] {
+                        if let label = AssessmentResult.categoryDisplayNames[currentQuestion.category] {
                             Text(label.uppercased())
                                 .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
                                 .tracking(1.5)
@@ -268,42 +432,42 @@ struct SelfAssessmentView: View {
                         }
                     }
 
-                    Text(currentQ.prompt)
+                    Text(currentQuestion.prompt)
                         .font(.system(.title2, design: .default, weight: .black).width(.compressed))
                         .foregroundStyle(NETRTheme.text)
                         .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(spacing: 10) {
-                        ForEach(currentQ.options.indices, id: \.self) { i in
+                        ForEach(currentQuestion.options) { option in
                             AssessmentOptionRow(
-                                emoji: currentQ.options[i].emoji,
-                                label: currentQ.options[i].label,
-                                detail: currentQ.options[i].detail,
-                                isSelected: selectedOption == i
+                                emoji: option.emoji,
+                                label: option.label,
+                                detail: option.detail,
+                                isSelected: selectedAnswer == option.id
                             ) {
                                 withAnimation(.snappy(duration: 0.2)) {
-                                    selectedOption = i
+                                    selectedAnswer = option.id
                                 }
                             }
                         }
                     }
 
                     Button(action: handleNext) {
-                        Text(isLastQ ? "SEE MY SCORE" : "NEXT")
+                        Text(isLast ? "SEE MY SCORE" : "NEXT")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
                             .tracking(1)
-                            .foregroundStyle(selectedOption != nil ? NETRTheme.background : NETRTheme.text)
+                            .foregroundStyle(selectedAnswer != nil ? NETRTheme.background : NETRTheme.text)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
                             .background(
-                                selectedOption != nil ? NETRTheme.neonGreen : NETRTheme.muted,
+                                selectedAnswer != nil ? NETRTheme.neonGreen : NETRTheme.muted,
                                 in: .rect(cornerRadius: 14)
                             )
                     }
                     .buttonStyle(PressButtonStyle())
-                    .disabled(selectedOption == nil)
-                    .sensoryFeedback(.impact(flexibility: .soft), trigger: currentQIndex)
+                    .disabled(selectedAnswer == nil)
+                    .sensoryFeedback(.impact(flexibility: .soft), trigger: currentIndex)
                     .padding(.top, 8)
 
                     Button(action: handleSkip) {
@@ -321,7 +485,7 @@ struct SelfAssessmentView: View {
 
     // MARK: - Result Phase
 
-    private var resultPhase: some View {
+    private var assessmentResultView: some View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(spacing: 20) {
@@ -331,46 +495,68 @@ struct SelfAssessmentView: View {
                         .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
                         .tracking(3)
                         .foregroundStyle(NETRTheme.subtext)
+                        .textCase(.uppercase)
 
-                    Text(String(format: "%.1f", finalScore))
-                        .font(.system(size: 72, weight: .black, design: .default).width(.compressed))
-                        .foregroundStyle(SAScorer.tierColor(finalScore))
-                        .shadow(color: SAScorer.tierColor(finalScore).opacity(0.5), radius: 30)
+                    if let result = assessmentResult {
+                        Text(result.formattedScore)
+                            .font(.system(size: 72, weight: .black, design: .default).width(.compressed))
+                            .foregroundStyle(NETRTheme.neonGreen)
+                            .shadow(color: NETRTheme.neonGreen.opacity(0.5), radius: 30)
 
-                    Text(SAScorer.tierLabel(finalScore).uppercased())
-                        .font(.system(.title3, design: .default, weight: .heavy).width(.compressed))
-                        .foregroundStyle(SAScorer.tierColor(finalScore))
+                        Text(result.tierLabel.uppercased())
+                            .font(.system(.title3, design: .default, weight: .heavy).width(.compressed))
+                            .foregroundStyle(tierColor(for: result.overallScore))
 
-                    HStack(spacing: 10) {
-                        if let g = selectedGender {
-                            infoPill(text: g.rawValue)
-                        }
-                        if let a = selectedAgeBracket {
-                            infoPill(text: a.rawValue)
-                        }
-                        infoPill(text: position.shortLabel)
-                    }
-
-                    VStack(spacing: 16) {
-                        HStack {
-                            Text("SKILL BREAKDOWN")
-                                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
-                                .tracking(1.8)
-                                .foregroundStyle(NETRTheme.subtext)
-                            Spacer()
-                            Button { showScoreInfo = true } label: {
-                                ScoreInfoButton()
+                        HStack(spacing: 10) {
+                            if let age = selectedAgeGroup {
+                                infoPill(text: age.label)
+                            }
+                            if let level = selectedPlayingLevel {
+                                infoPill(text: level.label)
                             }
                         }
 
-                        SkillRadarView(skills: buildRadarSkills(), size: 260, animated: true)
-                    }
-                    .padding(20)
-                    .background(NETRTheme.card, in: .rect(cornerRadius: 20))
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(NETRTheme.border, lineWidth: 1))
-                    .padding(.horizontal, 20)
-                    .sheet(isPresented: $showScoreInfo) {
-                        ScoreInfoSheet()
+                        HStack(spacing: 10) {
+                            if let freq = selectedFrequency {
+                                infoPill(text: "\(freq.emoji) \(freq.label)")
+                            }
+                            if let pos = selectedPosition {
+                                infoPill(text: pos.shortLabel)
+                            }
+                        }
+
+                        if selectedAgeGroup?.athleticModifier ?? 1.0 < 1.0 {
+                            HStack(spacing: 6) {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(NETRTheme.gold)
+                                Text("Age-adjusted for fair calibration")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(NETRTheme.gold)
+                            }
+                        }
+
+                        VStack(spacing: 16) {
+                            HStack {
+                                Text("SKILL BREAKDOWN")
+                                    .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                                    .tracking(1.8)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                Spacer()
+                                Button { showScoreInfo = true } label: {
+                                    ScoreInfoButton()
+                                }
+                            }
+
+                            SkillRadarView(skills: buildRadarSkillsFromResult(result), size: 260, animated: true)
+                        }
+                        .padding(20)
+                        .background(NETRTheme.card, in: .rect(cornerRadius: 20))
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(NETRTheme.border, lineWidth: 1))
+                        .padding(.horizontal, 20)
+                        .sheet(isPresented: $showScoreInfo) {
+                            ScoreInfoSheet()
+                        }
                     }
 
                     VStack(spacing: 8) {
@@ -390,14 +576,7 @@ struct SelfAssessmentView: View {
             }
             .scrollIndicators(.hidden)
 
-            Button {
-                onComplete(
-                    finalScore,
-                    selectedGender ?? .preferNotToAnswer,
-                    selectedAgeBracket ?? .adult,
-                    categoryScores
-                )
-            } label: {
+            Button(action: onComplete) {
                 Text("ENTER THE COURT")
                     .font(.system(.headline, design: .default, weight: .black).width(.compressed))
                     .tracking(2)
@@ -416,49 +595,52 @@ struct SelfAssessmentView: View {
     // MARK: - Actions
 
     private func handleBack() {
-        if currentQIndex > 0 {
+        if currentIndex > 0 {
             withAnimation(.snappy(duration: 0.25)) {
-                currentQIndex -= 1
-                selectedOption = answers[questions[currentQIndex].id]
+                currentIndex -= 1
+                selectedAnswer = answers[questions[currentIndex].id]
             }
         } else {
-            withAnimation { phase = .age }
+            withAnimation { phase = .position }
         }
     }
 
     private func handleNext() {
-        guard let opt = selectedOption else { return }
-        answers[currentQ.id] = opt
-        advanceOrFinish()
+        guard let answer = selectedAnswer else { return }
+        answers[currentQuestion.id] = answer
+
+        if isLast {
+            finalizeAssessment()
+        } else {
+            withAnimation(.snappy(duration: 0.25)) {
+                currentIndex += 1
+                selectedAnswer = answers[questions[currentIndex].id]
+            }
+        }
     }
 
     private func handleSkip() {
-        advanceOrFinish()
-    }
-
-    private func advanceOrFinish() {
-        if isLastQ {
-            let ageBracket = selectedAgeBracket ?? .adult
-            let score = SAScorer.calculate(
-                answers: answers,
-                gender: selectedGender ?? .preferNotToAnswer,
-                ageBracket: ageBracket,
-                position: position
-            )
-            let cats = SAScorer.calculateCategoryScores(
-                answers: answers,
-                ageBracket: ageBracket,
-                position: position
-            )
-            finalScore = score
-            categoryScores = cats
-            withAnimation(.snappy) { phase = .result }
+        if isLast {
+            finalizeAssessment()
         } else {
             withAnimation(.snappy(duration: 0.25)) {
-                currentQIndex += 1
-                selectedOption = answers[questions[currentQIndex].id]
+                currentIndex += 1
+                selectedAnswer = answers[questions[currentIndex].id]
             }
         }
+    }
+
+    private func finalizeAssessment() {
+        guard let age = selectedAgeGroup,
+              let level = selectedPlayingLevel,
+              let freq = selectedFrequency,
+              let pos = selectedPosition else { return }
+        let context = AssessmentContext(ageGroup: age, playingLevel: level, playFrequency: freq, position: pos)
+        let result = AssessmentScoringEngine.calculate(answers: answers, context: context)
+        assessmentResult = result
+        estimatedScore = result.overallScore
+        categoryScores = result.categoryScores
+        withAnimation(.snappy) { phase = .result }
     }
 
     // MARK: - Helpers
@@ -473,12 +655,21 @@ struct SelfAssessmentView: View {
             .overlay(Capsule().strokeBorder(NETRTheme.border, lineWidth: 1))
     }
 
-    private func buildRadarSkills() -> [RadarSkill] {
+    private func tierColor(for score: Double) -> Color {
+        switch score {
+        case 7.0...: return NETRTheme.neonGreen
+        case 5.0..<7.0: return Color(red: 0.478, green: 0.91, blue: 0.0)
+        case 3.0..<5.0: return NETRTheme.blue
+        default: return NETRTheme.subtext
+        }
+    }
+
+    private func buildRadarSkillsFromResult(_ result: AssessmentResult) -> [RadarSkill] {
         let order = ["scoring", "finishing", "handles", "playmaking", "defense", "rebounding", "iq"]
         return order.map { cat in
-            let raw = categoryScores[cat] ?? 1.0
-            let label = categoryDisplayNames[cat] ?? cat
-            let icon = categoryIcons[cat] ?? "questionmark"
+            let raw = result.categoryScores[cat] ?? 1.0
+            let label = AssessmentResult.categoryDisplayNames[cat] ?? cat
+            let icon = AssessmentResult.categoryIcons[cat] ?? "questionmark"
             let value = (raw - 1.0) / 9.0
             return RadarSkill(label: label, icon: icon, raw: raw, value: value)
         }
@@ -486,52 +677,6 @@ struct SelfAssessmentView: View {
 }
 
 // MARK: - Sub-components
-
-struct SASelectionRow: View {
-    let label: String
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .strokeBorder(
-                            isSelected ? NETRTheme.neonGreen : NETRTheme.border,
-                            lineWidth: 2
-                        )
-                        .frame(width: 22, height: 22)
-                    if isSelected {
-                        Circle()
-                            .fill(NETRTheme.neonGreen)
-                            .frame(width: 11, height: 11)
-                    }
-                }
-
-                Text(label)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(isSelected ? NETRTheme.text : NETRTheme.text.opacity(0.85))
-
-                Spacer()
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .background(
-                isSelected ? NETRTheme.neonGreen.opacity(0.08) : NETRTheme.card,
-                in: .rect(cornerRadius: 14)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .strokeBorder(
-                        isSelected ? NETRTheme.neonGreen : NETRTheme.border,
-                        lineWidth: 1.5
-                    )
-            )
-        }
-        .buttonStyle(PressButtonStyle())
-    }
-}
 
 struct AgeBracketCard: View {
     let label: String
@@ -570,6 +715,176 @@ struct AgeBracketCard: View {
                     .strokeBorder(
                         isSelected ? NETRTheme.neonGreen : NETRTheme.border,
                         lineWidth: isSelected ? 2 : 1
+                    )
+            )
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+}
+
+struct PlayingLevelRow: View {
+    let level: PlayingLevel
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.card)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: level.icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(level.label)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isSelected ? NETRTheme.text : NETRTheme.text.opacity(0.85))
+                    Text(level.sublabel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            isSelected ? NETRTheme.neonGreen : NETRTheme.border,
+                            lineWidth: 2
+                        )
+                        .frame(width: 22, height: 22)
+                    if isSelected {
+                        Circle()
+                            .fill(NETRTheme.neonGreen)
+                            .frame(width: 11, height: 11)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                isSelected ? NETRTheme.neonGreen.opacity(0.08) : NETRTheme.card,
+                in: .rect(cornerRadius: 14)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        isSelected ? NETRTheme.neonGreen : NETRTheme.border,
+                        lineWidth: 1.5
+                    )
+            )
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+}
+
+struct FrequencyRow: View {
+    let frequency: PlayFrequency
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                Text(frequency.emoji)
+                    .font(.system(size: 22))
+                    .frame(width: 40, height: 40)
+
+                Text(frequency.label)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(isSelected ? NETRTheme.text : NETRTheme.text.opacity(0.85))
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            isSelected ? NETRTheme.neonGreen : NETRTheme.border,
+                            lineWidth: 2
+                        )
+                        .frame(width: 22, height: 22)
+                    if isSelected {
+                        Circle()
+                            .fill(NETRTheme.neonGreen)
+                            .frame(width: 11, height: 11)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                isSelected ? NETRTheme.neonGreen.opacity(0.08) : NETRTheme.card,
+                in: .rect(cornerRadius: 14)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        isSelected ? NETRTheme.neonGreen : NETRTheme.border,
+                        lineWidth: 1.5
+                    )
+            )
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+}
+
+struct PositionRow: View {
+    let position: PlayerPosition
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(isSelected ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.card)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: position.icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(position.label)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isSelected ? NETRTheme.text : NETRTheme.text.opacity(0.85))
+                    Text(position.sublabel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            isSelected ? NETRTheme.neonGreen : NETRTheme.border,
+                            lineWidth: 2
+                        )
+                        .frame(width: 22, height: 22)
+                    if isSelected {
+                        Circle()
+                            .fill(NETRTheme.neonGreen)
+                            .frame(width: 11, height: 11)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                isSelected ? NETRTheme.neonGreen.opacity(0.08) : NETRTheme.card,
+                in: .rect(cornerRadius: 14)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .strokeBorder(
+                        isSelected ? NETRTheme.neonGreen : NETRTheme.border,
+                        lineWidth: 1.5
                     )
             )
         }

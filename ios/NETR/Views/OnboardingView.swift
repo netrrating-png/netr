@@ -14,8 +14,6 @@ struct OnboardingView: View {
     @State private var selectedPosition: Position?
     @State private var selfAssessmentScore: Double? = nil
     @State private var selfAssessmentCategoryScores: [String: Double] = [:]
-    @State private var playerGender: Gender = .preferNotToAnswer
-    @State private var playerAgeBracket: AgeBracket = .adult
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -387,16 +385,15 @@ struct OnboardingView: View {
 
     private var selfAssessmentStep: some View {
         SelfAssessmentView(
-            position: PlayerPosition(from: selectedPosition ?? .unknown) ?? .sf,
-            onComplete: { score, gender, ageBracket, catScores in
-                selfAssessmentScore = score
-                selfAssessmentCategoryScores = catScores
-                playerGender = gender
-                playerAgeBracket = ageBracket
-                SelfAssessmentStore.save(
-                    score: score,
-                    categoryScores: catScores.isEmpty ? nil : catScores
-                )
+            estimatedScore: $selfAssessmentScore,
+            categoryScores: $selfAssessmentCategoryScores,
+            onComplete: {
+                if let score = selfAssessmentScore {
+                    SelfAssessmentStore.save(
+                        score: score,
+                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
+                    )
+                }
                 withAnimation { currentStep = 7 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                     withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
