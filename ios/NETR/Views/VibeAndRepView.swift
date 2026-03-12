@@ -222,13 +222,17 @@ struct VibeQuestionView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(
-                    selected != nil
-                    ? LinearGradient(gradient: Gradient(colors: [selected!.color.opacity(0.9), selected!.color]), startPoint: .leading, endPoint: .trailing)
-                    : LinearGradient(gradient: Gradient(colors: [NC.muted, NC.muted]), startPoint: .leading, endPoint: .trailing)
+                    Group {
+                        if let sel = selected {
+                            LinearGradient(gradient: Gradient(colors: [sel.color.opacity(0.9), sel.color]), startPoint: .leading, endPoint: .trailing)
+                        } else {
+                            LinearGradient(gradient: Gradient(colors: [NC.muted, NC.muted]), startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
                 )
                 .foregroundStyle(selected != nil ? .white : NC.sub)
                 .clipShape(.rect(cornerRadius: 14))
-                .shadow(color: selected != nil ? selected!.color.opacity(0.35) : .clear, radius: 12, x: 0, y: 4)
+                .shadow(color: selected?.color.opacity(0.35) ?? .clear, radius: 12, x: 0, y: 4)
                 .scaleEffect(submitted ? 0.97 : 1.0)
                 .animation(.spring(response: 0.25), value: submitted)
             }

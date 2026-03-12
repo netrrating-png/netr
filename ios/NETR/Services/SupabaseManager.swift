@@ -20,8 +20,12 @@ class SupabaseManager {
     var isSignedIn: Bool { session != nil }
 
     init() {
+        let urlString = Config.SUPABASE_URL.isEmpty ? "https://placeholder.supabase.co" : Config.SUPABASE_URL
+        guard let url = URL(string: urlString) else {
+            fatalError("[NETR] Invalid Supabase URL: \(urlString)")
+        }
         client = SupabaseClient(
-            supabaseURL: URL(string: Config.SUPABASE_URL.isEmpty ? "https://placeholder.supabase.co" : Config.SUPABASE_URL)!,
+            supabaseURL: url,
             supabaseKey: Config.SUPABASE_ANON_KEY.isEmpty ? "placeholder" : Config.SUPABASE_ANON_KEY
         )
         Task { await listenForAuthChanges() }

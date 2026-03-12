@@ -568,11 +568,17 @@ struct OnboardingView: View {
     }
 
     private func performSignUp() {
+        let email = supabase.pendingEmail
+        let password = supabase.pendingPassword
+
+        guard !email.isEmpty, !password.isEmpty else {
+            signUpError = "Missing email or password. Please go back and enter your credentials."
+            return
+        }
+
         isSigningUp = true
         signUpError = nil
 
-        let email = supabase.pendingEmail
-        let password = supabase.pendingPassword
         let name = fullName
         let handle = username
         let dob = dateOfBirth
@@ -594,8 +600,11 @@ struct OnboardingView: View {
                     let msg = error.localizedDescription.lowercased()
                     if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
                         try await supabase.signInWithEmail(email: email, password: password)
+                        guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
+                            throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
+                        }
                         try await supabase.saveProfile(
-                            userId: supabase.session?.user.id.uuidString ?? "",
+                            userId: userId,
                             fullName: name,
                             username: handle,
                             dateOfBirth: dob,
