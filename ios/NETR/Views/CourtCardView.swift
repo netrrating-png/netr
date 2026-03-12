@@ -29,8 +29,11 @@ struct CourtCardView: View {
                     Image(systemName: isFavorite ? "heart.fill" : "heart")
                         .font(.system(size: 16))
                         .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .highPriorityGesture(TapGesture().onEnded { onFavoriteToggle() })
 
                 if court.verified {
                     Image(systemName: "checkmark.seal.fill")
