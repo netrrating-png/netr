@@ -580,12 +580,21 @@ struct OnboardingView: View {
                 }
 
                 // Sign-up may succeed without returning a session (e.g. email
-                // confirmation enabled). Explicitly sign in to establish one.
+                // confirmation enabled). Try signing in to establish one, but
+                // don't fail the whole flow — the auth listener may still
+                // deliver the session asynchronously.
                 if supabase.session == nil {
-                    try await supabase.signInWithEmail(email: email, password: password)
+                    do {
+                        try await supabase.signInWithEmail(email: email, password: password)
+                    } catch {
+                        // Wait briefly for the auth state listener to deliver
+                        // the session (e.g. when autoconfirm is on but the
+                        // signUp response didn't include it synchronously).
+                        try? await Task.sleep(for: .milliseconds(500))
+                    }
                 }
 
-                if let score {
+                if let score, supabase.session != nil {
                     try await supabase.saveSelfAssessmentScore(
                         score: score,
                         categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
