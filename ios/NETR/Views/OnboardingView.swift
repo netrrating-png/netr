@@ -355,18 +355,43 @@ struct OnboardingView: View {
 
             Spacer()
 
-            Button {
-                withAnimation { currentStep = 5 }
-            } label: {
-                Text("GOT IT — NEXT")
-                    .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                    .tracking(1)
-                    .foregroundStyle(NETRTheme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+            if let error = signUpError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(NETRTheme.red)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
             }
-            .buttonStyle(PressButtonStyle())
+
+            VStack(spacing: 12) {
+                Button {
+                    withAnimation { currentStep = 5 }
+                } label: {
+                    Text("START SELF ASSESSMENT")
+                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                        .tracking(1)
+                        .foregroundStyle(NETRTheme.background)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                }
+                .buttonStyle(PressButtonStyle())
+
+                Button {
+                    performSignUp()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSigningUp {
+                            ProgressView()
+                                .tint(NETRTheme.subtext)
+                        }
+                        Text("Skip for Now")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+                .disabled(isSigningUp)
+            }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
@@ -543,11 +568,17 @@ struct OnboardingView: View {
     }
 
     private func performSignUp() {
+        let email = supabase.pendingEmail
+        let password = supabase.pendingPassword
+
+        guard !email.isEmpty, !password.isEmpty else {
+            signUpError = "Missing email or password. Please go back and enter your credentials."
+            return
+        }
+
         isSigningUp = true
         signUpError = nil
 
-        let email = supabase.pendingEmail
-        let password = supabase.pendingPassword
         let name = fullName
         let handle = username
         let dob = dateOfBirth
@@ -569,8 +600,11 @@ struct OnboardingView: View {
                     let msg = error.localizedDescription.lowercased()
                     if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
                         try await supabase.signInWithEmail(email: email, password: password)
+                        guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
+                            throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
+                        }
                         try await supabase.saveProfile(
-                            userId: supabase.session?.user.id.uuidString ?? "",
+                            userId: userId,
                             fullName: name,
                             username: handle,
                             dateOfBirth: dob,
