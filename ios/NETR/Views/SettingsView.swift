@@ -65,14 +65,14 @@ struct SettingsView: View {
                     ZStack {
                         Circle()
                             .stroke(
-                                NETRTheme.tierColor(for: user),
+                                NETRRating.color(for: user.rating),
                                 style: StrokeStyle(
                                     lineWidth: 3,
                                     dash: user.isProvisional && !user.isProspect ? [6, 4] : []
                                 )
                             )
                             .frame(width: 72, height: 72)
-                            .neonGlow(NETRTheme.tierColor(for: user), radius: 6)
+                            .neonGlow(NETRRating.color(for: user.rating), radius: 6)
 
                         if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
                             AsyncImage(url: url) { phase in
@@ -142,20 +142,7 @@ struct SettingsView: View {
 
                 Spacer()
 
-                if let rating = user.rating {
-                    VStack(spacing: 2) {
-                        Text(String(format: "%.1f", rating))
-                            .font(.title2.weight(.black))
-                            .foregroundStyle(NETRTheme.ratingColor(for: rating))
-                        Text("NETR")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                } else {
-                    Text("UNRATED")
-                        .font(.system(size: 12, weight: .black, design: .default).width(.compressed))
-                        .foregroundStyle(NETRTheme.subtext)
-                }
+                NETRBadge(score: user.rating, size: .medium)
             }
         }
         .padding(16)

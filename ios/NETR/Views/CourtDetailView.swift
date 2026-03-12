@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import Supabase
 
 struct CourtDetailView: View {
     let court: Court
@@ -6,6 +8,11 @@ struct CourtDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: Int = 0
     @State private var weatherService = WeatherService.shared
+    @State private var courtPhotos: [CourtPhoto] = []
+    @State private var isLoadingPhotos: Bool = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var isUploadingPhoto: Bool = false
+    @State private var fullScreenPhotoUrl: String?
 
     private var distance: String { viewModel.distanceString(for: court) }
     private var isFav: Bool { viewModel.isFavorite(court.id) }
@@ -221,7 +228,7 @@ struct CourtDetailView: View {
 
     private var tabSelector: some View {
         HStack(spacing: 0) {
-            ForEach(Array(["INFO", "TAGS"].enumerated()), id: \.offset) { idx, title in
+            ForEach(Array(["INFO", "TAGS", "PHOTOS"].enumerated()), id: \.offset) { idx, title in
                 Button {
                     withAnimation(.snappy) { selectedTab = idx }
                 } label: {
@@ -248,6 +255,7 @@ struct CourtDetailView: View {
         switch selectedTab {
         case 0: infoTab
         case 1: tagsTab
+        case 2: photosTab
         default: EmptyView()
         }
     }
@@ -300,6 +308,191 @@ struct CourtDetailView: View {
             }
         }
         .padding(16)
+    }
+
+    private var photosTab: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("PHOTOS")
+                    .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                    .tracking(1)
+                    .foregroundStyle(NETRTheme.subtext)
+
+                Spacer()
+
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    HStack(spacing: 4) {
+                        if isUploadingPhoto {
+                            ProgressView()
+                                .tint(NETRTheme.neonGreen)
+                                .scaleEffect(0.7)
+                        } else {
+                            LucideIcon("camera", size: 12)
+                        }
+                        Text("Add Photo")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                }
+                .disabled(isUploadingPhoto)
+            }
+
+            if isLoadingPhotos {
+                HStack {
+                    Spacer()
+                    ProgressView()
+                        .tint(NETRTheme.neonGreen)
+                    Spacer()
+                }
+                .padding(.vertical, 20)
+            } else if courtPhotos.isEmpty {
+                VStack(spacing: 8) {
+                    LucideIcon("image", size: 28)
+                        .foregroundStyle(NETRTheme.muted)
+                    Text("No photos yet")
+                        .font(.subheadline)
+                        .foregroundStyle(NETRTheme.subtext)
+                    Text("Be the first to share a photo of this court")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.muted)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+            } else {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 12) {
+                        ForEach(courtPhotos) { photo in
+                            courtPhotoCard(photo)
+                        }
+                    }
+                }
+                .contentMargins(.horizontal, 0)
+                .scrollIndicators(.hidden)
+            }
+        }
+        .padding(16)
+        .onChange(of: selectedPhotoItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await uploadCourtPhoto(image: image)
+                }
+                selectedPhotoItem = nil
+            }
+        }
+        .task {
+            await fetchCourtPhotos()
+        }
+        .fullScreenCover(item: Binding(
+            get: { fullScreenPhotoUrl.map { IdentifiableURL(url: $0) } },
+            set: { fullScreenPhotoUrl = $0?.url }
+        )) { item in
+            CourtPhotoFullScreen(url: item.url)
+        }
+    }
+
+    private func courtPhotoCard(_ photo: CourtPhoto) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            AsyncImage(url: URL(string: photo.photoUrl)) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 200, height: 150)
+                        .clipShape(.rect(cornerRadius: 10))
+                        .onTapGesture {
+                            fullScreenPhotoUrl = photo.photoUrl
+                        }
+                } else if phase.error != nil {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(NETRTheme.card)
+                        .frame(width: 200, height: 150)
+                        .overlay {
+                            LucideIcon("image-off", size: 20)
+                                .foregroundStyle(NETRTheme.muted)
+                        }
+                } else {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(NETRTheme.card)
+                        .frame(width: 200, height: 150)
+                        .overlay {
+                            ProgressView()
+                                .tint(NETRTheme.neonGreen)
+                        }
+                }
+            }
+
+            HStack(spacing: 4) {
+                Text(photo.uploader?.displayName ?? "Player")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(NETRTheme.text)
+                Text("·")
+                    .foregroundStyle(NETRTheme.muted)
+                Text(photo.createdAt.relativeTimeFromISO)
+                    .font(.caption2)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+        }
+    }
+
+    private func fetchCourtPhotos() async {
+        isLoadingPhotos = true
+        let client = SupabaseManager.shared.client
+        do {
+            let photos: [CourtPhoto] = try await client
+                .from("court_photos")
+                .select("id, court_id, user_id, photo_url, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)")
+                .eq("court_id", value: court.id)
+                .order("created_at", ascending: false)
+                .limit(20)
+                .execute()
+                .value
+            courtPhotos = photos
+        } catch {
+            print("Fetch court photos error: \(error)")
+        }
+        isLoadingPhotos = false
+    }
+
+    private func uploadCourtPhoto(image: UIImage) async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let data = image.jpegData(compressionQuality: 0.8) else { return }
+        isUploadingPhoto = true
+
+        let client = SupabaseManager.shared.client
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let path = "\(court.id)/\(userId)/\(timestamp).jpg"
+
+        do {
+            try await client.storage
+                .from("court-photos")
+                .upload(path, data: data, options: FileOptions(
+                    cacheControl: "3600", contentType: "image/jpeg", upsert: true
+                ))
+            let url = try client.storage
+                .from("court-photos")
+                .getPublicURL(path: path)
+
+            let payload = CreateCourtPhotoPayload(
+                courtId: court.id,
+                userId: userId,
+                photoUrl: url.absoluteString
+            )
+
+            let created: CourtPhoto = try await client
+                .from("court_photos")
+                .insert(payload)
+                .select("id, court_id, user_id, photo_url, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)")
+                .single()
+                .execute()
+                .value
+
+            courtPhotos.insert(created, at: 0)
+        } catch {
+            print("Court photo upload error: \(error)")
+        }
+        isUploadingPhoto = false
     }
 
     private var bottomCTA: some View {
@@ -381,5 +574,45 @@ struct InfoRow: View {
                 .foregroundStyle(NETRTheme.text)
         }
         .padding(.vertical, 4)
+    }
+}
+
+private struct IdentifiableURL: Identifiable {
+    let id = UUID()
+    let url: String
+}
+
+struct CourtPhotoFullScreen: View {
+    let url: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+
+            if let imageUrl = URL(string: url) {
+                AsyncImage(url: imageUrl) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    } else {
+                        ProgressView()
+                            .tint(.white)
+                    }
+                }
+            }
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .shadow(radius: 4)
+            }
+            .padding(20)
+        }
     }
 }

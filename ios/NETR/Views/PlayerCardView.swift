@@ -20,7 +20,7 @@ struct PlayerCardView: View {
     private var isPeerRated: Bool { player.reviews >= 5 }
     private var peerProgress: Double { min(1.0, Double(player.reviews) / 5.0) }
     private var displayRating: Double { player.rating ?? 0 }
-    private var ratingColor: Color { NETRTheme.ratingColor(for: player.rating) }
+    private var ratingColor: Color { NETRRating.color(for: player.rating) }
 
     private var skills: [SkillRow] {[
         SkillRow(icon: "crosshair", label: "Scoring", value: player.skills.shooting),
@@ -211,7 +211,7 @@ struct PlayerCardView: View {
                             .foregroundStyle(NETRTheme.subtext)
                     }
 
-                    Text(player.ratingTierName.uppercased())
+                    Text(NETRRating.tierName(for: player.rating).uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(ratingColor.opacity(0.7))
                         .tracking(1.5)
@@ -456,7 +456,7 @@ private struct SkillBarRowView: View {
     @State private var appeared: Bool = false
 
     private var pct: Double { value / 10.0 }
-    private var valColor: Color { NETRTheme.ratingColor(for: value) }
+    private var valColor: Color { NETRRating.color(for: value) }
 
     var body: some View {
         HStack(spacing: 10) {

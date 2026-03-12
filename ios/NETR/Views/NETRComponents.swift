@@ -79,7 +79,7 @@ struct PlayerAvatar: View {
     let size: CGFloat
 
     var ringColor: Color {
-        NETRTheme.tierColor(for: player)
+        player.isProspect ? NETRTheme.purple : (player.isProvisional ? NETRTheme.subtext : NETRRating.color(for: player.rating))
     }
 
     var body: some View {

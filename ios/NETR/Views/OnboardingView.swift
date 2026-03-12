@@ -264,19 +264,13 @@ struct OnboardingView: View {
         }
     }
 
-    private let ratingTiers: [(range: String, label: String, description: String, color: Color)] = [
-        ("10.0", "THEORETICAL MAX", "Unreachable. Doesn't exist in the app.", NETRTheme.neonGreen),
-        ("9.5–9.9", "NBA LEVEL", "LeBron, Steph, KD. Even they have room.", NETRTheme.neonGreen),
-        ("9.0–9.4", "ELITE D1", "Top program starter. The gap between here and NBA is real.", NETRTheme.neonGreen),
-        ("8.0–8.9", "D2 / PRO OVERSEAS", "Best player on a D2 team.", Color(red: 0.478, green: 0.91, blue: 0.0)),
-        ("7.0–7.9", "D3 LEVEL", "Dominates every pickup run they walk into.", Color(red: 0.478, green: 0.91, blue: 0.0)),
-        ("6.0–6.9", "PARK LEGEND", "Elite across the board. Peer-earned only, no self-rating here.", Color(red: 1.0, green: 0.839, blue: 0.039)),
-        ("5.0–5.9", "PARK DOMINANT", "Best player at most courts. Where serious ballers land.", Color(red: 1.0, green: 0.839, blue: 0.039)),
-        ("4.0–4.9", "ABOVE AVERAGE", "Solid, has real skills, organized ball background.", Color(red: 1.0, green: 0.839, blue: 0.039)),
-        ("3.0–3.9", "HS / AAU LEVEL", "Fundamentals are there, comfortable in competitive pickup.", NETRTheme.blue),
-        ("2.0–2.9", "PLAYING FOR FUN", "Shows up, contributes, it's recreational.", NETRTheme.blue),
-        ("1.0–1.9", "JUST STARTING OUT", "", NETRTheme.subtext),
-    ]
+    private var ratingTiers: [(range: String, label: String, description: String, color: Color)] {
+        NETRTier.all.map { tier in
+            let lo = String(format: "%.1f", tier.range.lowerBound)
+            let hi = String(format: "%.1f", tier.range.upperBound)
+            return (range: "\(lo)–\(hi)", label: tier.name.uppercased(), description: tier.stat, color: tier.color)
+        }
+    }
 
     private var ratingExplainedStep: some View {
         VStack(spacing: 0) {
@@ -432,18 +426,7 @@ struct OnboardingView: View {
     }
 
     private func ratingTierInfo(for rating: Double) -> (name: String, color: Color) {
-        switch rating {
-        case 9.5...: return ("NBA LEVEL", NETRTheme.gold)
-        case 9.0..<9.5: return ("ELITE D1", NETRTheme.gold)
-        case 8.0..<9.0: return ("D2 / PRO OVERSEAS", NETRTheme.neonGreen)
-        case 7.0..<8.0: return ("D3 LEVEL", NETRTheme.neonGreen)
-        case 6.0..<7.0: return ("PARK LEGEND", Color(red: 0.478, green: 0.91, blue: 0.0))
-        case 5.0..<6.0: return ("PARK DOMINANT", Color(red: 0.478, green: 0.91, blue: 0.0))
-        case 4.0..<5.0: return ("ABOVE AVERAGE", NETRTheme.blue)
-        case 3.0..<4.0: return ("HS / AAU LEVEL", NETRTheme.blue)
-        case 2.0..<3.0: return ("PLAYING FOR FUN", NETRTheme.subtext)
-        default: return ("JUST STARTING OUT", NETRTheme.subtext)
-        }
+        (NETRRating.tierName(for: rating).uppercased(), NETRRating.color(for: rating))
     }
 
     private var revealScore: Double {

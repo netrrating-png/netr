@@ -92,14 +92,7 @@ struct Player: Identifiable, Equatable {
     var isVerified: Bool { tier == .verified && reviews >= 5 }
 
     var ratingTierName: String {
-        guard let r = rating else { return "Unrated" }
         if isProspect { return "Prospect" }
-        switch r {
-        case 8.5...10.0: return "Elite"
-        case 7.0..<8.5: return "Advanced"
-        case 5.5..<7.0: return "Competitive"
-        case 3.5..<5.5: return "Recreational"
-        default: return "Beginner"
-        }
+        return NETRRating.tierName(for: rating)
     }
 }
