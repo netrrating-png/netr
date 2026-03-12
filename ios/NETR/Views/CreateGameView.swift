@@ -697,7 +697,7 @@ struct LobbyPlayerRow: View {
                 if let r = player.profile.netrScore {
                     Text(String(format: "%.1f", r))
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(NETRTheme.ratingColor(for: r))
+                        .foregroundStyle(NETRRating.color(for: r))
                 }
             }
         }

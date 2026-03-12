@@ -500,12 +500,12 @@ struct SelfAssessmentView: View {
                     if let result = assessmentResult {
                         Text(result.formattedScore)
                             .font(.system(size: 72, weight: .black, design: .default).width(.compressed))
-                            .foregroundStyle(NETRTheme.neonGreen)
-                            .shadow(color: NETRTheme.neonGreen.opacity(0.5), radius: 30)
+                            .foregroundStyle(NETRRating.color(for: result.overallScore))
+                            .shadow(color: NETRRating.color(for: result.overallScore).opacity(0.5), radius: 30)
 
-                        Text(result.tierLabel.uppercased())
+                        Text(NETRRating.tierName(for: result.overallScore).uppercased())
                             .font(.system(.title3, design: .default, weight: .heavy).width(.compressed))
-                            .foregroundStyle(tierColor(for: result.overallScore))
+                            .foregroundStyle(NETRRating.color(for: result.overallScore))
 
                         HStack(spacing: 10) {
                             if let age = selectedAgeGroup {
@@ -655,12 +655,7 @@ struct SelfAssessmentView: View {
     }
 
     private func tierColor(for score: Double) -> Color {
-        switch score {
-        case 7.0...: return NETRTheme.neonGreen
-        case 5.0..<7.0: return Color(red: 0.478, green: 0.91, blue: 0.0)
-        case 3.0..<5.0: return NETRTheme.blue
-        default: return NETRTheme.subtext
-        }
+        NETRRating.color(for: score)
     }
 
     private func buildRadarSkillsFromResult(_ result: AssessmentResult) -> [RadarSkill] {

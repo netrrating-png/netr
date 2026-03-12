@@ -14,6 +14,7 @@ struct ProfileView: View {
     @State private var showFollowers: Bool = false
     @State private var showFollowing: Bool = false
     @State private var showBioEdit: Bool = false
+    @State private var showRatingScale: Bool = false
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -145,6 +146,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showFollowers) { ProfileFollowListSheet(title: "Followers", count: viewModel.followerCount) }
         .sheet(isPresented: $showFollowing) { ProfileFollowListSheet(title: "Following", count: viewModel.followingCount) }
         .sheet(isPresented: $showBioEdit) { ProfileBioEditSheet() }
+        .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
     }
 
     // MARK: - Header Gradient
@@ -164,7 +166,7 @@ struct ProfileView: View {
 
     private func avatarFollowRow(user: Player) -> some View {
         let color = ratingColor(for: user)
-        let tierColor = NETRTheme.tierColor(for: user)
+        let tierColor = user.isProspect ? NETRTheme.purple : (user.isProvisional ? NETRTheme.subtext : NETRRating.color(for: user.rating))
 
         return HStack(alignment: .bottom) {
             ZStack {
@@ -415,9 +417,7 @@ struct ProfileView: View {
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(NETRTheme.subtext)
                         .tracking(1.5)
-                    Text(user.ratingTierName.uppercased())
-                        .font(.system(.title3, design: .default, weight: .black).width(.compressed))
-                        .foregroundStyle(color)
+                    NETRTierPill(score: user.rating)
                     if !isPeerRated {
                         HStack(spacing: 5) {
                             Image(systemName: user.rating == nil ? "questionmark.circle.fill" : "lock.fill")
@@ -435,55 +435,11 @@ struct ProfileView: View {
                 }
                 Spacer()
 
-                ZStack {
-                    if !isPeerRated {
-                        Circle()
-                            .stroke(NETRTheme.muted, lineWidth: 3)
-                            .frame(width: 96, height: 96)
-                        Circle()
-                            .trim(from: 0, to: ratingAnimated ? peerProgress : 0)
-                            .stroke(color.opacity(0.75), style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .frame(width: 96, height: 96)
-                            .rotationEffect(.degrees(-90))
-                            .animation(.easeOut(duration: 0.9), value: ratingAnimated)
-                    } else {
-                        Circle()
-                            .fill(color.opacity(0.08))
-                            .frame(width: 96, height: 96)
-                        Circle()
-                            .stroke(color.opacity(0.4), lineWidth: 2)
-                            .frame(width: 96, height: 96)
-                    }
-
-                    Circle()
-                        .fill(RadialGradient(
-                            gradient: Gradient(colors: [color.opacity(0.15), Color.clear]),
-                            center: .center, startRadius: 0, endRadius: 42
-                        ))
-                        .frame(width: 84, height: 84)
-
-                    VStack(spacing: 2) {
-                        if let rating = user.rating {
-                            Text(String(format: "%.1f", rating))
-                                .font(.system(size: 36, weight: .black, design: .default).width(.compressed))
-                                .foregroundStyle(color)
-                        } else {
-                            Text("UNRATED")
-                                .font(.system(size: 20, weight: .black, design: .default).width(.compressed))
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                        if user.rating != nil && !isPeerRated {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 9))
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                    }
-                }
-                .frame(width: 96, height: 96)
-                .shadow(color: color.opacity(isPeerRated ? 0.35 : 0.1), radius: 18)
-                .scaleEffect(ratingAnimated ? 1.0 : 0.8)
-                .opacity(ratingAnimated ? 1.0 : 0)
-                .animation(.spring(response: 0.55, dampingFraction: 0.7), value: ratingAnimated)
+                NETRBadge(score: user.rating, size: .xl)
+                    .scaleEffect(ratingAnimated ? 1.0 : 0.8)
+                    .opacity(ratingAnimated ? 1.0 : 0)
+                    .animation(.spring(response: 0.55, dampingFraction: 0.7), value: ratingAnimated)
+                    .onTapGesture { showRatingScale = true }
             }
 
             if !isPeerRated {
@@ -758,7 +714,7 @@ struct ProfileView: View {
     }
 
     private func ratingColor(for user: Player) -> Color {
-        NETRTheme.ratingColor(for: user.rating)
+        NETRRating.color(for: user.rating)
     }
 }
 

@@ -76,14 +76,14 @@ struct PostCardView: View {
                         }
                     }
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(NETRTheme.ratingColor(for: author?.netrScore), lineWidth: 2))
+                    .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
             } else {
                 Text(initials)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(NETRTheme.text)
                     .frame(width: 40, height: 40)
                     .background(NETRTheme.card, in: Circle())
-                    .overlay(Circle().stroke(NETRTheme.ratingColor(for: author?.netrScore), lineWidth: 2))
+                    .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
             }
         }
     }
@@ -107,10 +107,10 @@ struct PostCardView: View {
             if let netr = author?.netrScore {
                 Text(String(format: "%.1f", netr))
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(NETRTheme.ratingColor(for: netr))
+                    .foregroundStyle(NETRRating.color(for: netr))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
-                    .background(NETRTheme.ratingColor(for: netr).opacity(0.12), in: .rect(cornerRadius: 4))
+                    .background(NETRRating.color(for: netr).opacity(0.12), in: .rect(cornerRadius: 4))
             }
 
             if let vibe = author?.vibeScore {

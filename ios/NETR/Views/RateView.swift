@@ -289,7 +289,7 @@ struct RatePlayerCardView: View {
     }
 
     private var netrColor: Color {
-        NETRTheme.ratingColor(for: player.netrScore)
+        NETRRating.color(for: player.netrScore)
     }
 
     var body: some View {
