@@ -27,8 +27,11 @@ struct CourtCardView: View {
                 } label: {
                     LucideIcon(isFavorite ? "heart" : "heart", size: 16)
                         .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .highPriorityGesture(TapGesture().onEnded { onFavoriteToggle() })
 
                 if court.verified {
                     LucideIcon("badge-check", size: 12)
