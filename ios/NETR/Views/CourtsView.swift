@@ -94,7 +94,7 @@ struct CourtsView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 HStack(spacing: 4) {
-                    Image(systemName: "mappin.circle.fill")
+                    LucideIcon("map-pin")
                         .foregroundStyle(NETRTheme.neonGreen)
                     Text(viewModel.userLocation != nil ? "Near You" : "New York, NY")
                         .font(.caption.weight(.semibold))
@@ -146,7 +146,7 @@ struct CourtsView: View {
 
     private var searchSection: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
+            LucideIcon("search")
                 .foregroundStyle(NETRTheme.subtext)
             TextField("Search courts, neighborhoods, cities...", text: $viewModel.searchText)
                 .foregroundStyle(NETRTheme.text)
@@ -155,7 +155,7 @@ struct CourtsView: View {
                 Button {
                     viewModel.searchText = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    LucideIcon("x-circle")
                         .foregroundStyle(NETRTheme.subtext)
                 }
             }
@@ -244,7 +244,10 @@ struct CourtsView: View {
             Button {
                 showAddCourt = true
             } label: {
-                Label("Court", systemImage: "plus")
+                HStack(spacing: 4) {
+                    LucideIcon("plus", size: 12)
+                    Text("Court")
+                }
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NETRTheme.text)
                     .padding(.horizontal, 10)
@@ -256,7 +259,10 @@ struct CourtsView: View {
             Button {
                 showJoinGame = true
             } label: {
-                Label("Join", systemImage: "person.badge.plus")
+                HStack(spacing: 4) {
+                    LucideIcon("user-plus", size: 12)
+                    Text("Join")
+                }
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(NETRTheme.neonGreen)
                     .padding(.horizontal, 10)
@@ -268,7 +274,10 @@ struct CourtsView: View {
             Button {
                 showCreateGame = true
             } label: {
-                Label("Game", systemImage: "plus")
+                HStack(spacing: 4) {
+                    LucideIcon("plus", size: 12)
+                    Text("Game")
+                }
                     .font(.caption.weight(.bold))
                     .foregroundStyle(NETRTheme.background)
                     .padding(.horizontal, 10)
@@ -293,8 +302,7 @@ struct CourtsView: View {
                 .padding(.vertical, 40)
             } else if viewModel.filteredCourts.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "mappin.slash")
-                        .font(.title)
+                    LucideIcon("map-pin-off", size: 28)
                         .foregroundStyle(NETRTheme.subtext)
                     Text(viewModel.searchText.isEmpty ? "No courts found" : "No courts found for \"\(viewModel.searchText)\"")
                         .font(.subheadline)
@@ -349,12 +357,10 @@ struct CourtMapPin: View {
                 .frame(width: 28, height: 28)
 
             if isHomeCourt {
-                Image(systemName: "house.fill")
-                    .font(.system(size: 12))
+                LucideIcon("home", size: 12)
                     .foregroundStyle(.white)
             } else {
-                Image(systemName: "basketball.fill")
-                    .font(.system(size: 12))
+                LucideIcon("circle-dot", size: 12)
                     .foregroundStyle(.white)
             }
         }

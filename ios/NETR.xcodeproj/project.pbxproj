@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = XX1C9FF110ABBCE8BF456CXX /* Supabase */; };
+		XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */ = {isa = PBXBuildFile; productRef = XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */,
+				XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +120,7 @@
 			name = NETR;
 			packageProductDependencies = (
 				XX1C9FF110ABBCE8BF456CXX /* Supabase */,
+				XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */,
 			);
 			productName = NETR;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* NETR.app */;
@@ -212,6 +215,7 @@
 			);
 			packageReferences = (
 				XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				XX30AB8C2F7B19A3D1E045XX /* XCRemoteSwiftPackageReference "lucide-icons-swift" */,
 			);
 		};
 /* End PBXProject section */
@@ -615,6 +619,14 @@
 				minimumVersion = 2.0.0;
 			};
 		};
+		XX30AB8C2F7B19A3D1E045XX /* XCRemoteSwiftPackageReference "lucide-icons-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/JakubMazur/lucide-icons-swift.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.577.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -622,6 +634,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */;
 			productName = Supabase;
+		};
+		XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = XX30AB8C2F7B19A3D1E045XX /* XCRemoteSwiftPackageReference "lucide-icons-swift" */;
+			productName = LucideIcons;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

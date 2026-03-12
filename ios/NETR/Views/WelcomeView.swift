@@ -84,8 +84,7 @@ struct WelcomeView: View {
                         }
                     } label: {
                         HStack(spacing: 10) {
-                            Image(systemName: "g.circle.fill")
-                                .font(.system(size: 20))
+                            LucideIcon("globe", size: 20)
                                 .foregroundStyle(.white)
                             Text("Continue with Google")
                                 .font(.system(size: 16, weight: .semibold))

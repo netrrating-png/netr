@@ -143,8 +143,7 @@ struct ComposePostView: View {
 
     private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.caption)
+            LucideIcon("map-pin", size: 12)
                 .foregroundStyle(NETRTheme.blue)
             Text(court.name)
                 .font(.caption.weight(.semibold))
@@ -158,8 +157,7 @@ struct ComposePostView: View {
             Button {
                 selectedCourt = nil
             } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.caption)
+                LucideIcon("x-circle", size: 12)
                     .foregroundStyle(NETRTheme.subtext)
             }
         }
@@ -174,8 +172,7 @@ struct ComposePostView: View {
                 showCourtSearch = true
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "mappin")
-                        .font(.system(size: 14))
+                    LucideIcon("map-pin", size: 14)
                     Text("Court")
                         .font(.caption.weight(.semibold))
                 }
@@ -214,7 +211,7 @@ struct CourtSearchSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
+                    LucideIcon("search")
                         .foregroundStyle(NETRTheme.subtext)
                     TextField("Search courts...", text: $searchText)
                         .foregroundStyle(NETRTheme.text)
@@ -231,8 +228,7 @@ struct CourtSearchSheet: View {
 
                 if viewModel.courtResults.isEmpty && searchText.count >= 2 {
                     VStack(spacing: 8) {
-                        Image(systemName: "mappin.slash")
-                            .font(.title2)
+                        LucideIcon("map-pin-off", size: 22)
                             .foregroundStyle(NETRTheme.subtext)
                         Text("No courts found")
                             .font(.subheadline)
@@ -248,7 +244,7 @@ struct CourtSearchSheet: View {
                                     dismiss()
                                 } label: {
                                     HStack(spacing: 10) {
-                                        Image(systemName: "mappin.circle.fill")
+                                        LucideIcon("map-pin")
                                             .foregroundStyle(NETRTheme.blue)
                                         VStack(alignment: .leading, spacing: 2) {
                                             HStack(spacing: 4) {
@@ -256,8 +252,7 @@ struct CourtSearchSheet: View {
                                                     .font(.subheadline.weight(.semibold))
                                                     .foregroundStyle(NETRTheme.text)
                                                 if court.verified == true {
-                                                    Image(systemName: "checkmark.seal.fill")
-                                                        .font(.system(size: 10))
+                                                    LucideIcon("badge-check", size: 10)
                                                         .foregroundStyle(NETRTheme.neonGreen)
                                                 }
                                             }

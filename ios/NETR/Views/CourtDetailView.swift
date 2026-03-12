@@ -26,7 +26,7 @@ struct CourtDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        LucideIcon("x-circle")
                             .foregroundStyle(NETRTheme.subtext)
                     }
                 }
@@ -47,12 +47,11 @@ struct CourtDetailView: View {
                             .foregroundStyle(NETRTheme.text)
 
                         if court.verified {
-                            Image(systemName: "checkmark.seal.fill")
+                            LucideIcon("badge-check")
                                 .foregroundStyle(NETRTheme.blue)
                         } else {
                             HStack(spacing: 4) {
-                                Image(systemName: "clock.fill")
-                                    .font(.caption2)
+                                LucideIcon("clock", size: 11)
                                 Text("PENDING")
                                     .font(.system(size: 9, weight: .bold))
                             }
@@ -64,8 +63,7 @@ struct CourtDetailView: View {
                     }
 
                     HStack(spacing: 6) {
-                        Image(systemName: "mappin")
-                            .font(.caption2)
+                        LucideIcon("map-pin", size: 11)
                             .foregroundStyle(NETRTheme.subtext)
                         Text(court.address)
                             .font(.subheadline)
@@ -88,7 +86,7 @@ struct CourtDetailView: View {
 
                 if isHome {
                     VStack(spacing: 2) {
-                        Image(systemName: "house.fill")
+                        LucideIcon("home")
                             .foregroundStyle(NETRTheme.neonGreen)
                         Text("HOME")
                             .font(.system(size: 8, weight: .bold))
@@ -98,9 +96,9 @@ struct CourtDetailView: View {
             }
 
             HStack(spacing: 16) {
-                StatPill(label: "Cosigns", value: "\(court.cosignCount)", icon: "hand.thumbsup.fill")
-                StatPill(label: "Surface", value: court.surfaceType.rawValue, icon: "square.grid.2x2.fill")
-                StatPill(label: "Distance", value: distance, icon: "location.fill")
+                StatPill(label: "Cosigns", value: "\(court.cosignCount)", icon: "thumbs-up")
+                StatPill(label: "Surface", value: court.surfaceType.rawValue, icon: "layout-grid")
+                StatPill(label: "Distance", value: distance, icon: "map-pin")
             }
         }
         .padding(16)
@@ -112,7 +110,7 @@ struct CourtDetailView: View {
                 Task { await viewModel.toggleFavorite(courtId: court.id) }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: isFav ? "heart.fill" : "heart")
+                    LucideIcon(isFav ? "heart" : "heart")
                         .foregroundStyle(isFav ? NETRTheme.red : NETRTheme.text)
                     Text(isFav ? "Favorited" : "Favorite")
                         .font(.caption.weight(.semibold))
@@ -129,7 +127,7 @@ struct CourtDetailView: View {
                 Task { await viewModel.setHomeCourt(courtId: court.id) }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: isHome ? "house.fill" : "house")
+                    LucideIcon(isHome ? "home" : "home")
                         .foregroundStyle(isHome ? NETRTheme.neonGreen : NETRTheme.text)
                     Text(isHome ? "Home Court" : "Set Home")
                         .font(.caption.weight(.semibold))
@@ -146,7 +144,7 @@ struct CourtDetailView: View {
                 Task { await viewModel.cosignCourt(courtId: court.id) }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "hand.thumbsup.fill")
+                    LucideIcon("thumbs-up")
                         .foregroundStyle(NETRTheme.neonGreen)
                     Text("Cosign")
                         .font(.caption.weight(.semibold))
@@ -164,10 +162,10 @@ struct CourtDetailView: View {
     private var chipDetails: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                DetailChip(icon: "square.grid.2x2", text: court.surfaceType.rawValue)
-                DetailChip(icon: court.lights ? "lightbulb.fill" : "lightbulb.slash", text: court.lights ? "Lights" : "No Lights")
-                DetailChip(icon: court.indoor ? "building.2" : "sun.max", text: court.indoor ? "Indoor" : "Outdoor")
-                DetailChip(icon: "basketball", text: court.fullCourt ? "Full Court" : "Half Court")
+                DetailChip(icon: "layout-grid", text: court.surfaceType.rawValue)
+                DetailChip(icon: court.lights ? "lightbulb" : "lightbulb", text: court.lights ? "Lights" : "No Lights")
+                DetailChip(icon: court.indoor ? "building-2" : "sun", text: court.indoor ? "Indoor" : "Outdoor")
+                DetailChip(icon: "circle-dot", text: court.fullCourt ? "Full Court" : "Half Court")
             }
         }
         .contentMargins(.horizontal, 16)
@@ -285,8 +283,7 @@ struct DetailChip: View {
 
     var body: some View {
         HStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 10))
+            LucideIcon(icon, size: 10)
                 .foregroundStyle(NETRTheme.neonGreen)
             Text(text)
                 .font(.system(size: 11, weight: .semibold))
@@ -306,8 +303,7 @@ struct StatPill: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.caption)
+            LucideIcon(icon, size: 12)
                 .foregroundStyle(NETRTheme.neonGreen)
             Text(value)
                 .font(.subheadline.weight(.bold))

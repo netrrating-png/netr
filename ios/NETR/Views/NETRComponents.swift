@@ -9,7 +9,7 @@ struct NETRTextField: View {
     var body: some View {
         HStack(spacing: 12) {
             if let icon {
-                Image(systemName: icon)
+                LucideIcon(icon)
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(width: 20)
             }
@@ -40,7 +40,7 @@ struct NETRSecureField: View {
     var body: some View {
         HStack(spacing: 12) {
             if let icon {
-                Image(systemName: icon)
+                LucideIcon(icon)
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(width: 20)
             }
@@ -58,9 +58,8 @@ struct NETRSecureField: View {
             Button {
                 isVisible.toggle()
             } label: {
-                Image(systemName: isVisible ? "eye.slash" : "eye")
+                LucideIcon(isVisible ? "eye-off" : "eye", size: 14)
                     .foregroundStyle(NETRTheme.subtext)
-                    .font(.system(size: 14))
             }
         }
         .padding(14)

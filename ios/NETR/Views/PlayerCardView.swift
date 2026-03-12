@@ -23,12 +23,12 @@ struct PlayerCardView: View {
     private var ratingColor: Color { NETRTheme.ratingColor(for: player.rating) }
 
     private var skills: [SkillRow] {[
-        SkillRow(icon: "scope", label: "Scoring", value: player.skills.shooting),
-        SkillRow(icon: "flame.fill", label: "Finishing", value: player.skills.finishing),
-        SkillRow(icon: "bolt.fill", label: "Handles", value: player.skills.ballHandling),
-        SkillRow(icon: "paperplane.fill", label: "Playmaking", value: player.skills.playmaking),
-        SkillRow(icon: "shield.fill", label: "Defense", value: player.skills.defense),
-        SkillRow(icon: "arrow.up.circle.fill", label: "Rebounding", value: player.skills.rebounding),
+        SkillRow(icon: "crosshair", label: "Scoring", value: player.skills.shooting),
+        SkillRow(icon: "flame", label: "Finishing", value: player.skills.finishing),
+        SkillRow(icon: "zap", label: "Handles", value: player.skills.ballHandling),
+        SkillRow(icon: "send", label: "Playmaking", value: player.skills.playmaking),
+        SkillRow(icon: "shield", label: "Defense", value: player.skills.defense),
+        SkillRow(icon: "arrow-up-circle", label: "Rebounding", value: player.skills.rebounding),
         SkillRow(icon: "brain", label: "IQ", value: player.skills.basketballIQ),
     ]}
 
@@ -115,8 +115,7 @@ struct PlayerCardView: View {
                 Button(action: dismiss) {
                     ZStack {
                         Circle().fill(NETRTheme.muted.opacity(0.5)).frame(width: 30, height: 30)
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
+                        LucideIcon("x", size: 12)
                             .foregroundStyle(NETRTheme.subtext)
                     }
                 }
@@ -253,8 +252,7 @@ struct PlayerCardView: View {
 
     private var lockBadge: some View {
         VStack(spacing: 3) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 11, weight: .semibold))
+            LucideIcon("lock", size: 11)
                 .foregroundStyle(NETRTheme.subtext)
             Text("\(player.reviews)/5")
                 .font(.system(size: 9, weight: .bold))
@@ -358,8 +356,7 @@ struct PlayerCardView: View {
                             .foregroundStyle(NETRTheme.subtext)
                     }
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .medium))
+                    LucideIcon("chevron-right", size: 11)
                         .foregroundStyle(NETRTheme.muted)
                 }
             }
@@ -448,8 +445,7 @@ private struct SkillBarRowView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 13))
+            LucideIcon(icon, size: 13)
                 .foregroundStyle(NETRTheme.subtext)
                 .frame(width: 20)
             Text(label)
@@ -520,8 +516,7 @@ struct SelfAssessedBanner: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 14))
+            LucideIcon("lock", size: 14)
                 .foregroundStyle(NETRTheme.subtext)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Self-Assessed Rating")

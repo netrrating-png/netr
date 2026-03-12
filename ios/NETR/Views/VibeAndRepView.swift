@@ -212,8 +212,7 @@ struct VibeQuestionView: View {
             } label: {
                 HStack {
                     if submitted {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 15, weight: .bold))
+                        LucideIcon("check", size: 15)
                     } else {
                         Text(selected != nil ? "Submit Vibe →" : "Select one to continue")
                             .font(.system(size: 16, weight: .bold))
@@ -731,8 +730,7 @@ struct CourtRepCard: View {
                             .foregroundStyle(data.level.color.opacity(0.75))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                    LucideIcon("chevron-right", size: 12)
                         .foregroundStyle(NC.muted)
                 }
                 .padding(.bottom, 14)
@@ -998,7 +996,7 @@ struct RepProgressTab: View {
                             .background(lvl.color.opacity(0.15))
                             .clipShape(.rect(cornerRadius: 99))
                     } else if isPast {
-                        Image(systemName: "checkmark.circle.fill")
+                        LucideIcon("check-circle")
                             .foregroundStyle(lvl.color.opacity(0.6))
                     }
                 }
@@ -1174,8 +1172,7 @@ struct VibeAndRepBlock: View {
                 HStack {
                     VibeAuraBadge(vibe: vibe)
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                    LucideIcon("chevron-right", size: 12)
                         .foregroundStyle(NC.muted)
                 }
                 .padding(16)

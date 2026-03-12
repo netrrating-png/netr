@@ -75,8 +75,7 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "location.fill")
-                .font(.system(size: 56))
+            LucideIcon("map-pin", size: 56)
                 .foregroundStyle(NETRTheme.neonGreen)
                 .neonGlow(radius: 12)
 
@@ -159,7 +158,7 @@ struct OnboardingView: View {
 
                     if isProspect {
                         HStack(spacing: 12) {
-                            Image(systemName: "shield.fill")
+                            LucideIcon("shield")
                                 .foregroundStyle(NETRTheme.purple)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("PROSPECT ACCOUNT")
@@ -340,8 +339,7 @@ struct OnboardingView: View {
             .padding(.top, 12)
 
             HStack(spacing: 6) {
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 11))
+                LucideIcon("info", size: 11)
                     .foregroundStyle(NETRTheme.neonGreen)
                 Text("Your NETR is shaped by peer reviews. Play games, get rated, watch your number move.")
                     .font(.system(size: 11))
@@ -619,15 +617,13 @@ struct OnboardingView: View {
                             .fill(NETRTheme.card)
                             .frame(width: 100, height: 100)
                             .overlay(
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 40))
+                                LucideIcon("user", size: 40)
                                     .foregroundStyle(NETRTheme.muted)
                             )
                             .overlay(Circle().stroke(NETRTheme.border, lineWidth: 2))
                     }
 
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 12, weight: .bold))
+                    LucideIcon("camera", size: 12)
                         .foregroundStyle(NETRTheme.background)
                         .frame(width: 30, height: 30)
                         .background(NETRTheme.neonGreen, in: Circle())
@@ -650,8 +646,7 @@ struct PositionCard: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                Image(systemName: position.icon)
-                    .font(.title2)
+                LucideIcon(position.icon, size: 22)
                     .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
 
                 Text(position.rawValue)

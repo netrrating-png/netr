@@ -135,12 +135,12 @@ struct SkillCategory: Identifiable {
 }
 
 let skillCategories: [SkillCategory] = [
-    SkillCategory(id: "shooting", label: "Scoring", icon: "scope", description: "Can they create and hit shots consistently?"),
-    SkillCategory(id: "finishing", label: "Finishing", icon: "flame.fill", description: "Finishing at the rim through contact and traffic."),
-    SkillCategory(id: "dribbling", label: "Handles", icon: "figure.basketball", description: "Ball handling, getting to their spot, breaking defenders."),
-    SkillCategory(id: "passing", label: "Playmaking", icon: "point.topleft.down.to.point.bottomright.curvepath", description: "Court vision, decision-making, setting teammates up."),
-    SkillCategory(id: "defense", label: "Defense", icon: "shield.fill", description: "On-ball, help-side, effort on the defensive end."),
-    SkillCategory(id: "rebounding", label: "Rebounding", icon: "arrow.up.circle.fill", description: "Crashing the boards, boxing out, second chances."),
+    SkillCategory(id: "shooting", label: "Scoring", icon: "crosshair", description: "Can they create and hit shots consistently?"),
+    SkillCategory(id: "finishing", label: "Finishing", icon: "flame", description: "Finishing at the rim through contact and traffic."),
+    SkillCategory(id: "dribbling", label: "Handles", icon: "dumbbell", description: "Ball handling, getting to their spot, breaking defenders."),
+    SkillCategory(id: "passing", label: "Playmaking", icon: "route", description: "Court vision, decision-making, setting teammates up."),
+    SkillCategory(id: "defense", label: "Defense", icon: "shield", description: "On-ball, help-side, effort on the defensive end."),
+    SkillCategory(id: "rebounding", label: "Rebounding", icon: "arrow-up-circle", description: "Crashing the boards, boxing out, second chances."),
     SkillCategory(id: "basketballIQ", label: "IQ", icon: "brain", description: "Spacing, reads, off-ball movement, decision-making."),
 ]
 
@@ -152,11 +152,11 @@ struct VibeCategory: Identifiable {
 }
 
 let vibeCategories: [VibeCategory] = [
-    VibeCategory(id: "communication", label: "Communication", icon: "megaphone.fill", description: "Calls fouls fairly, communicates on defense."),
-    VibeCategory(id: "unselfishness", label: "Unselfishness", icon: "person.2.fill", description: "Moves the ball, doesn't force, includes teammates."),
-    VibeCategory(id: "effort", label: "Effort", icon: "bolt.fill", description: "Plays hard the whole game, doesn't dog it."),
-    VibeCategory(id: "attitude", label: "Attitude", icon: "face.smiling.inverse", description: "Handles wins and losses with respect."),
-    VibeCategory(id: "inclusion", label: "Inclusion", icon: "hand.raised.fill", description: "Doesn't freeze out weaker players."),
+    VibeCategory(id: "communication", label: "Communication", icon: "megaphone", description: "Calls fouls fairly, communicates on defense."),
+    VibeCategory(id: "unselfishness", label: "Unselfishness", icon: "users", description: "Moves the ball, doesn't force, includes teammates."),
+    VibeCategory(id: "effort", label: "Effort", icon: "zap", description: "Plays hard the whole game, doesn't dog it."),
+    VibeCategory(id: "attitude", label: "Attitude", icon: "smile", description: "Handles wins and losses with respect."),
+    VibeCategory(id: "inclusion", label: "Inclusion", icon: "hand", description: "Doesn't freeze out weaker players."),
 ]
 
 let peerRatingLabels: [Int: String] = [

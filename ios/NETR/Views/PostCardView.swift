@@ -174,8 +174,7 @@ struct PostCardView: View {
 
     private func courtEmbed(_ court: FeedCourt) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 14))
+            LucideIcon("map-pin", size: 14)
                 .foregroundStyle(NETRTheme.blue)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
@@ -183,8 +182,7 @@ struct PostCardView: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(NETRTheme.text)
                     if court.verified == true {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 9))
+                        LucideIcon("badge-check", size: 9)
                             .foregroundStyle(NETRTheme.neonGreen)
                     }
                 }
@@ -205,19 +203,19 @@ struct PostCardView: View {
     private var actionBar: some View {
         HStack(spacing: 0) {
             FeedActionButton(
-                icon: post.isLiked ? "heart.fill" : "heart",
+                icon: "heart",
                 count: post.likeCount,
                 color: post.isLiked ? NETRTheme.neonGreen : NETRTheme.subtext,
                 action: onLike
             )
             FeedActionButton(
-                icon: "bubble.left",
+                icon: "message-circle",
                 count: post.commentCount,
                 color: NETRTheme.subtext,
                 action: onComment
             )
             FeedActionButton(
-                icon: "arrow.2.squarepath",
+                icon: "repeat",
                 count: post.repostCount,
                 color: post.isReposted ? NETRTheme.neonGreen : NETRTheme.subtext,
                 action: onRepost
@@ -225,8 +223,7 @@ struct PostCardView: View {
             Button {
                 sharePost()
             } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.caption)
+                LucideIcon("share", size: 12)
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(minWidth: 40, alignment: .leading)
             }
@@ -255,8 +252,7 @@ struct FeedActionButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption)
+                LucideIcon(icon, size: 12)
                 if count > 0 {
                     Text("\(count)")
                         .font(.caption2)

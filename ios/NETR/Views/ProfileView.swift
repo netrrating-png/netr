@@ -96,8 +96,7 @@ struct ProfileView: View {
                 }
             } else if viewModel.error != nil {
                 VStack(spacing: 16) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 40))
+                    LucideIcon("triangle-alert", size: 40)
                         .foregroundStyle(NETRTheme.red)
                     Text("Could not load profile")
                         .font(.headline)
@@ -215,8 +214,7 @@ struct ProfileView: View {
                                     .background(NETRTheme.neonGreen, in: Circle())
                                     .overlay(Circle().stroke(NETRTheme.background, lineWidth: 2))
                             } else {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 9, weight: .bold))
+                                LucideIcon("camera", size: 9)
                                     .foregroundStyle(NETRTheme.background)
                                     .frame(width: 22, height: 22)
                                     .background(NETRTheme.neonGreen, in: Circle())
@@ -245,15 +243,14 @@ struct ProfileView: View {
                     } label: {
                         profileActionButton(
                             label: viewModel.isFollowing ? "Following" : "Follow",
-                            icon: viewModel.isFollowing ? "checkmark" : "person.badge.plus",
+                            icon: viewModel.isFollowing ? "check" : "user-plus",
                             filled: !viewModel.isFollowing
                         )
                     }
                     .sensoryFeedback(.selection, trigger: viewModel.isFollowing)
 
                     Button {} label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 15, weight: .semibold))
+                        LucideIcon("more-horizontal", size: 15)
                             .foregroundStyle(NETRTheme.subtext)
                             .frame(width: 36, height: 36)
                             .background(NETRTheme.card)
@@ -267,8 +264,7 @@ struct ProfileView: View {
 
     private func profileActionButton(label: String, icon: String, filled: Bool) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
+            LucideIcon(icon, size: 13)
             Text(label)
                 .font(.system(size: 13, weight: .semibold))
         }
@@ -290,8 +286,7 @@ struct ProfileView: View {
                     .foregroundStyle(NETRTheme.text)
 
                 if user.isVerified {
-                    Image(systemName: "checkmark.seal.fill")
-                        .font(.system(size: 14))
+                    LucideIcon("badge-check", size: 14)
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
@@ -318,8 +313,7 @@ struct ProfileView: View {
                     .foregroundStyle(ratingColor(for: user))
                 Text("·")
                     .foregroundStyle(NETRTheme.muted)
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 11))
+                LucideIcon("map-pin", size: 11)
                     .foregroundStyle(NETRTheme.muted)
                 Text(user.city)
                     .font(.system(size: 12))
@@ -335,8 +329,7 @@ struct ProfileView: View {
             if viewModel.isCurrentUser {
                 Button { showBioEdit = true } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "plus.circle")
-                            .font(.system(size: 13))
+                        LucideIcon("plus-circle", size: 13)
                             .foregroundStyle(NETRTheme.neonGreen)
                         Text("Add a bio")
                             .font(.system(size: 13))
@@ -412,8 +405,7 @@ struct ProfileView: View {
                         .foregroundStyle(color)
                     if !isPeerRated {
                         HStack(spacing: 5) {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 10))
+                            LucideIcon("lock", size: 10)
                                 .foregroundStyle(NETRTheme.subtext)
                             Text("Self-assessed · updates at 5 ratings")
                                 .font(.system(size: 11))
@@ -465,8 +457,7 @@ struct ProfileView: View {
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                         if !isPeerRated {
-                            Image(systemName: "lock.fill")
-                                .font(.system(size: 9))
+                            LucideIcon("lock", size: 9)
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                     }
@@ -508,8 +499,7 @@ struct ProfileView: View {
 
             if user.trend == .up {
                 HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 11, weight: .bold))
+                    LucideIcon("arrow-up-right", size: 11)
                         .foregroundStyle(NETRTheme.neonGreen)
                     Text("Trending up")
                         .font(.system(size: 11, weight: .semibold))
@@ -517,8 +507,7 @@ struct ProfileView: View {
                 }
             } else if user.trend == .down {
                 HStack(spacing: 4) {
-                    Image(systemName: "arrow.down.right")
-                        .font(.system(size: 11, weight: .bold))
+                    LucideIcon("arrow-down-right", size: 11)
                         .foregroundStyle(NETRTheme.red)
                     Text("Trending down")
                         .font(.system(size: 11, weight: .semibold))
@@ -540,8 +529,7 @@ struct ProfileView: View {
                 Spacer()
                 if user.isProvisional && !user.isProspect {
                     HStack(spacing: 4) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 9))
+                        LucideIcon("lock", size: 9)
                             .foregroundStyle(NETRTheme.subtext)
                         Text("Self-assessed")
                             .font(.system(size: 11))
@@ -615,8 +603,7 @@ struct ProfileView: View {
                     .foregroundStyle(vibeColor)
             }
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .medium))
+            LucideIcon("chevron-right", size: 12)
                 .foregroundStyle(NETRTheme.muted)
         }
     }
@@ -684,8 +671,7 @@ struct ProfileView: View {
                     .foregroundStyle(NETRTheme.subtext)
                     .tracking(1.5)
                 Spacer()
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 14))
+                LucideIcon("map-pin", size: 14)
                     .foregroundStyle(NETRTheme.muted)
             }
 
@@ -704,8 +690,7 @@ struct ProfileView: View {
                             .foregroundStyle(NETRTheme.subtext)
                     }
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .medium))
+                    LucideIcon("chevron-right", size: 11)
                         .foregroundStyle(NETRTheme.muted)
                 }
             }

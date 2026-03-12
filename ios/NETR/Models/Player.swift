@@ -56,12 +56,12 @@ nonisolated enum Position: String, Sendable, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .pg: return "point.topleft.down.to.point.bottomright.curvepath"
-        case .sg: return "scope"
-        case .sf: return "arrow.triangle.branch"
-        case .pf: return "figure.basketball"
-        case .c: return "shield.fill"
-        case .unknown: return "questionmark"
+        case .pg: return "route"
+        case .sg: return "crosshair"
+        case .sf: return "git-branch"
+        case .pf: return "dumbbell"
+        case .c: return "shield"
+        case .unknown: return "help-circle"
         }
     }
 }
