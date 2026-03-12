@@ -355,18 +355,43 @@ struct OnboardingView: View {
 
             Spacer()
 
-            Button {
-                withAnimation { currentStep = 5 }
-            } label: {
-                Text("GOT IT — NEXT")
-                    .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                    .tracking(1)
-                    .foregroundStyle(NETRTheme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+            if let error = signUpError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(NETRTheme.red)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
             }
-            .buttonStyle(PressButtonStyle())
+
+            VStack(spacing: 12) {
+                Button {
+                    withAnimation { currentStep = 5 }
+                } label: {
+                    Text("START SELF ASSESSMENT")
+                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                        .tracking(1)
+                        .foregroundStyle(NETRTheme.background)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                }
+                .buttonStyle(PressButtonStyle())
+
+                Button {
+                    performSignUp()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSigningUp {
+                            ProgressView()
+                                .tint(NETRTheme.subtext)
+                        }
+                        Text("Skip for Now")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+                .disabled(isSigningUp)
+            }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
