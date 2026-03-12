@@ -5,6 +5,7 @@ struct SelfAssessmentView: View {
     @Binding var categoryScores: [String: Double]
     var onComplete: () -> Void
     var onBack: (() -> Void)? = nil
+    var preselectedPosition: PlayerPosition? = nil
 
     @State private var phase: AssessmentPhase = .age
     @State private var selectedAgeGroup: AgeGroup? = nil
@@ -61,6 +62,11 @@ struct SelfAssessmentView: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: phase)
+        .onAppear {
+            if let pos = preselectedPosition {
+                selectedPosition = pos
+            }
+        }
     }
 
     // MARK: - Age Phase
@@ -269,7 +275,7 @@ struct SelfAssessmentView: View {
                     }
 
                     Button {
-                        withAnimation { phase = .position }
+                        withAnimation { phase = preselectedPosition != nil ? .questions : .position }
                     } label: {
                         Text("NEXT")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -594,7 +600,7 @@ struct SelfAssessmentView: View {
                 selectedAnswer = answers[questions[currentIndex].id]
             }
         } else {
-            withAnimation { phase = .position }
+            withAnimation { phase = preselectedPosition != nil ? .frequency : .position }
         }
     }
 

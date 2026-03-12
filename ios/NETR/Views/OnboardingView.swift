@@ -401,7 +401,8 @@ struct OnboardingView: View {
             },
             onBack: {
                 withAnimation { currentStep = 5 }
-            }
+            },
+            preselectedPosition: selectedPosition.flatMap { PlayerPosition(rawValue: $0.rawValue.lowercased()) }
         )
     }
 
