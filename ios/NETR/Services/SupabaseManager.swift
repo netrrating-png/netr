@@ -2,7 +2,7 @@ import SwiftUI
 import Supabase
 import Auth
 
-@Observable
+@MainActor @Observable
 class SupabaseManager {
 
     static let shared = SupabaseManager()

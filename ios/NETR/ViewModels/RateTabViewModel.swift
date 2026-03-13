@@ -2,7 +2,7 @@ import SwiftUI
 import Supabase
 import Auth
 
-@Observable
+@MainActor @Observable
 class RateTabViewModel {
     var sessions: [RecentGameSession] = []
     var isLoading: Bool = true

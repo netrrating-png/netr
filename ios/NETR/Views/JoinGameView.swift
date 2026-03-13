@@ -89,7 +89,7 @@ final class JoinLocationManager: NSObject, CLLocationManagerDelegate {
     }
 }
 
-@Observable
+@MainActor @Observable
 class JoinGameViewModel {
     var nearbyGames: [NearbyGame] = []
     var isLoading = false

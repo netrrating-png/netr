@@ -4,7 +4,7 @@ import CoreLocation
 import Supabase
 import Auth
 
-@Observable
+@MainActor @Observable
 class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
     var courts: [Court] = []
