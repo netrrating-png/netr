@@ -9,7 +9,6 @@ private struct SkillRow: Identifiable {
 
 struct PlayerCardView: View {
     let player: Player
-    let courts: [Court]
     var onDismiss: (() -> Void)? = nil
 
     @State private var ratingScale: CGFloat = 0.75
@@ -88,11 +87,6 @@ struct PlayerCardView: View {
                     Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
                 }
 
-                if !courts.isEmpty {
-                    homeCourtsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 24)
-                }
             }
         }
         .onAppear {
@@ -348,35 +342,6 @@ struct PlayerCardView: View {
         }
     }
 
-    private var homeCourtsSection: some View {
-        let recentCourts = Array(courts.prefix(3))
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("HOME COURTS")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(NETRTheme.subtext)
-                .tracking(1.5)
-
-            ForEach(recentCourts) { court in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(ratingColor)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: ratingColor.opacity(0.6), radius: 4)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(court.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(court.neighborhood)
-                            .font(.system(size: 11))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    Spacer()
-                    LucideIcon("chevron-right", size: 11)
-                        .foregroundStyle(NETRTheme.muted)
-                }
-            }
-        }
-    }
 }
 
 private struct VibeOrbView: View {
@@ -500,7 +465,6 @@ private struct SkillBarRowView: View {
 
 struct PlayerCardScreen: View {
     let player: Player
-    let courts: [Court]
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -515,7 +479,7 @@ struct PlayerCardScreen: View {
                         .padding(.top, 12)
                         .padding(.bottom, 16)
 
-                    PlayerCardView(player: player, courts: courts, onDismiss: { dismiss() })
+                    PlayerCardView(player: player, onDismiss: { dismiss() })
                         .padding(.horizontal, 16)
                         .padding(.bottom, 40)
                 }

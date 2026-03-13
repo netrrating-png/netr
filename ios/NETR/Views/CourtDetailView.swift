@@ -16,7 +16,6 @@ struct CourtDetailView: View {
 
     private var distance: String { viewModel.distanceString(for: court) }
     private var isFav: Bool { viewModel.isFavorite(court.id) }
-    private var isHome: Bool { viewModel.isHomeCourt(court.id) }
 
     var body: some View {
         NavigationStack {
@@ -92,20 +91,9 @@ struct CourtDetailView: View {
                 }
 
                 Spacer()
-
-                if isHome {
-                    VStack(spacing: 2) {
-                        LucideIcon("home")
-                            .foregroundStyle(NETRTheme.neonGreen)
-                        Text("HOME")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(NETRTheme.neonGreen)
-                    }
-                }
             }
 
             HStack(spacing: 16) {
-                StatPill(label: "Cosigns", value: "\(court.cosignCount)", icon: "thumbs-up")
                 StatPill(label: "Surface", value: court.surfaceType.rawValue, icon: "layout-grid")
                 StatPill(label: "Distance", value: distance, icon: "map-pin")
             }
@@ -175,39 +163,6 @@ struct CourtDetailView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(isFav ? NETRTheme.red.opacity(0.3) : NETRTheme.border, lineWidth: 1))
             }
             .sensoryFeedback(.selection, trigger: isFav)
-
-            Button {
-                Task { await viewModel.setHomeCourt(courtId: court.id) }
-            } label: {
-                HStack(spacing: 6) {
-                    LucideIcon(isHome ? "home" : "home")
-                        .foregroundStyle(isHome ? NETRTheme.neonGreen : NETRTheme.text)
-                    Text(isHome ? "Home Court" : "Set Home")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(NETRTheme.text)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(isHome ? NETRTheme.neonGreen.opacity(0.08) : NETRTheme.card, in: .rect(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(isHome ? NETRTheme.neonGreen.opacity(0.3) : NETRTheme.border, lineWidth: 1))
-            }
-            .sensoryFeedback(.success, trigger: isHome)
-
-            Button {
-                Task { await viewModel.cosignCourt(courtId: court.id) }
-            } label: {
-                HStack(spacing: 6) {
-                    LucideIcon("thumbs-up")
-                        .foregroundStyle(NETRTheme.neonGreen)
-                    Text("Cosign")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(NETRTheme.text)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(NETRTheme.card, in: .rect(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.border, lineWidth: 1))
-            }
         }
         .padding(.horizontal, 16)
     }
@@ -274,7 +229,6 @@ struct CourtDetailView: View {
                 InfoRow(label: "Full Court", value: court.fullCourt ? "Yes" : "No")
                 InfoRow(label: "City", value: court.city)
                 InfoRow(label: "Address", value: court.address)
-                InfoRow(label: "Cosigns", value: "\(court.cosignCount)")
                 InfoRow(label: "Verified", value: court.verified ? "Yes" : "Pending")
             }
         }

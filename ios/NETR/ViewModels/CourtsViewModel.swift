@@ -9,7 +9,6 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
     var courts: [Court] = []
     var favoriteCourtIds: Set<String> = []
-    var homeCourtId: String?
     var isLoading: Bool = false
     var error: String?
 
@@ -57,9 +56,6 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             let aFav = favoriteCourtIds.contains(a.id)
             let bFav = favoriteCourtIds.contains(b.id)
             if aFav != bFav { return aFav }
-            let aHome = a.id == homeCourtId
-            let bHome = b.id == homeCourtId
-            if aHome != bHome { return aHome }
             if let loc = userLocation {
                 let distA = CLLocation(latitude: a.lat, longitude: a.lng)
                     .distance(from: CLLocation(latitude: loc.latitude, longitude: loc.longitude))
@@ -147,22 +143,13 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         favoriteCourtIds.contains(courtId)
     }
 
-    func isHomeCourt(_ courtId: String) -> Bool {
-        courtId == homeCourtId
-    }
-
-    var homeCourtName: String? {
-        guard let hid = homeCourtId else { return nil }
-        return courts.first(where: { $0.id == hid })?.name
-    }
-
     func loadCourts() async {
         isLoading = true
         error = nil
         do {
             let result: [Court] = try await client
                 .from("courts")
-                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, cosign_count, court_rating, submitted_by")
+                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
                 .execute()
                 .value
             courts = result
@@ -194,12 +181,11 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         do {
             let favs: [CourtFavorite] = try await client
                 .from("court_favorites")
-                .select("court_id, is_home_court")
+                .select("court_id")
                 .eq("user_id", value: userId)
                 .execute()
                 .value
             favoriteCourtIds = Set(favs.map { $0.courtId })
-            homeCourtId = favs.first(where: { $0.isHomeCourt })?.courtId
         } catch {
             print("Favorites load error: \(error)")
         }
@@ -210,7 +196,6 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
         if favoriteCourtIds.contains(courtId) {
             favoriteCourtIds.remove(courtId)
-            if homeCourtId == courtId { homeCourtId = nil }
             do {
                 try await client
                     .from("court_favorites")
@@ -228,65 +213,21 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             nonisolated struct FavPayload: Encodable, Sendable {
                 let userId: String
                 let courtId: String
-                let isHomeCourt: Bool
                 nonisolated enum CodingKeys: String, CodingKey {
                     case userId = "user_id"
                     case courtId = "court_id"
-                    case isHomeCourt = "is_home_court"
                 }
             }
 
             do {
                 try await client
                     .from("court_favorites")
-                    .upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: false))
+                    .upsert(FavPayload(userId: userId, courtId: courtId))
                     .execute()
             } catch {
                 favoriteCourtIds.remove(courtId)
                 print("Add favorite error: \(error)")
             }
-        }
-    }
-
-    func setHomeCourt(courtId: String) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
-
-        let previousHome = homeCourtId
-        homeCourtId = courtId
-        favoriteCourtIds.insert(courtId)
-
-        nonisolated struct HomeUpdate: Encodable, Sendable {
-            let isHomeCourt: Bool
-            nonisolated enum CodingKeys: String, CodingKey {
-                case isHomeCourt = "is_home_court"
-            }
-        }
-
-        nonisolated struct FavPayload: Encodable, Sendable {
-            let userId: String
-            let courtId: String
-            let isHomeCourt: Bool
-            nonisolated enum CodingKeys: String, CodingKey {
-                case userId = "user_id"
-                case courtId = "court_id"
-                case isHomeCourt = "is_home_court"
-            }
-        }
-
-        do {
-            try await client
-                .from("court_favorites")
-                .update(HomeUpdate(isHomeCourt: false))
-                .eq("user_id", value: userId)
-                .execute()
-
-            try await client
-                .from("court_favorites")
-                .upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true))
-                .execute()
-        } catch {
-            homeCourtId = previousHome
-            print("Set home court error: \(error)")
         }
     }
 
@@ -347,21 +288,4 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func cosignCourt(courtId: String) async {
-        do {
-            if let idx = courts.firstIndex(where: { $0.id == courtId }) {
-                courts[idx].cosignCount += 1
-            }
-            try await client
-                .from("courts")
-                .update(["cosign_count": courts.first(where: { $0.id == courtId })?.cosignCount ?? 1])
-                .eq("id", value: courtId)
-                .execute()
-        } catch {
-            if let idx = courts.firstIndex(where: { $0.id == courtId }) {
-                courts[idx].cosignCount -= 1
-            }
-            print("Cosign error: \(error)")
-        }
-    }
 }

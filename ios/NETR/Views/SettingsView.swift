@@ -4,7 +4,6 @@ import PhotosUI
 struct SettingsView: View {
     let store: MockDataStore
     @Bindable var appearance: AppearanceManager
-    @Bindable var courtsViewModel: CourtsViewModel
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
@@ -35,7 +34,7 @@ struct SettingsView: View {
             .scrollIndicators(.hidden)
         }
         .sheet(isPresented: $showPlayerCard) {
-            PlayerCardView(player: user, courts: Array(courtsViewModel.courts.prefix(3)))
+            PlayerCardView(player: user)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }

@@ -131,7 +131,7 @@ struct CourtsView: View {
                     Button {
                         selectedCourt = court
                     } label: {
-                        CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+                        CourtMapPin(court: court)
                     }
                 }
             }
@@ -318,20 +318,18 @@ struct CourtsView: View {
                 .padding(.vertical, 40)
             } else {
                 ForEach(viewModel.filteredCourts) { court in
-                    Button {
+                    CourtCardView(
+                        court: court,
+                        distance: viewModel.distanceString(for: court),
+                        isFavorite: viewModel.isFavorite(court.id),
+                        onFavoriteToggle: {
+                            Task { await viewModel.toggleFavorite(courtId: court.id) }
+                        }
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
                         selectedCourt = court
-                    } label: {
-                        CourtCardView(
-                            court: court,
-                            distance: viewModel.distanceString(for: court),
-                            isFavorite: viewModel.isFavorite(court.id),
-                            isHomeCourt: viewModel.isHomeCourt(court.id),
-                            onFavoriteToggle: {
-                                Task { await viewModel.toggleFavorite(courtId: court.id) }
-                            }
-                        )
                     }
-                    .buttonStyle(PressButtonStyle())
                 }
             }
         }
@@ -343,7 +341,6 @@ struct CourtsView: View {
 
 struct CourtMapPin: View {
     let court: Court
-    var isHomeCourt: Bool = false
 
     var pinColor: Color {
         if !court.verified { return NETRTheme.gold }
@@ -356,13 +353,8 @@ struct CourtMapPin: View {
                 .fill(pinColor)
                 .frame(width: 28, height: 28)
 
-            if isHomeCourt {
-                LucideIcon("home", size: 12)
-                    .foregroundStyle(.white)
-            } else {
-                LucideIcon("circle-dot", size: 12)
-                    .foregroundStyle(.white)
-            }
+            LucideIcon("circle-dot", size: 12)
+                .foregroundStyle(.white)
         }
     }
 }

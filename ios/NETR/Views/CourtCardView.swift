@@ -4,7 +4,6 @@ struct CourtCardView: View {
     let court: Court
     let distance: String
     let isFavorite: Bool
-    let isHomeCourt: Bool
     let onFavoriteToggle: () -> Void
 
     var body: some View {
@@ -17,16 +16,13 @@ struct CourtCardView: View {
 
                 Spacer()
 
-                if isHomeCourt {
-                    LucideIcon("home", size: 12)
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
-
                 Button {
                     onFavoriteToggle()
                 } label: {
                     LucideIcon(isFavorite ? "heart" : "heart", size: 16)
                         .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
@@ -77,22 +73,13 @@ struct CourtCardView: View {
                 }
 
                 Spacer()
-
-                if court.cosignCount > 0 {
-                    HStack(spacing: 3) {
-                        LucideIcon("thumbs-up", size: 10)
-                        Text("\(court.cosignCount)")
-                            .font(.caption.weight(.bold))
-                    }
-                    .foregroundStyle(NETRTheme.neonGreen)
-                }
             }
         }
         .padding(14)
         .background(NETRTheme.card, in: .rect(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
+                .stroke(NETRTheme.border, lineWidth: 1)
         )
     }
 }
