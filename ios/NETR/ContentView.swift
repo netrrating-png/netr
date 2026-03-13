@@ -48,9 +48,9 @@ struct ContentView: View {
                     case .feed:
                         FeedView()
                     case .profile:
-                        ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
+                        ProfileView(showSelfAssessment: $showSelfAssessment)
                     case .settings:
-                        SettingsView(store: store, appearance: appearance, courtsViewModel: courtsViewModel)
+                        SettingsView(store: store, appearance: appearance)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

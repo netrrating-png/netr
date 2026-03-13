@@ -3,7 +3,6 @@ import PhotosUI
 
 struct ProfileView: View {
     var profileUserId: String? = nil
-    var courtsViewModel: CourtsViewModel? = nil
     @Binding var showSelfAssessment: Bool
 
     @State private var viewModel = ProfileViewModel()
@@ -16,9 +15,8 @@ struct ProfileView: View {
     @State private var showBioEdit: Bool = false
     @State private var showRatingScale: Bool = false
 
-    init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
+    init(profileUserId: String? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
-        self.courtsViewModel = courtsViewModel
         self._showSelfAssessment = showSelfAssessment
     }
 
@@ -85,17 +83,6 @@ struct ProfileView: View {
                             courtRepRow(user: user)
                                 .padding(.horizontal, 20)
                                 .padding(.bottom, 24)
-
-                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
-
-                            if let vm = courtsViewModel {
-                                let favCourts = vm.courts.filter { vm.favoriteCourtIds.contains($0.id) }
-                                if !favCourts.isEmpty {
-                                    homeCourtsRow(courts: favCourts, accentColor: ratingColor(for: user))
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 40)
-                                }
-                            }
 
                             Spacer(minLength: 100)
                         }
@@ -662,42 +649,6 @@ struct ProfileView: View {
                     Text("\(repXP) XP · \(repXPToNext) to next level")
                         .font(.system(size: 11))
                         .foregroundStyle(NETRTheme.subtext)
-                }
-            }
-        }
-    }
-
-    // MARK: - Home Courts
-
-    private func homeCourtsRow(courts: [Court], accentColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("HOME COURTS")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(NETRTheme.subtext)
-                    .tracking(1.5)
-                Spacer()
-                LucideIcon("map-pin", size: 14)
-                    .foregroundStyle(NETRTheme.muted)
-            }
-
-            ForEach(Array(courts.prefix(3))) { court in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(accentColor)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: accentColor.opacity(0.6), radius: 4)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(court.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(court.neighborhood)
-                            .font(.system(size: 11))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    Spacer()
-                    LucideIcon("chevron-right", size: 11)
-                        .foregroundStyle(NETRTheme.muted)
                 }
             }
         }
