@@ -56,12 +56,12 @@ nonisolated enum Position: String, Sendable, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .pg: return "point.topleft.down.to.point.bottomright.curvepath"
-        case .sg: return "scope"
-        case .sf: return "arrow.triangle.branch"
-        case .pf: return "figure.basketball"
-        case .c: return "shield.fill"
-        case .unknown: return "questionmark"
+        case .pg: return "route"
+        case .sg: return "crosshair"
+        case .sf: return "git-branch"
+        case .pf: return "dumbbell"
+        case .c: return "shield"
+        case .unknown: return "help-circle"
         }
     }
 }
@@ -86,19 +86,13 @@ struct Player: Identifiable, Equatable {
     var isProspect: Bool
     var skills: SkillRatings
     var profileImageData: Data?
+    var avatarUrl: String?
 
     var isProvisional: Bool { reviews < 5 }
     var isVerified: Bool { tier == .verified && reviews >= 5 }
 
     var ratingTierName: String {
-        guard let r = rating else { return "Unrated" }
         if isProspect { return "Prospect" }
-        switch r {
-        case 8.5...10.0: return "Elite"
-        case 7.0..<8.5: return "Advanced"
-        case 5.5..<7.0: return "Competitive"
-        case 3.5..<5.5: return "Recreational"
-        default: return "Beginner"
-        }
+        return NETRRating.tierName(for: rating)
     }
 }

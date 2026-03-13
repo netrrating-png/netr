@@ -9,7 +9,6 @@ private struct SkillRow: Identifiable {
 
 struct PlayerCardView: View {
     let player: Player
-    let courts: [Court]
     var onDismiss: (() -> Void)? = nil
 
     @State private var ratingScale: CGFloat = 0.75
@@ -20,15 +19,15 @@ struct PlayerCardView: View {
     private var isPeerRated: Bool { player.reviews >= 5 }
     private var peerProgress: Double { min(1.0, Double(player.reviews) / 5.0) }
     private var displayRating: Double { player.rating ?? 0 }
-    private var ratingColor: Color { NETRTheme.ratingColor(for: player.rating) }
+    private var ratingColor: Color { NETRRating.color(for: player.rating) }
 
     private var skills: [SkillRow] {[
-        SkillRow(icon: "scope", label: "Scoring", value: player.skills.shooting),
-        SkillRow(icon: "flame.fill", label: "Finishing", value: player.skills.finishing),
-        SkillRow(icon: "bolt.fill", label: "Handles", value: player.skills.ballHandling),
-        SkillRow(icon: "paperplane.fill", label: "Playmaking", value: player.skills.playmaking),
-        SkillRow(icon: "shield.fill", label: "Defense", value: player.skills.defense),
-        SkillRow(icon: "arrow.up.circle.fill", label: "Rebounding", value: player.skills.rebounding),
+        SkillRow(icon: "crosshair", label: "Scoring", value: player.skills.shooting),
+        SkillRow(icon: "flame", label: "Finishing", value: player.skills.finishing),
+        SkillRow(icon: "zap", label: "Handles", value: player.skills.ballHandling),
+        SkillRow(icon: "send", label: "Playmaking", value: player.skills.playmaking),
+        SkillRow(icon: "shield", label: "Defense", value: player.skills.defense),
+        SkillRow(icon: "arrow-up-circle", label: "Rebounding", value: player.skills.rebounding),
         SkillRow(icon: "brain", label: "IQ", value: player.skills.basketballIQ),
     ]}
 
@@ -88,11 +87,6 @@ struct PlayerCardView: View {
                     Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
                 }
 
-                if !courts.isEmpty {
-                    homeCourtsSection
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 24)
-                }
             }
         }
         .onAppear {
@@ -115,8 +109,7 @@ struct PlayerCardView: View {
                 Button(action: dismiss) {
                     ZStack {
                         Circle().fill(NETRTheme.muted.opacity(0.5)).frame(width: 30, height: 30)
-                        Image(systemName: "xmark")
-                            .font(.system(size: 12, weight: .bold))
+                        LucideIcon("x", size: 12)
                             .foregroundStyle(NETRTheme.subtext)
                     }
                 }
@@ -207,12 +200,12 @@ struct PlayerCardView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                     } else {
-                        Text("—")
-                            .font(.system(size: 64, weight: .black, design: .default).width(.compressed))
+                        Text("UNRATED")
+                            .font(.system(size: 28, weight: .black, design: .default).width(.compressed))
                             .foregroundStyle(NETRTheme.subtext)
                     }
 
-                    Text(player.ratingTierName.uppercased())
+                    Text(NETRRating.tierName(for: player.rating).uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(ratingColor.opacity(0.7))
                         .tracking(1.5)
@@ -253,8 +246,7 @@ struct PlayerCardView: View {
 
     private var lockBadge: some View {
         VStack(spacing: 3) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 11, weight: .semibold))
+            LucideIcon("lock", size: 11)
                 .foregroundStyle(NETRTheme.subtext)
             Text("\(player.reviews)/5")
                 .font(.system(size: 9, weight: .bold))
@@ -276,9 +268,24 @@ struct PlayerCardView: View {
             Circle()
                 .stroke(ratingColor.opacity(0.5), lineWidth: 1.5)
                 .frame(width: 38, height: 38)
-            Text(player.avatar)
-                .font(.system(size: 13, weight: .black, design: .default).width(.compressed))
-                .foregroundStyle(ratingColor)
+            if let urlStr = player.avatarUrl, let url = URL(string: urlStr) {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 34, height: 34)
+                            .clipShape(Circle())
+                    } else {
+                        Text(player.avatar)
+                            .font(.system(size: 13, weight: .black, design: .default).width(.compressed))
+                            .foregroundStyle(ratingColor)
+                    }
+                }
+            } else {
+                Text(player.avatar)
+                    .font(.system(size: 13, weight: .black, design: .default).width(.compressed))
+                    .foregroundStyle(ratingColor)
+            }
         }
     }
 
@@ -335,36 +342,6 @@ struct PlayerCardView: View {
         }
     }
 
-    private var homeCourtsSection: some View {
-        let recentCourts = Array(courts.prefix(3))
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("HOME COURTS")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(NETRTheme.subtext)
-                .tracking(1.5)
-
-            ForEach(recentCourts) { court in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(ratingColor)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: ratingColor.opacity(0.6), radius: 4)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(court.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(court.neighborhood)
-                            .font(.system(size: 11))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(NETRTheme.muted)
-                }
-            }
-        }
-    }
 }
 
 private struct VibeOrbView: View {
@@ -444,12 +421,11 @@ private struct SkillBarRowView: View {
     @State private var appeared: Bool = false
 
     private var pct: Double { value / 10.0 }
-    private var valColor: Color { NETRTheme.ratingColor(for: value) }
+    private var valColor: Color { NETRRating.color(for: value) }
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 13))
+            LucideIcon(icon, size: 13)
                 .foregroundStyle(NETRTheme.subtext)
                 .frame(width: 20)
             Text(label)
@@ -489,7 +465,6 @@ private struct SkillBarRowView: View {
 
 struct PlayerCardScreen: View {
     let player: Player
-    let courts: [Court]
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -504,7 +479,7 @@ struct PlayerCardScreen: View {
                         .padding(.top, 12)
                         .padding(.bottom, 16)
 
-                    PlayerCardView(player: player, courts: courts, onDismiss: { dismiss() })
+                    PlayerCardView(player: player, onDismiss: { dismiss() })
                         .padding(.horizontal, 16)
                         .padding(.bottom, 40)
                 }
@@ -520,8 +495,7 @@ struct SelfAssessedBanner: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 14))
+            LucideIcon("lock", size: 14)
                 .foregroundStyle(NETRTheme.subtext)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Self-Assessed Rating")

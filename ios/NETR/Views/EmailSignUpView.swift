@@ -57,7 +57,7 @@ struct EmailSignUpView: View {
 
                         if !confirmPassword.isEmpty {
                             HStack(spacing: 6) {
-                                Image(systemName: passwordsMatch ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                LucideIcon(passwordsMatch ? "check-circle" : "x-circle")
                                 Text(passwordsMatch ? "Passwords match" : "Passwords don't match")
                                     .font(.system(size: 13))
                             }

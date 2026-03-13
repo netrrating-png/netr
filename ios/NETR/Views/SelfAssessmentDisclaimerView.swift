@@ -7,10 +7,10 @@ struct SelfAssessmentDisclaimerView: View {
     @State private var appeared = false
 
     private let points: [(icon: String, text: String)] = [
-        ("hand.raised.fill", "Be honest — not humble, not hype. Rate yourself like a coach watching from the sideline would."),
-        ("arrow.up.right.circle.fill", "This is your starting point. As you play and get peer ratings, your score will update automatically."),
-        ("lock.fill", "Your self-assessment stays locked until you collect 5 peer reviews. That's when it becomes your real NETR score."),
-        ("person.2.fill", "Players who rate themselves accurately tend to get more accurate peer ratings back. The court always sorts it out."),
+        ("hand", "Be honest — not humble, not hype. Rate yourself like a coach watching from the sideline would."),
+        ("arrow-up-right", "This is your starting point. As you play and get peer ratings, your score will update automatically."),
+        ("lock", "Your self-assessment stays locked until you collect 5 peer reviews. That's when it becomes your real NETR score."),
+        ("users", "Players who rate themselves accurately tend to get more accurate peer ratings back. The court always sorts it out."),
     ]
 
     var body: some View {
@@ -28,8 +28,7 @@ struct SelfAssessmentDisclaimerView: View {
                 HStack {
                     Button(action: onBack) {
                         HStack(spacing: 6) {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 13, weight: .semibold))
+                            LucideIcon("chevron-left", size: 13)
                             Text("Back")
                                 .font(.system(size: 14))
                         }
@@ -92,8 +91,7 @@ struct SelfAssessmentDisclaimerView: View {
                                         Circle()
                                             .fill(NETRTheme.neonGreen.opacity(0.1))
                                             .frame(width: 36, height: 36)
-                                        Image(systemName: point.icon)
-                                            .font(.system(size: 15, weight: .medium))
+                                        LucideIcon(point.icon, size: 15)
                                             .foregroundStyle(NETRTheme.neonGreen)
                                     }
                                     .padding(.top, 1)
@@ -152,8 +150,7 @@ struct SelfAssessmentDisclaimerView: View {
                         HStack(spacing: 10) {
                             Text("I'm Ready — Let's Go")
                                 .font(.system(size: 16, weight: .bold))
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 14, weight: .bold))
+                            LucideIcon("arrow-right", size: 14)
                         }
                         .foregroundStyle(.black)
                         .frame(maxWidth: .infinity)

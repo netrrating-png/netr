@@ -15,6 +15,15 @@ struct CreateGameView: View {
     @State private var courtSearchResults: [Court] = []
     @FocusState private var searchFocused: Bool
 
+    // Scheduling
+    @State private var scheduleForLater: Bool = false
+    @State private var scheduledDate: Date = {
+        let cal = Calendar.current
+        let now = Date()
+        let rounded = cal.date(bySetting: .minute, value: (cal.component(.minute, from: now) / 15 + 1) * 15, of: now) ?? now.addingTimeInterval(900)
+        return rounded
+    }()
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -37,8 +46,7 @@ struct CreateGameView: View {
                             Circle()
                                 .fill(NETRTheme.muted.opacity(0.6))
                                 .frame(width: 30, height: 30)
-                            Image(systemName: "xmark")
-                                .font(.system(size: 11, weight: .bold))
+                            LucideIcon("x", size: 11)
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                     }
@@ -99,7 +107,7 @@ struct CreateGameView: View {
                     VStack(alignment: .leading, spacing: 28) {
                         courtSectionView(
                             title: "NEAREST TO YOU",
-                            icon: "location.fill",
+                            icon: "map-pin",
                             iconColor: NETRTheme.neonGreen,
                             courts: viewModel.nearestCourts,
                             emptyMessage: nearestEmptyMessage
@@ -107,15 +115,14 @@ struct CreateGameView: View {
 
                         courtSectionView(
                             title: "YOUR FAVORITES",
-                            icon: "star.fill",
+                            icon: "star",
                             iconColor: NETRTheme.gold,
                             courts: viewModel.favoriteCourtsOnly,
                             emptyMessage: "Star a court to pin it here for quick access."
                         )
 
                         HStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 12))
+                            LucideIcon("search", size: 12)
                                 .foregroundStyle(NETRTheme.muted)
                             Text("Search above to find any other court")
                                 .font(.system(size: 13))
@@ -140,8 +147,7 @@ struct CreateGameView: View {
 
     private var courtSearchBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
+            LucideIcon("search", size: 14)
                 .foregroundStyle(courtSearchQuery.isEmpty ? NETRTheme.muted : NETRTheme.neonGreen)
 
             TextField("Search all courts\u{2026}", text: $courtSearchQuery)
@@ -158,8 +164,7 @@ struct CreateGameView: View {
                     courtSearchQuery = ""
                     courtSearchResults = []
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                    LucideIcon("x-circle", size: 14)
                         .foregroundStyle(NETRTheme.muted)
                 }
             }
@@ -184,8 +189,7 @@ struct CreateGameView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 7) {
-                Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                LucideIcon(icon, size: 11)
                     .foregroundStyle(iconColor)
                 Text(title)
                     .font(.system(size: 11, weight: .bold))
@@ -195,8 +199,7 @@ struct CreateGameView: View {
 
             if courts.isEmpty {
                 HStack(spacing: 10) {
-                    Image(systemName: icon == "location.fill" ? "location.slash" : "star")
-                        .font(.system(size: 14))
+                    LucideIcon(icon == "map-pin" ? "map-pin-off" : "star", size: 14)
                         .foregroundStyle(NETRTheme.muted)
                     Text(emptyMessage)
                         .font(.system(size: 13))
@@ -238,8 +241,7 @@ struct CreateGameView: View {
                     Circle()
                         .fill(NETRTheme.neonGreen.opacity(court.verified ? 0.15 : 0.06))
                         .frame(width: 36, height: 36)
-                    Image(systemName: "basketball.fill")
-                        .font(.system(size: 16))
+                    LucideIcon("circle-dot", size: 16)
                         .foregroundStyle(court.verified ? NETRTheme.neonGreen : NETRTheme.muted)
                 }
 
@@ -250,8 +252,7 @@ struct CreateGameView: View {
                             .foregroundStyle(NETRTheme.text)
                             .lineLimit(1)
                         if court.verified {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.system(size: 11))
+                            LucideIcon("badge-check", size: 11)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                     }
@@ -274,16 +275,17 @@ struct CreateGameView: View {
                 Button {
                     Task { await viewModel.toggleFavorite(courtId: court.id) }
                 } label: {
-                    Image(systemName: viewModel.isFavorite(court.id) ? "star.fill" : "star")
-                        .font(.system(size: 14))
+                    LucideIcon(viewModel.isFavorite(court.id) ? "star" : "star", size: 14)
                         .foregroundStyle(viewModel.isFavorite(court.id) ? NETRTheme.gold : NETRTheme.muted)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .highPriorityGesture(TapGesture().onEnded {
+                    Task { await viewModel.toggleFavorite(courtId: court.id) }
+                })
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .medium))
+                LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)
             }
             .padding(.horizontal, 16)
@@ -297,8 +299,7 @@ struct CreateGameView: View {
         Group {
             if courtSearchResults.isEmpty {
                 VStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 36))
+                    LucideIcon("search", size: 36)
                         .foregroundStyle(NETRTheme.muted)
                     Text("No courts found")
                         .font(NETRTheme.headingFont(size: .title3))
@@ -366,7 +367,7 @@ struct CreateGameView: View {
                                     .foregroundStyle(NETRTheme.subtext)
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
+                            LucideIcon("chevron-right")
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                         .padding(16)
@@ -399,7 +400,7 @@ struct CreateGameView: View {
                                 .foregroundStyle(selectedSkill == skill ? NETRTheme.neonGreen : NETRTheme.text)
                             Spacer()
                             if selectedSkill == skill {
-                                Image(systemName: "checkmark.circle.fill")
+                                LucideIcon("check-circle")
                                     .foregroundStyle(NETRTheme.neonGreen)
                             }
                         }
@@ -418,6 +419,40 @@ struct CreateGameView: View {
             }
             .padding(.horizontal, 16)
 
+            // Scheduling toggle
+            VStack(spacing: 12) {
+                HStack {
+                    Image(systemName: "clock.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(scheduleForLater ? NETRTheme.neonGreen : NETRTheme.muted)
+                    Text("Schedule for later")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Spacer()
+                    Toggle("", isOn: $scheduleForLater)
+                        .tint(NETRTheme.neonGreen)
+                        .labelsHidden()
+                }
+                .padding(.horizontal, 16)
+
+                if scheduleForLater {
+                    DatePicker(
+                        "Start time",
+                        selection: $scheduledDate,
+                        in: Date()...,
+                        displayedComponents: [.date, .hourAndMinute]
+                    )
+                    .datePickerStyle(.compact)
+                    .tint(NETRTheme.neonGreen)
+                    .colorScheme(.dark)
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.vertical, 12)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+
             Spacer()
 
             Button {
@@ -427,7 +462,8 @@ struct CreateGameView: View {
                         _ = try await gameViewModel.createGame(
                             courtId: selectedCourt?.id,
                             format: selectedFormat.rawValue,
-                            skillLevel: selectedSkill.rawValue
+                            skillLevel: selectedSkill.rawValue,
+                            scheduledAt: scheduleForLater ? scheduledDate : nil
                         )
                         isCreating = false
                         withAnimation(.snappy) { showLobby = true }
@@ -441,7 +477,7 @@ struct CreateGameView: View {
                     if isCreating {
                         ProgressView().tint(NETRTheme.background)
                     } else {
-                        Text("CREATE GAME")
+                        Text(scheduleForLater ? "SCHEDULE GAME" : "CREATE GAME")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
                             .tracking(1)
                     }
@@ -460,10 +496,14 @@ struct CreateGameView: View {
     }
 }
 
+// MARK: - Game Lobby
+
 struct GameLobbyView: View {
     @Bindable var viewModel: GameViewModel
     let onDismiss: () -> Void
     @State private var showRateSheet: Bool = false
+    @State private var countdownTimer: Timer?
+    @State private var timeRemaining: TimeInterval = 0
 
     var body: some View {
         ScrollView {
@@ -477,6 +517,11 @@ struct GameLobbyView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 .padding(.top, 16)
+
+                // Countdown for scheduled games
+                if viewModel.isScheduled, let remaining = viewModel.timeUntilStart, remaining > 0 {
+                    scheduledCountdownView(remaining: timeRemaining > 0 ? timeRemaining : remaining)
+                }
 
                 VStack(spacing: 8) {
                     Text("JOIN CODE")
@@ -496,8 +541,7 @@ struct GameLobbyView: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
                 .padding(.horizontal, 16)
 
-                Image(systemName: "qrcode")
-                    .font(.system(size: 80))
+                LucideIcon("qr-code", size: 80)
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(width: 120, height: 120)
                     .background(NETRTheme.card, in: .rect(cornerRadius: 12))
@@ -547,6 +591,23 @@ struct GameLobbyView: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(NETRTheme.neonGreen.opacity(0.1), in: .capsule)
+                }
+
+                // Checkout reminder banner
+                if viewModel.game?.status == "active" && viewModel.uncheckedOutCount > 0 && !viewModel.currentUserCheckedOut {
+                    HStack(spacing: 10) {
+                        Image(systemName: "clock.badge.exclamationmark")
+                            .font(.system(size: 16))
+                            .foregroundStyle(NETRTheme.gold)
+                        Text("Don't forget to check out when you're done to rate your teammates.")
+                            .font(.system(size: 12))
+                            .foregroundStyle(NETRTheme.subtext)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(12)
+                    .background(NETRTheme.gold.opacity(0.08), in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.gold.opacity(0.3), lineWidth: 1))
+                    .padding(.horizontal, 16)
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
@@ -600,21 +661,63 @@ struct GameLobbyView: View {
                         .disabled(!viewModel.canStart || viewModel.isStarting)
                     }
 
-                    Button {
-                        Task {
-                            await viewModel.endGame()
-                        }
-                    } label: {
-                        Text("END GAME")
-                            .font(.system(.subheadline, design: .default, weight: .bold).width(.compressed))
-                            .tracking(1)
-                            .foregroundStyle(NETRTheme.red)
+                    // Check Out button (active game, not yet checked out)
+                    if viewModel.game?.status == "active" && !viewModel.currentUserCheckedOut {
+                        Button {
+                            Task { await viewModel.checkOut() }
+                        } label: {
+                            HStack(spacing: 8) {
+                                if viewModel.isCheckingOut {
+                                    ProgressView().tint(NETRTheme.background)
+                                } else {
+                                    Image(systemName: "arrow.right.square")
+                                        .font(.system(size: 16, weight: .bold))
+                                    Text("CHECK OUT")
+                                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                        .tracking(1)
+                                }
+                            }
+                            .foregroundStyle(NETRTheme.background)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(NETRTheme.red.opacity(0.1), in: .rect(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.red.opacity(0.3), lineWidth: 1))
+                            .padding(.vertical, 16)
+                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                        }
+                        .buttonStyle(PressButtonStyle())
+                        .disabled(viewModel.isCheckingOut)
+                        .sensoryFeedback(.success, trigger: viewModel.currentUserCheckedOut)
                     }
-                    .buttonStyle(PressButtonStyle())
+
+                    // Already checked out indicator
+                    if viewModel.currentUserCheckedOut {
+                        HStack(spacing: 8) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(NETRTheme.neonGreen)
+                            Text("You've checked out")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                    }
+
+                    // End Game (host only)
+                    if viewModel.isHost {
+                        Button {
+                            Task { await viewModel.endGame() }
+                        } label: {
+                            Text("END GAME")
+                                .font(.system(.subheadline, design: .default, weight: .bold).width(.compressed))
+                                .tracking(1)
+                                .foregroundStyle(NETRTheme.red)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(NETRTheme.red.opacity(0.1), in: .rect(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.red.opacity(0.3), lineWidth: 1))
+                        }
+                        .buttonStyle(PressButtonStyle())
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -626,20 +729,96 @@ struct GameLobbyView: View {
             if let gameId = viewModel.game?.id {
                 Task { await viewModel.loadPlayers(gameId: gameId) }
             }
+            startCountdownIfNeeded()
         }
         .onDisappear {
+            countdownTimer?.invalidate()
             Task { await viewModel.unsubscribe() }
         }
         .onChange(of: viewModel.showRateScreen) { _, show in
             if show { showRateSheet = true }
         }
         .sheet(isPresented: $showRateSheet, onDismiss: { onDismiss() }) {
-            if let gameId = viewModel.completedGameId {
+            if let _ = viewModel.completedGameId {
                 RateView()
             }
         }
     }
+
+    private func scheduledCountdownView(remaining: TimeInterval) -> some View {
+        let hours = Int(remaining) / 3600
+        let minutes = (Int(remaining) % 3600) / 60
+        let seconds = Int(remaining) % 60
+
+        return VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(NETRTheme.gold)
+                Text("SCHEDULED START")
+                    .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                    .tracking(1.5)
+                    .foregroundStyle(NETRTheme.gold)
+            }
+
+            if let date = viewModel.scheduledDate {
+                Text(date, style: .date)
+                    .font(.system(size: 12))
+                    .foregroundStyle(NETRTheme.subtext)
+                + Text(" at ")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NETRTheme.subtext)
+                + Text(date, style: .time)
+                    .font(.system(size: 12))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            HStack(spacing: 12) {
+                countdownUnit(value: hours, label: "HR")
+                Text(":")
+                    .font(.system(size: 24, weight: .black, design: .monospaced))
+                    .foregroundStyle(NETRTheme.gold.opacity(0.5))
+                countdownUnit(value: minutes, label: "MIN")
+                Text(":")
+                    .font(.system(size: 24, weight: .black, design: .monospaced))
+                    .foregroundStyle(NETRTheme.gold.opacity(0.5))
+                countdownUnit(value: seconds, label: "SEC")
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(NETRTheme.gold.opacity(0.06), in: .rect(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.gold.opacity(0.3), lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    private func countdownUnit(value: Int, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(String(format: "%02d", value))
+                .font(.system(size: 28, weight: .black, design: .monospaced))
+                .foregroundStyle(NETRTheme.gold)
+            Text(label)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1)
+        }
+    }
+
+    private func startCountdownIfNeeded() {
+        guard let remaining = viewModel.timeUntilStart, remaining > 0 else { return }
+        timeRemaining = remaining
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            if let remaining = viewModel.timeUntilStart, remaining > 0 {
+                timeRemaining = remaining
+            } else {
+                countdownTimer?.invalidate()
+                timeRemaining = 0
+            }
+        }
+    }
 }
+
+// MARK: - Lobby Player Row
 
 struct LobbyPlayerRow: View {
     let player: LobbyPlayer
@@ -670,21 +849,29 @@ struct LobbyPlayerRow: View {
                         }
                     }
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1.5))
+                    .overlay(Circle().stroke(
+                        player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
+                        lineWidth: 1.5
+                    ))
+                    .opacity(player.isCheckedOut ? 0.5 : 1)
             } else {
                 Text(initials)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
+                    .foregroundStyle(player.isCheckedOut ? NETRTheme.muted : NETRTheme.neonGreen)
                     .frame(width: 40, height: 40)
                     .background(NETRTheme.card, in: Circle())
-                    .overlay(Circle().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1.5))
+                    .overlay(Circle().stroke(
+                        player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
+                        lineWidth: 1.5
+                    ))
+                    .opacity(player.isCheckedOut ? 0.5 : 1)
             }
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(displayName)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NETRTheme.text)
+                        .foregroundStyle(player.isCheckedOut ? NETRTheme.muted : NETRTheme.text)
                     if isHost {
                         Text("HOST")
                             .font(.system(size: 9, weight: .black))
@@ -692,6 +879,14 @@ struct LobbyPlayerRow: View {
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(NETRTheme.neonGreen.opacity(0.12), in: .capsule)
+                    }
+                    if player.isCheckedOut {
+                        Text("LEFT")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(NETRTheme.muted)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(NETRTheme.muted.opacity(0.12), in: .capsule)
                     }
                 }
                 Text(player.profile.position ?? "PG")
@@ -709,7 +904,7 @@ struct LobbyPlayerRow: View {
                 if let r = player.profile.netrScore {
                     Text(String(format: "%.1f", r))
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(NETRTheme.ratingColor(for: r))
+                        .foregroundStyle(NETRRating.color(for: r))
                 }
             }
         }

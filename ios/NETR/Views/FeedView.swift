@@ -40,8 +40,7 @@ struct FeedView: View {
                 .foregroundStyle(NETRTheme.text)
             Spacer()
             Button {} label: {
-                Image(systemName: "bell.fill")
-                    .font(.body)
+                LucideIcon("bell")
                     .foregroundStyle(NETRTheme.subtext)
             }
         }
@@ -106,7 +105,11 @@ struct FeedView: View {
                     }
 
                     if viewModel.posts.isEmpty {
-                        emptyFeedState
+                        if viewModel.activeTab == .forYou {
+                            forYouEmptyState
+                        } else {
+                            emptyFeedState
+                        }
                     } else {
                         LazyVStack(spacing: 0) {
                             ForEach(viewModel.posts) { post in
@@ -174,10 +177,25 @@ struct FeedView: View {
         .padding(.vertical, 12)
     }
 
+    private var forYouEmptyState: some View {
+        VStack(spacing: 16) {
+            LucideIcon("users", size: 44)
+                .foregroundStyle(NETRTheme.muted)
+            Text("Your feed is empty")
+                .font(.headline)
+                .foregroundStyle(NETRTheme.text)
+            Text("Follow players to see their posts here.\nFind ballers on the courts tab.")
+                .font(.subheadline)
+                .foregroundStyle(NETRTheme.subtext)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 60)
+    }
+
     private var emptyFeedState: some View {
         VStack(spacing: 16) {
-            Image(systemName: "bubble.left.and.text.bubble.right")
-                .font(.system(size: 44))
+            LucideIcon("messages-square", size: 44)
                 .foregroundStyle(NETRTheme.muted)
             Text("Nothing here yet")
                 .font(.headline)
@@ -194,8 +212,7 @@ struct FeedView: View {
         Button {
             viewModel.showCompose = true
         } label: {
-            Image(systemName: "plus")
-                .font(.title3.weight(.bold))
+            LucideIcon("plus", size: 20)
                 .foregroundStyle(NETRTheme.background)
                 .frame(width: 56, height: 56)
                 .background(NETRTheme.neonGreen, in: Circle())

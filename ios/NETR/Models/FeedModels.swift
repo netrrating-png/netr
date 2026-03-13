@@ -10,6 +10,7 @@ nonisolated struct SupabaseFeedPost: Identifiable, Sendable, Equatable {
     let gameId: String?
     let repostOfId: String?
     let quoteOfId: String?
+    let photoUrl: String?
     var likeCount: Int
     var commentCount: Int
     var repostCount: Int
@@ -35,6 +36,7 @@ extension SupabaseFeedPost: Decodable {
         case gameId = "game_id"
         case repostOfId = "repost_of_id"
         case quoteOfId = "quote_of_id"
+        case photoUrl = "photo_url"
         case likeCount = "like_count"
         case commentCount = "comment_count"
         case repostCount = "repost_count"
@@ -123,6 +125,7 @@ nonisolated struct CreateFeedPostPayload: Encodable, Sendable {
     let gameId: String?
     let quoteOfId: String?
     let repostOfId: String?
+    let photoUrl: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case authorId = "author_id"
@@ -133,6 +136,7 @@ nonisolated struct CreateFeedPostPayload: Encodable, Sendable {
         case gameId = "game_id"
         case quoteOfId = "quote_of_id"
         case repostOfId = "repost_of_id"
+        case photoUrl = "photo_url"
     }
 }
 
@@ -209,8 +213,45 @@ extension FeedCourtSearchResult: Decodable {
 
 enum FeedTab: String, CaseIterable {
     case forYou = "For You"
-    case local = "Local"
+    case all = "All"
     case trending = "Trending"
+}
+
+nonisolated struct CourtPhoto: Identifiable, Sendable {
+    let id: String
+    let courtId: String
+    let userId: String
+    let photoUrl: String
+    let createdAt: String
+    var uploader: FeedAuthor?
+}
+
+extension CourtPhoto: Decodable {
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id
+        case courtId = "court_id"
+        case userId = "user_id"
+        case photoUrl = "photo_url"
+        case createdAt = "created_at"
+        case uploader = "profiles"
+    }
+}
+
+nonisolated struct CreateCourtPhotoPayload: Encodable, Sendable {
+    let courtId: String
+    let userId: String
+    let photoUrl: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case courtId = "court_id"
+        case userId = "user_id"
+        case photoUrl = "photo_url"
+    }
+}
+
+nonisolated struct FollowingIdRow: Decodable, Sendable {
+    let followingId: String
+    nonisolated enum CodingKeys: String, CodingKey { case followingId = "following_id" }
 }
 
 func extractHashtags(from text: String) -> [String] {

@@ -62,46 +62,46 @@ nonisolated enum PlayingLevel: String, CaseIterable, Identifiable, Sendable {
 
     var icon: String {
         switch self {
-        case .brandNew:        return "figure.walk"
-        case .casual:          return "figure.basketball"
-        case .parkRegular:     return "basketball.fill"
-        case .exMiddleSchool:  return "graduationcap"
-        case .exJuniorVarsity: return "graduationcap.fill"
+        case .brandNew:        return "footprints"
+        case .casual:          return "dumbbell"
+        case .parkRegular:     return "circle-dot"
+        case .exMiddleSchool:  return "graduation-cap"
+        case .exJuniorVarsity: return "graduation-cap"
         case .exHighSchool:    return "trophy"
-        case .exJucoOrD3:      return "trophy.fill"
-        case .exD1D2:          return "star.fill"
-        case .currentLeague:   return "sportscourt.fill"
-        case .currentSemiPro:  return "bolt.fill"
+        case .exJucoOrD3:      return "trophy"
+        case .exD1D2:          return "star"
+        case .currentLeague:   return "layout-grid"
+        case .currentSemiPro:  return "zap"
         }
     }
 
     var baseScore: Double {
         switch self {
-        case .brandNew:        return 1.0
-        case .casual:          return 2.0
-        case .parkRegular:     return 3.0
-        case .exMiddleSchool:  return 2.8
-        case .exJuniorVarsity: return 3.2
-        case .exHighSchool:    return 3.5
-        case .exJucoOrD3:      return 4.8
-        case .exD1D2:          return 5.5
-        case .currentLeague:   return 3.8
-        case .currentSemiPro:  return 5.8
+        case .brandNew:        return 2.0
+        case .casual:          return 2.5
+        case .parkRegular:     return 3.5
+        case .exMiddleSchool:  return 3.2
+        case .exJuniorVarsity: return 3.8
+        case .exHighSchool:    return 4.5
+        case .exJucoOrD3:      return 5.5
+        case .exD1D2:          return 6.5
+        case .currentLeague:   return 4.5
+        case .currentSemiPro:  return 7.0
         }
     }
 
     var scoreCeiling: Double {
         switch self {
-        case .brandNew:        return 2.5
-        case .casual:          return 3.8
-        case .parkRegular:     return 5.2
-        case .exMiddleSchool:  return 4.2
-        case .exJuniorVarsity: return 4.8
-        case .exHighSchool:    return 5.5
-        case .exJucoOrD3:      return 6.4
-        case .exD1D2:          return 7.0
-        case .currentLeague:   return 5.8
-        case .currentSemiPro:  return 7.0
+        case .brandNew:        return 3.0
+        case .casual:          return 4.0
+        case .parkRegular:     return 5.5
+        case .exMiddleSchool:  return 4.8
+        case .exJuniorVarsity: return 5.5
+        case .exHighSchool:    return 6.5
+        case .exJucoOrD3:      return 7.5
+        case .exD1D2:          return 8.5
+        case .currentLeague:   return 7.0
+        case .currentSemiPro:  return 9.4
         }
     }
 }
@@ -236,11 +236,11 @@ nonisolated enum PlayerPosition: String, CaseIterable, Identifiable, Sendable {
 
     var icon: String {
         switch self {
-        case .pg: return "point.topleft.down.to.point.bottomright.curvepath"
-        case .sg: return "scope"
-        case .sf: return "arrow.triangle.branch"
-        case .pf: return "figure.basketball"
-        case .c:  return "shield.fill"
+        case .pg: return "route"
+        case .sg: return "crosshair"
+        case .sf: return "git-branch"
+        case .pf: return "dumbbell"
+        case .c:  return "shield"
         }
     }
 
@@ -503,8 +503,8 @@ nonisolated enum AssessmentQuestionBank: Sendable {
 
 nonisolated enum AssessmentScoringEngine: Sendable {
     static let selfAssessmentDiscount: Double = 0.72
-    static let absoluteCeiling: Double = 7.0
-    static let absoluteFloor: Double = 1.0
+    static let absoluteCeiling: Double = 9.4
+    static let absoluteFloor: Double = 2.0
 
     static let categoryWeights: [String: Double] = [
         "scoring": 1.0,
@@ -571,7 +571,7 @@ nonisolated enum AssessmentScoringEngine: Sendable {
             wTotal += w
         }
         let composite = wTotal > 0 ? wSum / wTotal : base
-        let overall = min(max(composite, absoluteFloor), ceiling)
+        let overall = NETRRating.clamp(min(max(composite, absoluteFloor), ceiling))
 
         let sorted = netrByCategory.sorted { a, b in
             let wa = (posOverrides[a.key] ?? 1.0) * a.value
@@ -593,27 +593,11 @@ nonisolated enum AssessmentScoringEngine: Sendable {
     }
 
     static func tierLabel(_ r: Double) -> String {
-        switch r {
-        case 9.5...:    return "NBA Level"
-        case 9.0..<9.5: return "Elite Pro"
-        case 8.0..<9.0: return "Elite"
-        case 7.0..<8.0: return "D3 / High-Level Amateur"
-        case 6.0..<7.0: return "Park Legend"
-        case 5.0..<6.0: return "Park Dominant"
-        case 4.0..<5.0: return "Above Average"
-        case 3.0..<4.0: return "Recreational"
-        case 2.0..<3.0: return "Developing"
-        default:        return "Just Getting Started"
-        }
+        NETRRating.tierName(for: r)
     }
 
     static func tierColorHex(_ r: Double) -> String {
-        switch r {
-        case 7...:    return "#30D158"
-        case 5..<7:   return "#00FF41"
-        case 3.5..<5: return "#F5C542"
-        default:      return "#FF453A"
-        }
+        NETRRating.tier(for: r)?.hexColor ?? "#444444"
     }
 }
 
@@ -639,13 +623,13 @@ nonisolated struct AssessmentResult: Sendable {
     ]
 
     static let categoryIcons: [String: String] = [
-        "scoring": "scope",
+        "scoring": "crosshair",
         "iq": "brain",
-        "defense": "shield.fill",
-        "handles": "hand.raised.fill",
-        "playmaking": "bolt.fill",
-        "finishing": "flame.fill",
-        "rebounding": "arrow.up.circle",
+        "defense": "shield",
+        "handles": "hand",
+        "playmaking": "zap",
+        "finishing": "flame",
+        "rebounding": "arrow-up-circle",
     ]
 
     func radarDotColorHex(for cat: String) -> String {

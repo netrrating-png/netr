@@ -5,6 +5,7 @@ struct SelfAssessmentView: View {
     @Binding var categoryScores: [String: Double]
     var onComplete: () -> Void
     var onBack: (() -> Void)? = nil
+    var preselectedPosition: PlayerPosition? = nil
 
     @State private var phase: AssessmentPhase = .age
     @State private var selectedAgeGroup: AgeGroup? = nil
@@ -61,6 +62,11 @@ struct SelfAssessmentView: View {
             }
         }
         .animation(.snappy(duration: 0.3), value: phase)
+        .onAppear {
+            if let pos = preselectedPosition {
+                selectedPosition = pos
+            }
+        }
     }
 
     // MARK: - Age Phase
@@ -70,8 +76,7 @@ struct SelfAssessmentView: View {
             HStack {
                 Button(action: { onBack?() }) {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -149,8 +154,7 @@ struct SelfAssessmentView: View {
                     withAnimation { phase = .age }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -227,8 +231,7 @@ struct SelfAssessmentView: View {
                     withAnimation { phase = .level }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -272,7 +275,7 @@ struct SelfAssessmentView: View {
                     }
 
                     Button {
-                        withAnimation { phase = .position }
+                        withAnimation { phase = preselectedPosition != nil ? .questions : .position }
                     } label: {
                         Text("NEXT")
                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -305,8 +308,7 @@ struct SelfAssessmentView: View {
                     withAnimation { phase = .frequency }
                 } label: {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         Text("Back")
                             .font(.system(size: 15, weight: .semibold))
                     }
@@ -381,8 +383,7 @@ struct SelfAssessmentView: View {
             HStack {
                 Button(action: handleBack) {
                     HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("chevron-left", size: 14)
                         if currentIndex == 0 {
                             Text("Back")
                                 .font(.system(size: 15, weight: .semibold))
@@ -420,8 +421,7 @@ struct SelfAssessmentView: View {
 
                     HStack(spacing: 8) {
                         if let icon = AssessmentResult.categoryIcons[currentQuestion.category] {
-                            Image(systemName: icon)
-                                .font(.system(size: 14, weight: .semibold))
+                            LucideIcon(icon, size: 14)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                         if let label = AssessmentResult.categoryDisplayNames[currentQuestion.category] {
@@ -500,12 +500,12 @@ struct SelfAssessmentView: View {
                     if let result = assessmentResult {
                         Text(result.formattedScore)
                             .font(.system(size: 72, weight: .black, design: .default).width(.compressed))
-                            .foregroundStyle(NETRTheme.neonGreen)
-                            .shadow(color: NETRTheme.neonGreen.opacity(0.5), radius: 30)
+                            .foregroundStyle(NETRRating.color(for: result.overallScore))
+                            .shadow(color: NETRRating.color(for: result.overallScore).opacity(0.5), radius: 30)
 
-                        Text(result.tierLabel.uppercased())
+                        Text(NETRRating.tierName(for: result.overallScore).uppercased())
                             .font(.system(.title3, design: .default, weight: .heavy).width(.compressed))
-                            .foregroundStyle(tierColor(for: result.overallScore))
+                            .foregroundStyle(NETRRating.color(for: result.overallScore))
 
                         HStack(spacing: 10) {
                             if let age = selectedAgeGroup {
@@ -527,8 +527,7 @@ struct SelfAssessmentView: View {
 
                         if selectedAgeGroup?.athleticModifier ?? 1.0 < 1.0 {
                             HStack(spacing: 6) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 12))
+                                LucideIcon("info", size: 12)
                                     .foregroundStyle(NETRTheme.gold)
                                 Text("Age-adjusted for fair calibration")
                                     .font(.system(size: 12))
@@ -601,7 +600,7 @@ struct SelfAssessmentView: View {
                 selectedAnswer = answers[questions[currentIndex].id]
             }
         } else {
-            withAnimation { phase = .position }
+            withAnimation { phase = preselectedPosition != nil ? .frequency : .position }
         }
     }
 
@@ -656,12 +655,7 @@ struct SelfAssessmentView: View {
     }
 
     private func tierColor(for score: Double) -> Color {
-        switch score {
-        case 7.0...: return NETRTheme.neonGreen
-        case 5.0..<7.0: return Color(red: 0.478, green: 0.91, blue: 0.0)
-        case 3.0..<5.0: return NETRTheme.blue
-        default: return NETRTheme.subtext
-        }
+        NETRRating.color(for: score)
     }
 
     private func buildRadarSkillsFromResult(_ result: AssessmentResult) -> [RadarSkill] {
@@ -669,7 +663,7 @@ struct SelfAssessmentView: View {
         return order.map { cat in
             let raw = result.categoryScores[cat] ?? 1.0
             let label = AssessmentResult.categoryDisplayNames[cat] ?? cat
-            let icon = AssessmentResult.categoryIcons[cat] ?? "questionmark"
+            let icon = AssessmentResult.categoryIcons[cat] ?? "help-circle"
             let value = (raw - 1.0) / 9.0
             return RadarSkill(label: label, icon: icon, raw: raw, value: value)
         }
@@ -734,8 +728,7 @@ struct PlayingLevelRow: View {
                     Circle()
                         .fill(isSelected ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.card)
                         .frame(width: 40, height: 40)
-                    Image(systemName: level.icon)
-                        .font(.system(size: 16, weight: .semibold))
+                    LucideIcon(level.icon, size: 16)
                         .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
                 }
 
@@ -844,8 +837,7 @@ struct PositionRow: View {
                     Circle()
                         .fill(isSelected ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.card)
                         .frame(width: 40, height: 40)
-                    Image(systemName: position.icon)
-                        .font(.system(size: 16, weight: .semibold))
+                    LucideIcon(position.icon, size: 16)
                         .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
                 }
 

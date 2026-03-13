@@ -28,8 +28,7 @@ struct CommentsView: View {
                             .frame(maxWidth: .infinity)
                         } else if comments.isEmpty {
                             VStack(spacing: 12) {
-                                Image(systemName: "bubble.left")
-                                    .font(.system(size: 32))
+                                LucideIcon("message-circle", size: 32)
                                     .foregroundStyle(NETRTheme.muted)
                                 Text("No comments yet")
                                     .font(.subheadline)
@@ -61,8 +60,7 @@ struct CommentsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .semibold))
+                        LucideIcon("x", size: 14)
                             .foregroundStyle(NETRTheme.subtext)
                     }
                 }
@@ -98,9 +96,18 @@ struct CommentsView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 16) {
-                Label("\(post.likeCount)", systemImage: "heart")
-                Label("\(post.commentCount)", systemImage: "bubble.left")
-                Label("\(post.repostCount)", systemImage: "arrow.2.squarepath")
+                HStack(spacing: 4) {
+                    LucideIcon("heart", size: 12)
+                    Text("\(post.likeCount)")
+                }
+                HStack(spacing: 4) {
+                    LucideIcon("message-circle", size: 12)
+                    Text("\(post.commentCount)")
+                }
+                HStack(spacing: 4) {
+                    LucideIcon("repeat", size: 12)
+                    Text("\(post.repostCount)")
+                }
             }
             .font(.caption)
             .foregroundStyle(NETRTheme.subtext)
@@ -127,8 +134,7 @@ struct CommentsView: View {
                             ProgressView()
                                 .tint(NETRTheme.background)
                         } else {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 14, weight: .bold))
+                            LucideIcon("arrow-up", size: 14)
                                 .foregroundStyle(NETRTheme.background)
                         }
                     }
@@ -249,8 +255,7 @@ struct CommentRow: View {
 
                 if comment.likeCount > 0 {
                     HStack(spacing: 4) {
-                        Image(systemName: "heart")
-                            .font(.system(size: 10))
+                        LucideIcon("heart", size: 10)
                         Text("\(comment.likeCount)")
                             .font(.caption2)
                     }

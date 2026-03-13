@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct ComposePostView: View {
     @Bindable var viewModel: FeedViewModel
@@ -6,11 +7,14 @@ struct ComposePostView: View {
     @State private var postText: String = ""
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtSearch: Bool = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
 
     private let maxChars = 280
 
     private var charCount: Int { postText.count }
     private var isOverLimit: Bool { charCount > maxChars }
+    private var charsRemaining: Int { maxChars - charCount }
     private var canPost: Bool { !postText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isOverLimit && !viewModel.isPosting }
 
     var body: some View {
@@ -27,6 +31,11 @@ struct ComposePostView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
+
+                        if let image = selectedImage {
+                            photoPreview(image)
+                                .padding(.horizontal, 16)
+                        }
 
                         if let court = selectedCourt {
                             selectedCourtChip(court)
@@ -73,6 +82,15 @@ struct ComposePostView: View {
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.surface)
             }
+            .onChange(of: selectedPhotoItem) { _, newValue in
+                guard let item = newValue else { return }
+                Task {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        selectedImage = image
+                    }
+                }
+            }
         }
     }
 
@@ -92,7 +110,7 @@ struct ComposePostView: View {
                     }
                     .clipShape(Circle())
             } else {
-                let name = SupabaseManager.shared.currentProfile?.fullName ?? "You"
+                let name = SupabaseManager.shared.currentProfile?.fullName ?? "Player"
                 let parts = name.split(separator: " ")
                 let initials = parts.count >= 2
                     ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
@@ -111,7 +129,7 @@ struct ComposePostView: View {
         Group {
             if let profile = SupabaseManager.shared.currentProfile {
                 HStack(spacing: 4) {
-                    Text(profile.fullName ?? profile.username ?? "You")
+                    Text(profile.fullName ?? profile.username ?? "Player")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(NETRTheme.text)
                     if let username = profile.username {
@@ -141,10 +159,30 @@ struct ComposePostView: View {
         }
     }
 
+    private func photoPreview(_ image: UIImage) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(maxHeight: 200)
+                .clipShape(.rect(cornerRadius: 12))
+
+            Button {
+                selectedImage = nil
+                selectedPhotoItem = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .shadow(radius: 4)
+            }
+            .padding(8)
+        }
+    }
+
     private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.caption)
+            LucideIcon("map-pin", size: 12)
                 .foregroundStyle(NETRTheme.blue)
             Text(court.name)
                 .font(.caption.weight(.semibold))
@@ -158,8 +196,7 @@ struct ComposePostView: View {
             Button {
                 selectedCourt = nil
             } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.caption)
+                LucideIcon("x-circle", size: 12)
                     .foregroundStyle(NETRTheme.subtext)
             }
         }
@@ -174,22 +211,31 @@ struct ComposePostView: View {
                 showCourtSearch = true
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "mappin")
-                        .font(.system(size: 14))
+                    LucideIcon("map-pin", size: 14)
                     Text("Court")
                         .font(.caption.weight(.semibold))
                 }
                 .foregroundStyle(NETRTheme.blue)
             }
 
+            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                HStack(spacing: 4) {
+                    LucideIcon("image", size: 14)
+                    Text("Photo")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(selectedImage != nil ? NETRTheme.neonGreen : NETRTheme.purple)
+            }
+            .disabled(selectedImage != nil)
+
             Spacer()
 
             Text("\(charCount)/\(maxChars)")
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundStyle(
-                    charCount >= 260
-                    ? (isOverLimit ? NETRTheme.red : NETRTheme.gold)
-                    : NETRTheme.subtext
+                    charsRemaining < 0
+                    ? NETRTheme.red
+                    : (charsRemaining < 20 ? NETRTheme.red : (charsRemaining < 50 ? NETRTheme.gold : NETRTheme.subtext))
                 )
 
             if viewModel.isPosting {
@@ -214,7 +260,7 @@ struct CourtSearchSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
-                    Image(systemName: "magnifyingglass")
+                    LucideIcon("search")
                         .foregroundStyle(NETRTheme.subtext)
                     TextField("Search courts...", text: $searchText)
                         .foregroundStyle(NETRTheme.text)
@@ -231,8 +277,7 @@ struct CourtSearchSheet: View {
 
                 if viewModel.courtResults.isEmpty && searchText.count >= 2 {
                     VStack(spacing: 8) {
-                        Image(systemName: "mappin.slash")
-                            .font(.title2)
+                        LucideIcon("map-pin-off", size: 22)
                             .foregroundStyle(NETRTheme.subtext)
                         Text("No courts found")
                             .font(.subheadline)
@@ -248,7 +293,7 @@ struct CourtSearchSheet: View {
                                     dismiss()
                                 } label: {
                                     HStack(spacing: 10) {
-                                        Image(systemName: "mappin.circle.fill")
+                                        LucideIcon("map-pin")
                                             .foregroundStyle(NETRTheme.blue)
                                         VStack(alignment: .leading, spacing: 2) {
                                             HStack(spacing: 4) {
@@ -256,8 +301,7 @@ struct CourtSearchSheet: View {
                                                     .font(.subheadline.weight(.semibold))
                                                     .foregroundStyle(NETRTheme.text)
                                                 if court.verified == true {
-                                                    Image(systemName: "checkmark.seal.fill")
-                                                        .font(.system(size: 10))
+                                                    LucideIcon("badge-check", size: 10)
                                                         .foregroundStyle(NETRTheme.neonGreen)
                                                 }
                                             }

@@ -39,7 +39,7 @@ struct AddCourtView: View {
     private var formView: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
-                Image(systemName: "info.circle.fill")
+                LucideIcon("info")
                     .foregroundStyle(NETRTheme.blue)
                 Text("New courts are marked Pending until verified by the NETR team.")
                     .font(.caption)
@@ -111,7 +111,7 @@ struct AddCourtView: View {
 
             Toggle(isOn: $hasLights) {
                 HStack(spacing: 8) {
-                    Image(systemName: "lightbulb.fill")
+                    LucideIcon("lightbulb")
                         .foregroundStyle(hasLights ? NETRTheme.gold : NETRTheme.subtext)
                     Text("Has Lights")
                         .font(.subheadline.weight(.semibold))
@@ -125,7 +125,7 @@ struct AddCourtView: View {
 
             Toggle(isOn: $isIndoor) {
                 HStack(spacing: 8) {
-                    Image(systemName: "building.2.fill")
+                    LucideIcon("building-2")
                         .foregroundStyle(isIndoor ? NETRTheme.blue : NETRTheme.subtext)
                     Text("Indoor Court")
                         .font(.subheadline.weight(.semibold))
@@ -139,7 +139,7 @@ struct AddCourtView: View {
 
             Toggle(isOn: $isFullCourt) {
                 HStack(spacing: 8) {
-                    Image(systemName: "basketball.fill")
+                    LucideIcon("circle-dot")
                         .foregroundStyle(isFullCourt ? NETRTheme.neonGreen : NETRTheme.subtext)
                     Text("Full Court")
                         .font(.subheadline.weight(.semibold))
@@ -197,8 +197,7 @@ struct AddCourtView: View {
         VStack(spacing: 24) {
             Spacer(minLength: 60)
 
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
+            LucideIcon("check-circle", size: 64)
                 .foregroundStyle(NETRTheme.neonGreen)
                 .neonGlow(radius: 16)
 
@@ -212,7 +211,7 @@ struct AddCourtView: View {
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 8) {
-                Image(systemName: "clock.fill")
+                LucideIcon("clock")
                     .foregroundStyle(NETRTheme.gold)
                 Text("PENDING")
                     .font(.caption.weight(.bold))

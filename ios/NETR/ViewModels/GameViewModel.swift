@@ -16,6 +16,7 @@ class GameViewModel {
 
     var showRateScreen: Bool = false
     var completedGameId: String?
+    var isCheckingOut: Bool = false
 
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
@@ -24,7 +25,8 @@ class GameViewModel {
     func createGame(
         courtId: String?,
         format: String,
-        skillLevel: String
+        skillLevel: String,
+        scheduledAt: Date? = nil
     ) async throws -> SupabaseGame {
         guard let hostId = SupabaseManager.shared.session?.user.id.uuidString else {
             throw NSError(domain: "NETR", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not signed in"])
@@ -41,6 +43,13 @@ class GameViewModel {
             }
         }()
 
+        var scheduledAtStr: String? = nil
+        if let scheduledAt {
+            let fmt = ISO8601DateFormatter()
+            fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            scheduledAtStr = fmt.string(from: scheduledAt)
+        }
+
         let payload = CreateGamePayload(
             courtId: courtId,
             hostId: hostId,
@@ -48,7 +57,8 @@ class GameViewModel {
             format: format,
             skillLevel: skillLevel,
             status: "waiting",
-            maxPlayers: maxPlayers
+            maxPlayers: maxPlayers,
+            scheduledAt: scheduledAtStr
         )
 
         let created: SupabaseGame = try await client
@@ -105,7 +115,7 @@ class GameViewModel {
         do {
             let result: [LobbyPlayer] = try await client
                 .from("game_players")
-                .select("id, user_id, game_id, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
+                .select("id, user_id, game_id, checked_out_at, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
                 .eq("game_id", value: gameId)
                 .order("joined_at", ascending: true)
                 .execute()
@@ -162,6 +172,56 @@ class GameViewModel {
         }
     }
 
+    func checkOut() async {
+        guard let gameId = game?.id,
+              let userId = SupabaseManager.shared.session?.user.id.uuidString
+        else { return }
+
+        isCheckingOut = true
+
+        nonisolated struct CheckOutUpdate: Encodable, Sendable {
+            let checkedOutAt: String
+            nonisolated enum CodingKeys: String, CodingKey {
+                case checkedOutAt = "checked_out_at"
+            }
+        }
+
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = fmt.string(from: Date())
+
+        do {
+            try await client
+                .from("game_players")
+                .update(CheckOutUpdate(checkedOutAt: now))
+                .eq("game_id", value: gameId)
+                .eq("user_id", value: userId)
+                .execute()
+
+            await loadPlayers(gameId: gameId)
+            isCheckingOut = false
+
+            completedGameId = gameId
+            showRateScreen = true
+        } catch {
+            isCheckingOut = false
+            print("Check out error: \(error)")
+        }
+    }
+
+    var currentUserCheckedOut: Bool {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return false }
+        return players.first(where: { $0.userId == userId })?.isCheckedOut ?? false
+    }
+
+    var checkedInPlayerIds: Set<String> {
+        Set(players.filter { !$0.isCheckedOut }.map { $0.userId })
+    }
+
+    var uncheckedOutCount: Int {
+        players.filter { !$0.isCheckedOut }.count
+    }
+
     func subscribeToLobby(gameId: String) async {
         realtimeChannel = client.realtimeV2.channel("lobby-\(gameId)")
 
@@ -205,5 +265,26 @@ class GameViewModel {
 
     var canStart: Bool {
         isHost && players.count >= 2 && game?.status == "waiting"
+    }
+
+    // MARK: - Scheduling Helpers
+
+    var scheduledDate: Date? {
+        guard let str = game?.scheduledAt else { return nil }
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = fmt.date(from: str) { return d }
+        fmt.formatOptions = [.withInternetDateTime]
+        return fmt.date(from: str)
+    }
+
+    var isScheduled: Bool {
+        scheduledDate != nil
+    }
+
+    var timeUntilStart: TimeInterval? {
+        guard let scheduled = scheduledDate else { return nil }
+        let diff = scheduled.timeIntervalSinceNow
+        return diff > 0 ? diff : nil
     }
 }

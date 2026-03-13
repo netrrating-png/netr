@@ -4,13 +4,13 @@ import PhotosUI
 struct SettingsView: View {
     let store: MockDataStore
     @Bindable var appearance: AppearanceManager
-    @Bindable var courtsViewModel: CourtsViewModel
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @State private var showPlayerCard: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
+    @State private var profileViewModel = ProfileViewModel()
 
     private var user: Player { store.currentUser }
 
@@ -34,14 +34,16 @@ struct SettingsView: View {
             .scrollIndicators(.hidden)
         }
         .sheet(isPresented: $showPlayerCard) {
-            PlayerCardView(player: user, courts: Array(courtsViewModel.courts.prefix(3)))
+            PlayerCardView(player: user)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) {
+                if let data = try? await item.loadTransferable(type: Data.self),
+                   let image = UIImage(data: data) {
+                    await profileViewModel.uploadAvatar(image)
                     store.currentUser.profileImageData = data
                 }
             }
@@ -62,17 +64,32 @@ struct SettingsView: View {
                     ZStack {
                         Circle()
                             .stroke(
-                                NETRTheme.tierColor(for: user),
+                                NETRRating.color(for: user.rating),
                                 style: StrokeStyle(
                                     lineWidth: 3,
                                     dash: user.isProvisional && !user.isProspect ? [6, 4] : []
                                 )
                             )
                             .frame(width: 72, height: 72)
-                            .neonGlow(NETRTheme.tierColor(for: user), radius: 6)
+                            .neonGlow(NETRRating.color(for: user.rating), radius: 6)
 
-                        if let imageData = user.profileImageData,
-                           let uiImage = UIImage(data: imageData) {
+                        if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 64, height: 64)
+                                        .clipShape(Circle())
+                                } else {
+                                    Text(user.avatar)
+                                        .font(.system(size: 24, weight: .bold))
+                                        .foregroundStyle(NETRTheme.text)
+                                        .frame(width: 64, height: 64)
+                                        .background(NETRTheme.card, in: Circle())
+                                }
+                            }
+                        } else if let imageData = user.profileImageData,
+                                  let uiImage = UIImage(data: imageData) {
                             Image(uiImage: uiImage)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -88,8 +105,7 @@ struct SettingsView: View {
                     }
 
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                        Image(systemName: "camera.fill")
-                            .font(.system(size: 10, weight: .bold))
+                        LucideIcon("camera", size: 10)
                             .foregroundStyle(NETRTheme.background)
                             .frame(width: 24, height: 24)
                             .background(NETRTheme.neonGreen, in: Circle())
@@ -103,8 +119,7 @@ struct SettingsView: View {
                             .font(.headline.weight(.bold))
                             .foregroundStyle(NETRTheme.text)
                         if user.isVerified {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.caption)
+                            LucideIcon("badge-check", size: 12)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                     }
@@ -126,16 +141,7 @@ struct SettingsView: View {
 
                 Spacer()
 
-                if let rating = user.rating {
-                    VStack(spacing: 2) {
-                        Text(String(format: "%.1f", rating))
-                            .font(.title2.weight(.black))
-                            .foregroundStyle(NETRTheme.ratingColor(for: rating))
-                        Text("NETR")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                }
+                NETRBadge(score: user.rating, size: .medium)
             }
         }
         .padding(16)
@@ -153,8 +159,7 @@ struct SettingsView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(NETRTheme.neonGreen.opacity(0.1))
                         .frame(width: 40, height: 40)
-                    Image(systemName: "person.text.rectangle.fill")
-                        .font(.body.weight(.semibold))
+                    LucideIcon("id-card")
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
@@ -169,8 +174,7 @@ struct SettingsView: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)
             }
             .padding(14)
@@ -194,8 +198,7 @@ struct SettingsView: View {
 
             VStack(spacing: 0) {
                 HStack(spacing: 12) {
-                    Image(systemName: appearance.isDarkMode ? "moon.fill" : "sun.max.fill")
-                        .font(.body)
+                    LucideIcon(appearance.isDarkMode ? "moon" : "sun")
                         .foregroundStyle(appearance.isDarkMode ? NETRTheme.purple : NETRTheme.gold)
                         .frame(width: 24)
 
@@ -274,11 +277,11 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "person.fill", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
+                SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "bell.fill", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
+                SettingsRow(icon: "bell", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "lock.fill", iconColor: NETRTheme.red, title: "Privacy", subtitle: "Profile visibility & data")
+                SettingsRow(icon: "lock", iconColor: NETRTheme.red, title: "Privacy", subtitle: "Profile visibility & data")
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
@@ -295,11 +298,11 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "info.circle.fill", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version 1.0")
+                SettingsRow(icon: "info", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version 1.0")
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "doc.text.fill", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil)
+                SettingsRow(icon: "file-text", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil)
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "hand.raised.fill", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil)
+                SettingsRow(icon: "hand", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil)
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
@@ -312,8 +315,7 @@ struct SettingsView: View {
             showSignOutConfirm = true
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.body)
+                LucideIcon("log-out")
                     .foregroundStyle(NETRTheme.red)
                     .frame(width: 24)
                 Text("Sign Out")
@@ -347,8 +349,7 @@ struct SettingsRow: View {
     var body: some View {
         Button {} label: {
             HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.body)
+                LucideIcon(icon)
                     .foregroundStyle(iconColor)
                     .frame(width: 24)
 
@@ -365,8 +366,7 @@ struct SettingsRow: View {
 
                 Spacer()
 
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
+                LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)
             }
             .padding(14)

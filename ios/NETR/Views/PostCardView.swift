@@ -9,6 +9,8 @@ struct PostCardView: View {
     let onDelete: () -> Void
     let onBlock: () -> Void
 
+    @State private var showFullPhoto: Bool = false
+
     private var author: FeedAuthor? { post.author }
 
     var body: some View {
@@ -19,6 +21,10 @@ struct PostCardView: View {
                     authorLine
                     contentView
                 }
+            }
+
+            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
+                postPhoto(url: url)
             }
 
             if !post.hashtags.isEmpty {
@@ -50,6 +56,11 @@ struct PostCardView: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $showFullPhoto) {
+            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
+                FullScreenPhotoView(url: url)
+            }
+        }
     }
 
     private var avatarView: some View {
@@ -65,14 +76,14 @@ struct PostCardView: View {
                         }
                     }
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(NETRTheme.ratingColor(for: author?.netrScore), lineWidth: 2))
+                    .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
             } else {
                 Text(initials)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(NETRTheme.text)
                     .frame(width: 40, height: 40)
                     .background(NETRTheme.card, in: Circle())
-                    .overlay(Circle().stroke(NETRTheme.ratingColor(for: author?.netrScore), lineWidth: 2))
+                    .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
             }
         }
     }
@@ -96,10 +107,10 @@ struct PostCardView: View {
             if let netr = author?.netrScore {
                 Text(String(format: "%.1f", netr))
                     .font(.system(size: 10, weight: .black))
-                    .foregroundStyle(NETRTheme.ratingColor(for: netr))
+                    .foregroundStyle(NETRRating.color(for: netr))
                     .padding(.horizontal, 4)
                     .padding(.vertical, 1)
-                    .background(NETRTheme.ratingColor(for: netr).opacity(0.12), in: .rect(cornerRadius: 4))
+                    .background(NETRRating.color(for: netr).opacity(0.12), in: .rect(cornerRadius: 4))
             }
 
             if let vibe = author?.vibeScore {
@@ -158,6 +169,29 @@ struct PostCardView: View {
         return result
     }
 
+    private func postPhoto(url: URL) -> some View {
+        Button { showFullPhoto = true } label: {
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(maxHeight: 260)
+                        .clipShape(.rect(cornerRadius: 12))
+                } else if phase.error != nil {
+                    EmptyView()
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(NETRTheme.card)
+                        .frame(height: 180)
+                        .overlay(ProgressView().tint(NETRTheme.neonGreen))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 50)
+    }
+
     private var hashtagRow: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 6) {
@@ -174,8 +208,7 @@ struct PostCardView: View {
 
     private func courtEmbed(_ court: FeedCourt) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 14))
+            LucideIcon("map-pin", size: 14)
                 .foregroundStyle(NETRTheme.blue)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 4) {
@@ -183,8 +216,7 @@ struct PostCardView: View {
                         .font(.caption.weight(.bold))
                         .foregroundStyle(NETRTheme.text)
                     if court.verified == true {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 9))
+                        LucideIcon("badge-check", size: 9)
                             .foregroundStyle(NETRTheme.neonGreen)
                     }
                 }
@@ -205,19 +237,19 @@ struct PostCardView: View {
     private var actionBar: some View {
         HStack(spacing: 0) {
             FeedActionButton(
-                icon: post.isLiked ? "heart.fill" : "heart",
+                icon: "heart",
                 count: post.likeCount,
                 color: post.isLiked ? NETRTheme.neonGreen : NETRTheme.subtext,
                 action: onLike
             )
             FeedActionButton(
-                icon: "bubble.left",
+                icon: "message-circle",
                 count: post.commentCount,
                 color: NETRTheme.subtext,
                 action: onComment
             )
             FeedActionButton(
-                icon: "arrow.2.squarepath",
+                icon: "repeat",
                 count: post.repostCount,
                 color: post.isReposted ? NETRTheme.neonGreen : NETRTheme.subtext,
                 action: onRepost
@@ -225,8 +257,7 @@ struct PostCardView: View {
             Button {
                 sharePost()
             } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.caption)
+                LucideIcon("share", size: 12)
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(minWidth: 40, alignment: .leading)
             }
@@ -246,6 +277,38 @@ struct PostCardView: View {
     }
 }
 
+// MARK: - Full Screen Photo
+
+struct FullScreenPhotoView: View {
+    let url: URL
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            AsyncImage(url: url) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                } else {
+                    ProgressView().tint(.white)
+                }
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .padding(16)
+            }
+        }
+        .statusBarHidden()
+    }
+}
+
 struct FeedActionButton: View {
     let icon: String
     let count: Int
@@ -255,8 +318,7 @@ struct FeedActionButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption)
+                LucideIcon(icon, size: 12)
                 if count > 0 {
                     Text("\(count)")
                         .font(.caption2)

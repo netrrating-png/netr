@@ -74,8 +74,7 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "location.fill")
-                .font(.system(size: 56))
+            LucideIcon("map-pin", size: 56)
                 .foregroundStyle(NETRTheme.neonGreen)
                 .neonGlow(radius: 12)
 
@@ -158,7 +157,7 @@ struct OnboardingView: View {
 
                     if isProspect {
                         HStack(spacing: 12) {
-                            Image(systemName: "shield.fill")
+                            LucideIcon("shield")
                                 .foregroundStyle(NETRTheme.purple)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("PROSPECT ACCOUNT")
@@ -264,19 +263,13 @@ struct OnboardingView: View {
         }
     }
 
-    private let ratingTiers: [(range: String, label: String, description: String, color: Color)] = [
-        ("10.0", "THEORETICAL MAX", "Unreachable. Doesn't exist in the app.", NETRTheme.neonGreen),
-        ("9.5–9.9", "NBA LEVEL", "LeBron, Steph, KD. Even they have room.", NETRTheme.neonGreen),
-        ("9.0–9.4", "ELITE D1", "Top program starter. The gap between here and NBA is real.", NETRTheme.neonGreen),
-        ("8.0–8.9", "D2 / PRO OVERSEAS", "Best player on a D2 team.", Color(red: 0.478, green: 0.91, blue: 0.0)),
-        ("7.0–7.9", "D3 LEVEL", "Dominates every pickup run they walk into.", Color(red: 0.478, green: 0.91, blue: 0.0)),
-        ("6.0–6.9", "PARK LEGEND", "Elite across the board. Peer-earned only, no self-rating here.", Color(red: 1.0, green: 0.839, blue: 0.039)),
-        ("5.0–5.9", "PARK DOMINANT", "Best player at most courts. Where serious ballers land.", Color(red: 1.0, green: 0.839, blue: 0.039)),
-        ("4.0–4.9", "ABOVE AVERAGE", "Solid, has real skills, organized ball background.", Color(red: 1.0, green: 0.839, blue: 0.039)),
-        ("3.0–3.9", "HS / AAU LEVEL", "Fundamentals are there, comfortable in competitive pickup.", NETRTheme.blue),
-        ("2.0–2.9", "PLAYING FOR FUN", "Shows up, contributes, it's recreational.", NETRTheme.blue),
-        ("1.0–1.9", "JUST STARTING OUT", "", NETRTheme.subtext),
-    ]
+    private var ratingTiers: [(range: String, label: String, description: String, color: Color)] {
+        NETRTier.all.map { tier in
+            let lo = String(format: "%.1f", tier.range.lowerBound)
+            let hi = String(format: "%.1f", tier.range.upperBound)
+            return (range: "\(lo)–\(hi)", label: tier.name.uppercased(), description: tier.stat, color: tier.color)
+        }
+    }
 
     private var ratingExplainedStep: some View {
         VStack(spacing: 0) {
@@ -339,8 +332,7 @@ struct OnboardingView: View {
             .padding(.top, 12)
 
             HStack(spacing: 6) {
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 11))
+                LucideIcon("info", size: 11)
                     .foregroundStyle(NETRTheme.neonGreen)
                 Text("Your NETR is shaped by peer reviews. Play games, get rated, watch your number move.")
                     .font(.system(size: 11))
@@ -354,18 +346,43 @@ struct OnboardingView: View {
 
             Spacer()
 
-            Button {
-                withAnimation { currentStep = 5 }
-            } label: {
-                Text("GOT IT — NEXT")
-                    .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                    .tracking(1)
-                    .foregroundStyle(NETRTheme.background)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+            if let error = signUpError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(NETRTheme.red)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 8)
             }
-            .buttonStyle(PressButtonStyle())
+
+            VStack(spacing: 12) {
+                Button {
+                    withAnimation { currentStep = 5 }
+                } label: {
+                    Text("START SELF ASSESSMENT")
+                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                        .tracking(1)
+                        .foregroundStyle(NETRTheme.background)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                }
+                .buttonStyle(PressButtonStyle())
+
+                Button {
+                    performSignUp()
+                } label: {
+                    HStack(spacing: 8) {
+                        if isSigningUp {
+                            ProgressView()
+                                .tint(NETRTheme.subtext)
+                        }
+                        Text("Skip for Now")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+                .disabled(isSigningUp)
+            }
             .padding(.horizontal, 24)
             .padding(.bottom, 32)
         }
@@ -402,23 +419,13 @@ struct OnboardingView: View {
             },
             onBack: {
                 withAnimation { currentStep = 5 }
-            }
+            },
+            preselectedPosition: selectedPosition.flatMap { PlayerPosition(rawValue: $0.rawValue.lowercased()) }
         )
     }
 
     private func ratingTierInfo(for rating: Double) -> (name: String, color: Color) {
-        switch rating {
-        case 9.5...: return ("NBA LEVEL", NETRTheme.gold)
-        case 9.0..<9.5: return ("ELITE D1", NETRTheme.gold)
-        case 8.0..<9.0: return ("D2 / PRO OVERSEAS", NETRTheme.neonGreen)
-        case 7.0..<8.0: return ("D3 LEVEL", NETRTheme.neonGreen)
-        case 6.0..<7.0: return ("PARK LEGEND", Color(red: 0.478, green: 0.91, blue: 0.0))
-        case 5.0..<6.0: return ("PARK DOMINANT", Color(red: 0.478, green: 0.91, blue: 0.0))
-        case 4.0..<5.0: return ("ABOVE AVERAGE", NETRTheme.blue)
-        case 3.0..<4.0: return ("HS / AAU LEVEL", NETRTheme.blue)
-        case 2.0..<3.0: return ("PLAYING FOR FUN", NETRTheme.subtext)
-        default: return ("JUST STARTING OUT", NETRTheme.subtext)
-        }
+        (NETRRating.tierName(for: rating).uppercased(), NETRRating.color(for: rating))
     }
 
     private var revealScore: Double {
@@ -542,11 +549,17 @@ struct OnboardingView: View {
     }
 
     private func performSignUp() {
+        let email = supabase.pendingEmail
+        let password = supabase.pendingPassword
+
+        guard !email.isEmpty, !password.isEmpty else {
+            signUpError = "Missing email or password. Please go back and enter your credentials."
+            return
+        }
+
         isSigningUp = true
         signUpError = nil
 
-        let email = supabase.pendingEmail
-        let password = supabase.pendingPassword
         let name = fullName
         let handle = username
         let dob = dateOfBirth
@@ -568,8 +581,11 @@ struct OnboardingView: View {
                     let msg = error.localizedDescription.lowercased()
                     if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
                         try await supabase.signInWithEmail(email: email, password: password)
+                        guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
+                            throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
+                        }
                         try await supabase.saveProfile(
-                            userId: supabase.session?.user.id.uuidString ?? "",
+                            userId: userId,
                             fullName: name,
                             username: handle,
                             dateOfBirth: dob,
@@ -580,7 +596,22 @@ struct OnboardingView: View {
                     }
                 }
 
-                if let score {
+                // Sign-up may succeed without returning a session (e.g. email
+                // confirmation enabled). Try signing in to establish one, but
+                // don't fail the whole flow — the auth listener may still
+                // deliver the session asynchronously.
+                if supabase.session == nil {
+                    do {
+                        try await supabase.signInWithEmail(email: email, password: password)
+                    } catch {
+                        // Wait briefly for the auth state listener to deliver
+                        // the session (e.g. when autoconfirm is on but the
+                        // signUp response didn't include it synchronously).
+                        try? await Task.sleep(for: .milliseconds(500))
+                    }
+                }
+
+                if let score, supabase.session != nil {
                     try await supabase.saveSelfAssessmentScore(
                         score: score,
                         categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
@@ -612,15 +643,13 @@ struct OnboardingView: View {
                             .fill(NETRTheme.card)
                             .frame(width: 100, height: 100)
                             .overlay(
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 40))
+                                LucideIcon("user", size: 40)
                                     .foregroundStyle(NETRTheme.muted)
                             )
                             .overlay(Circle().stroke(NETRTheme.border, lineWidth: 2))
                     }
 
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 12, weight: .bold))
+                    LucideIcon("camera", size: 12)
                         .foregroundStyle(NETRTheme.background)
                         .frame(width: 30, height: 30)
                         .background(NETRTheme.neonGreen, in: Circle())
@@ -643,8 +672,7 @@ struct PositionCard: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                Image(systemName: position.icon)
-                    .font(.title2)
+                LucideIcon(position.icon, size: 22)
                     .foregroundStyle(isSelected ? NETRTheme.neonGreen : NETRTheme.subtext)
 
                 Text(position.rawValue)

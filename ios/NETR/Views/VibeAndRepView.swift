@@ -212,8 +212,7 @@ struct VibeQuestionView: View {
             } label: {
                 HStack {
                     if submitted {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 15, weight: .bold))
+                        LucideIcon("check", size: 15)
                     } else {
                         Text(selected != nil ? "Submit Vibe →" : "Select one to continue")
                             .font(.system(size: 16, weight: .bold))
@@ -222,13 +221,17 @@ struct VibeQuestionView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(
-                    selected != nil
-                    ? LinearGradient(gradient: Gradient(colors: [selected!.color.opacity(0.9), selected!.color]), startPoint: .leading, endPoint: .trailing)
-                    : LinearGradient(gradient: Gradient(colors: [NC.muted, NC.muted]), startPoint: .leading, endPoint: .trailing)
+                    Group {
+                        if let sel = selected {
+                            LinearGradient(gradient: Gradient(colors: [sel.color.opacity(0.9), sel.color]), startPoint: .leading, endPoint: .trailing)
+                        } else {
+                            LinearGradient(gradient: Gradient(colors: [NC.muted, NC.muted]), startPoint: .leading, endPoint: .trailing)
+                        }
+                    }
                 )
                 .foregroundStyle(selected != nil ? .white : NC.sub)
                 .clipShape(.rect(cornerRadius: 14))
-                .shadow(color: selected != nil ? selected!.color.opacity(0.35) : .clear, radius: 12, x: 0, y: 4)
+                .shadow(color: selected?.color.opacity(0.35) ?? .clear, radius: 12, x: 0, y: 4)
                 .scaleEffect(submitted ? 0.97 : 1.0)
                 .animation(.spring(response: 0.25), value: submitted)
             }
@@ -589,7 +592,6 @@ extension RepAction {
         RepAction(id:"host",        label:"Host a Game",           icon:"📋", xp:15,  description:"Create and run a game session"),
         RepAction(id:"full_rating", label:"Rate All Players",      icon:"✅", xp:20,  description:"Rate every player in a game — no skips"),
         RepAction(id:"streak",      label:"5-Game Month Streak",   icon:"🔥", xp:30,  description:"Play 5+ games in a single month"),
-        RepAction(id:"cosign",      label:"Cosign Received",       icon:"🤝", xp:8,   description:"A player cosigns you at a specific court"),
         RepAction(id:"post",        label:"Post to Feed",          icon:"🗣️", xp:5,   description:"Share to the community feed"),
     ]
 }
@@ -612,7 +614,6 @@ extension RepBadge {
         RepBadge(id:"court_hopper",  name:"Court Hopper",   icon:"🗺️", description:"You run everywhere",                      requirement:"Play at 5 courts",       color:Color(hex:"#4A9EFF"), xpThreshold:0,   isUnlocked: profile.uniqueCourts >= 5),
         RepBadge(id:"regular",       name:"Regular",        icon:"🏀", description:"A true hooper",                           requirement:"20 games played",        color:Color(hex:"#00FF41"), xpThreshold:0,   isUnlocked: profile.gamesPlayed >= 20),
         RepBadge(id:"on_sight",      name:"On Sight",       icon:"🔥", description:"Always ready to run",                     requirement:"5 games in a month",     color:Color(hex:"#FF6B2B"), xpThreshold:0,   isUnlocked: profile.hasMonthStreak),
-        RepBadge(id:"known_face",    name:"Known Face",     icon:"👋", description:"People know you at the courts",           requirement:"10 cosigns",             color:Color(hex:"#9B6DFF"), xpThreshold:0,   isUnlocked: profile.cosigns >= 10),
         RepBadge(id:"full_send",     name:"Full Send",      icon:"✅", description:"Never skips a rating",                    requirement:"Rate all in 10 games",   color:Color(hex:"#39FF14"), xpThreshold:0,   isUnlocked: profile.fullRatingGames >= 10),
         RepBadge(id:"globe_trotter", name:"Globe Trotter",  icon:"🌍", description:"You've seen every borough",               requirement:"Play at 10+ courts",     color:Color(hex:"#FFD700"), xpThreshold:0,   isUnlocked: profile.uniqueCourts >= 10),
         RepBadge(id:"legend",        name:"Legend",         icon:"👑", description:"A fixture. The courts aren't the same without you.", requirement:"500 XP total", color:Color(hex:"#FFD700"), xpThreshold:500, isUnlocked: profile.totalXP >= 500),
@@ -650,10 +651,8 @@ struct CourtRepData {
     let gamesPlayed: Int
     let uniqueCourts: Int
     let playersRated: Int
-    let cosigns: Int
     let fullRatingGames: Int
     let hasMonthStreak: Bool
-    let homeCourts: [String]
     let recentActions: [RecentRepAction]
 
     var level: RepLevel { RepLevel.level(for: totalXP) }
@@ -683,15 +682,12 @@ extension CourtRepData {
         gamesPlayed: 22,
         uniqueCourts: 6,
         playersRated: 31,
-        cosigns: 7,
         fullRatingGames: 8,
         hasMonthStreak: true,
-        homeCourts: ["Rucker Park", "West 4th", "Dyckman"],
         recentActions: [
             RecentRepAction(id:"1", icon:"⭐", label:"Rated all players",   xp:20,  timeAgo:"Today"),
             RecentRepAction(id:"2", icon:"🗺️", label:"New court — Dyckman", xp:25,  timeAgo:"Yesterday"),
-            RecentRepAction(id:"3", icon:"🤝", label:"Cosign received",      xp:8,   timeAgo:"2 days ago"),
-            RecentRepAction(id:"4", icon:"📋", label:"Hosted a game",        xp:15,  timeAgo:"3 days ago"),
+            RecentRepAction(id:"3", icon:"📋", label:"Hosted a game",        xp:15,  timeAgo:"3 days ago"),
         ]
     )
 }
@@ -731,8 +727,7 @@ struct CourtRepCard: View {
                             .foregroundStyle(data.level.color.opacity(0.75))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                    LucideIcon("chevron-right", size: 12)
                         .foregroundStyle(NC.muted)
                 }
                 .padding(.bottom, 14)
@@ -998,7 +993,7 @@ struct RepProgressTab: View {
                             .background(lvl.color.opacity(0.15))
                             .clipShape(.rect(cornerRadius: 99))
                     } else if isPast {
-                        Image(systemName: "checkmark.circle.fill")
+                        LucideIcon("check-circle")
                             .foregroundStyle(lvl.color.opacity(0.6))
                     }
                 }
@@ -1174,8 +1169,7 @@ struct VibeAndRepBlock: View {
                 HStack {
                     VibeAuraBadge(vibe: vibe)
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
+                    LucideIcon("chevron-right", size: 12)
                         .foregroundStyle(NC.muted)
                 }
                 .padding(16)

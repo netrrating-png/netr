@@ -4,7 +4,6 @@ struct CourtCardView: View {
     let court: Court
     let distance: String
     let isFavorite: Bool
-    let isHomeCourt: Bool
     let onFavoriteToggle: () -> Void
 
     var body: some View {
@@ -17,25 +16,20 @@ struct CourtCardView: View {
 
                 Spacer()
 
-                if isHomeCourt {
-                    Image(systemName: "house.fill")
-                        .font(.caption)
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
-
                 Button {
                     onFavoriteToggle()
                 } label: {
-                    Image(systemName: isFavorite ? "heart.fill" : "heart")
-                        .font(.system(size: 16))
+                    LucideIcon(isFavorite ? "heart" : "heart", size: 16)
                         .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .highPriorityGesture(TapGesture().onEnded { onFavoriteToggle() })
 
                 if court.verified {
-                    Image(systemName: "checkmark.seal.fill")
+                    LucideIcon("badge-check", size: 12)
                         .foregroundStyle(NETRTheme.blue)
-                        .font(.caption)
                 } else {
                     Text("PENDING")
                         .font(.system(size: 9, weight: .bold))
@@ -80,23 +74,13 @@ struct CourtCardView: View {
                 }
 
                 Spacer()
-
-                if court.cosignCount > 0 {
-                    HStack(spacing: 3) {
-                        Image(systemName: "hand.thumbsup.fill")
-                            .font(.system(size: 10))
-                        Text("\(court.cosignCount)")
-                            .font(.caption.weight(.bold))
-                    }
-                    .foregroundStyle(NETRTheme.neonGreen)
-                }
             }
         }
         .padding(14)
         .background(NETRTheme.card, in: .rect(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
+                .stroke(NETRTheme.border, lineWidth: 1)
         )
     }
 }

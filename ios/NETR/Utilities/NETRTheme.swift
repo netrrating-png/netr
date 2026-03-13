@@ -64,19 +64,13 @@ nonisolated enum NETRTheme {
     })
 
     static func ratingColor(for rating: Double?) -> Color {
-        guard let r = rating else { return subtext }
-        switch r {
-        case 8.0...: return neonGreen
-        case 6.5...: return Color(red: 0.478, green: 0.91, blue: 0.0)
-        case 5.0...: return Color(red: 1.0, green: 0.839, blue: 0.039)
-        default: return red
-        }
+        NETRRating.color(for: rating)
     }
 
     static func tierColor(for player: Player) -> Color {
         if player.isProspect { return purple }
         if player.isProvisional { return subtext }
-        return ratingColor(for: player.rating)
+        return NETRRating.color(for: player.rating)
     }
 
     static var headingFont: Font {

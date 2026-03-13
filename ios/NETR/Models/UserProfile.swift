@@ -25,6 +25,7 @@ nonisolated struct UserProfile: Codable, Sendable {
     var vibeEffort: Double?
     var vibeAttitude: Double?
     var vibeInclusion: Double?
+    var isVerifiedPro: Bool?
     var createdAt: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
@@ -52,6 +53,7 @@ nonisolated struct UserProfile: Codable, Sendable {
         case vibeEffort = "vibe_effort"
         case vibeAttitude = "vibe_attitude"
         case vibeInclusion = "vibe_inclusion"
+        case isVerifiedPro = "is_verified_pro"
         case createdAt = "created_at"
     }
 }
@@ -113,7 +115,8 @@ extension UserProfile {
                 rebounding: catRebounding,
                 basketballIQ: catBasketballIq
             ),
-            profileImageData: nil
+            profileImageData: nil,
+            avatarUrl: avatarUrl
         )
     }
 

@@ -9,6 +9,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let created_at: String
     let format: String?
     let max_players: Int?
+    let scheduled_at: String?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -31,7 +32,25 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         if let username = host?.username { return "@\(username)" }
         return "Unknown"
     }
+    var isScheduled: Bool { scheduled_at != nil }
+    var scheduledDate: Date? {
+        guard let str = scheduled_at else { return nil }
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = fmt.date(from: str) { return d }
+        fmt.formatOptions = [.withInternetDateTime]
+        return fmt.date(from: str)
+    }
     var startedAgo: String {
+        if let scheduled = scheduledDate {
+            let diff = scheduled.timeIntervalSinceNow
+            if diff > 0 {
+                let mins = Int(diff / 60)
+                if mins < 60 { return "Starts in \(mins)m" }
+                let hrs = mins / 60
+                return "Starts in \(hrs)h \(mins % 60)m"
+            }
+        }
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         guard let date = fmt.date(from: created_at) else { return "" }
@@ -91,7 +110,7 @@ class JoinGameViewModel {
             let games: [NearbyGame] = try await client
                 .from("games")
                 .select("""
-                    id, join_code, created_at, format, max_players,
+                    id, join_code, created_at, format, max_players, scheduled_at,
                     courts(name, neighborhood, lat, lng),
                     host:profiles!games_host_id_fkey(full_name, username)
                 """)
@@ -197,7 +216,7 @@ struct JoinGameView: View {
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        LucideIcon("x-circle")
                             .foregroundStyle(NETRTheme.subtext)
                     }
                 }
@@ -246,8 +265,7 @@ struct JoinGameView: View {
         } label: {
             VStack(spacing: 6) {
                 HStack(spacing: 6) {
-                    Image(systemName: icon)
-                        .font(.system(size: 13, weight: .semibold))
+                    LucideIcon(icon, size: 13)
                     Text(title)
                         .font(.system(size: 14, weight: .semibold))
                 }
@@ -277,8 +295,7 @@ struct JoinGameView: View {
 
             } else if let err = joinVM.errorMessage, !joinVM.isJoining {
                 VStack(spacing: 14) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 36))
+                    LucideIcon("triangle-alert", size: 36)
                         .foregroundStyle(NETRTheme.gold)
                     Text(err)
                         .font(.system(size: 13))
@@ -337,8 +354,7 @@ struct JoinGameView: View {
         VStack(spacing: 20) {
             ZStack {
                 Circle().fill(NETRTheme.muted.opacity(0.3)).frame(width: 80, height: 80)
-                Image(systemName: "basketball.fill")
-                    .font(.system(size: 36))
+                LucideIcon("circle-dot", size: 36)
                     .foregroundStyle(NETRTheme.muted)
             }
             VStack(spacing: 8) {
@@ -389,8 +405,7 @@ private struct NearbyGameCard: View {
                     Circle()
                         .fill(NETRTheme.neonGreen.opacity(0.08))
                         .frame(width: 44, height: 44)
-                    Image(systemName: "basketball.fill")
-                        .font(.system(size: 20))
+                    LucideIcon("circle-dot", size: 20)
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
@@ -406,8 +421,7 @@ private struct NearbyGameCard: View {
                             Text("·").foregroundStyle(NETRTheme.muted)
                         }
                         if game.distanceMiles > 0 {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 10))
+                            LucideIcon("map-pin", size: 10)
                                 .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
                             Text(game.distanceMiles < 0.1 ? "< 0.1 mi" : String(format: "%.1f mi", game.distanceMiles))
                                 .font(.system(size: 12, weight: .medium))
@@ -419,8 +433,7 @@ private struct NearbyGameCard: View {
                             .foregroundStyle(NETRTheme.subtext)
                     }
                     HStack(spacing: 4) {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 10))
+                        LucideIcon("user", size: 10)
                             .foregroundStyle(NETRTheme.muted)
                         Text("Hosted by \(game.hostName)")
                             .font(.system(size: 12))
@@ -431,8 +444,13 @@ private struct NearbyGameCard: View {
 
                 Spacer()
 
-                if let fmt = game.format {
-                    VStack(spacing: 2) {
+                VStack(spacing: 4) {
+                    if game.isScheduled {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(NETRTheme.gold)
+                    }
+                    if let fmt = game.format {
                         Text(fmt)
                             .font(.system(.caption, design: .default, weight: .black).width(.compressed))
                             .foregroundStyle(NETRTheme.neonGreen)
@@ -445,8 +463,7 @@ private struct NearbyGameCard: View {
 
             Button(action: onJoin) {
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.system(size: 16))
+                    LucideIcon("arrow-right-circle", size: 16)
                     Text("Join This Run")
                         .font(.system(size: 15, weight: .bold))
                 }
@@ -585,8 +602,7 @@ private struct JoinQRTab: View {
         ZStack {
             NETRTheme.surface
             VStack(spacing: 14) {
-                Image(systemName: "camera.fill")
-                    .font(.system(size: 40))
+                LucideIcon("camera", size: 40)
                     .foregroundStyle(NETRTheme.muted)
                 Text("Camera Preview")
                     .font(.title3.weight(.semibold))

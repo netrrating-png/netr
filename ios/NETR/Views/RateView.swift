@@ -58,8 +58,7 @@ struct RateView: View {
                 Circle()
                     .stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1)
                     .frame(width: 100, height: 100)
-                Image(systemName: "basketball.fill")
-                    .font(.system(size: 40))
+                LucideIcon("circle-dot", size: 40)
                     .foregroundStyle(NETRTheme.neonGreen.opacity(0.5))
             }
 
@@ -76,9 +75,9 @@ struct RateView: View {
             }
 
             VStack(spacing: 12) {
-                HowItWorksRow(icon: "figure.basketball", text: "Join or create a game at any court")
-                HowItWorksRow(icon: "clock.fill", text: "After the game ends, players appear here")
-                HowItWorksRow(icon: "star.fill", text: "Rate each player across skill & vibe categories")
+                HowItWorksRow(icon: "dumbbell", text: "Join or create a game at any court")
+                HowItWorksRow(icon: "clock", text: "After the game ends, players appear here")
+                HowItWorksRow(icon: "star", text: "Rate each player across skill & vibe categories")
                 HowItWorksRow(icon: "chart.line.uptrend.xyaxis", text: "Ratings build everyone's NETR score")
             }
             .padding(16)
@@ -100,8 +99,7 @@ struct RateView: View {
                 Circle()
                     .stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1)
                     .frame(width: 100, height: 100)
-                Image(systemName: "star.fill")
-                    .font(.system(size: 40))
+                LucideIcon("star", size: 40)
                     .foregroundStyle(NETRTheme.neonGreen.opacity(0.5))
             }
 
@@ -118,9 +116,9 @@ struct RateView: View {
             }
 
             VStack(spacing: 12) {
-                HowItWorksRow(icon: "figure.basketball", text: "Join or create a game at any court")
-                HowItWorksRow(icon: "clock.fill", text: "After the game ends, players appear here")
-                HowItWorksRow(icon: "star.fill", text: "Rate each player across skill & vibe categories")
+                HowItWorksRow(icon: "dumbbell", text: "Join or create a game at any court")
+                HowItWorksRow(icon: "clock", text: "After the game ends, players appear here")
+                HowItWorksRow(icon: "star", text: "Rate each player across skill & vibe categories")
                 HowItWorksRow(icon: "chart.line.uptrend.xyaxis", text: "Ratings build everyone's NETR score")
             }
             .padding(16)
@@ -134,8 +132,7 @@ struct RateView: View {
                 Task { await tabVM.load() }
             } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 14, weight: .bold))
+                    LucideIcon("refresh-cw", size: 14)
                     Text("REFRESH")
                         .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
                         .tracking(1)
@@ -211,8 +208,7 @@ struct WindowBannerView: View {
 
             Spacer()
 
-            Image(systemName: "clock.fill")
-                .font(.system(size: 18))
+            LucideIcon("clock", size: 18)
                 .foregroundStyle(NETRTheme.neonGreen.opacity(0.5))
         }
         .padding(14)
@@ -243,8 +239,7 @@ struct SessionHeaderView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Image(systemName: "basketball.fill")
-                        .font(.system(size: 12))
+                    LucideIcon("circle-dot", size: 12)
                         .foregroundStyle(NETRTheme.neonGreen)
                     Text(session.courtName)
                         .font(NETRTheme.headingFont(size: .title3))
@@ -294,7 +289,7 @@ struct RatePlayerCardView: View {
     }
 
     private var netrColor: Color {
-        NETRTheme.ratingColor(for: player.netrScore)
+        NETRRating.color(for: player.netrScore)
     }
 
     var body: some View {
@@ -356,6 +351,7 @@ struct RatePlayerCardView: View {
                     VStack(spacing: 3) {
                         Image(systemName: "pencil.circle.fill")
                             .font(.system(size: 20))
+                        LucideIcon("check-circle", size: 20)
                             .foregroundStyle(NETRTheme.neonGreen.opacity(0.6))
                         Text("Update")
                             .font(.system(size: 11, weight: .medium))
@@ -600,8 +596,7 @@ struct RatePlayerFlowView: View {
                             Text(isUpdate ? "UPDATE RATING" : "SUBMIT RATING")
                                 .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
                                 .tracking(1.5)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 14, weight: .bold))
+                            LucideIcon("arrow-right", size: 14)
                         }
                     }
                     .foregroundStyle(NETRTheme.background)
@@ -669,8 +664,7 @@ struct RatingCategoryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: icon)
-                    .font(.system(size: 16))
+                LucideIcon(icon, size: 16)
                     .foregroundStyle(selectedValue != nil ? accentColor : NETRTheme.subtext)
                     .frame(width: 24)
                 VStack(alignment: .leading, spacing: 2) {
@@ -744,8 +738,7 @@ struct HowItWorksRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
+            LucideIcon(icon, size: 14)
                 .foregroundStyle(NETRTheme.neonGreen)
                 .frame(width: 28, height: 28)
                 .background(NETRTheme.neonGreen.opacity(0.1), in: Circle())
@@ -763,8 +756,7 @@ struct RatingCompleteView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
+            LucideIcon("check-circle", size: 64)
                 .foregroundStyle(NETRTheme.neonGreen)
                 .neonGlow(radius: 16)
             Text("RATINGS IN")

@@ -18,40 +18,68 @@ class FeedViewModel {
     var courtSearchText: String = ""
     var courtResults: [FeedCourtSearchResult] = []
 
+    var followingIds: Set<String> = []
+    var followingLoaded: Bool = false
+
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
 
     private let selectQuery = """
         id, author_id, content, hashtags, mentioned_user_ids,
-        court_id, game_id, repost_of_id, quote_of_id,
+        court_id, game_id, repost_of_id, quote_of_id, photo_url,
         like_count, comment_count, repost_count, created_at,
         profiles(id, full_name, username, avatar_url, netr_score, vibe_score),
         courts(id, name, neighborhood, verified)
     """
 
+    // MARK: - Follow IDs
+
+    func loadFollowingIds() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        let rows: [FollowingIdRow]? = try? await client
+            .from("follows")
+            .select("following_id")
+            .eq("follower_id", value: userId)
+            .execute()
+            .value
+        followingIds = Set(rows?.map { $0.followingId } ?? [])
+        followingLoaded = true
+    }
+
+    // MARK: - Fetch
+
     func fetchFeed(tab: FeedTab) async {
         isLoading = true
+
+        if !followingLoaded {
+            await loadFollowingIds()
+        }
 
         do {
             let fetched: [SupabaseFeedPost]
 
             switch tab {
             case .forYou:
+                if followingIds.isEmpty {
+                    fetched = []
+                } else {
+                    fetched = try await client
+                        .from("feed_posts")
+                        .select(selectQuery)
+                        .is("repost_of_id", value: nil)
+                        .in("author_id", values: Array(followingIds))
+                        .order("created_at", ascending: false)
+                        .limit(30)
+                        .execute()
+                        .value
+                }
+
+            case .all:
                 fetched = try await client
                     .from("feed_posts")
                     .select(selectQuery)
                     .is("repost_of_id", value: nil)
-                    .order("created_at", ascending: false)
-                    .limit(30)
-                    .execute()
-                    .value
-
-            case .local:
-                fetched = try await client
-                    .from("feed_posts")
-                    .select(selectQuery)
-                    .not("court_id", operator: .is, value: "null")
                     .order("created_at", ascending: false)
                     .limit(30)
                     .execute()
@@ -93,11 +121,14 @@ class FeedViewModel {
         }
     }
 
+    // MARK: - Create Post
+
     func createPost(
         content: String,
         courtId: String? = nil,
         gameId: String? = nil,
-        quoteOf: String? = nil
+        quoteOf: String? = nil,
+        photoImage: UIImage? = nil
     ) async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         isPosting = true
@@ -105,6 +136,11 @@ class FeedViewModel {
         let tags = extractHashtags(from: content)
         let mentions = extractMentions(from: content)
         let mentionedIds = await resolveMentions(mentions)
+
+        var photoUrl: String? = nil
+        if let image = photoImage {
+            photoUrl = await uploadFeedPhoto(image: image, userId: userId)
+        }
 
         let payload = CreateFeedPostPayload(
             authorId: userId,
@@ -114,7 +150,8 @@ class FeedViewModel {
             courtId: courtId,
             gameId: gameId,
             quoteOfId: quoteOf,
-            repostOfId: nil
+            repostOfId: nil,
+            photoUrl: photoUrl
         )
 
         do {
@@ -134,6 +171,31 @@ class FeedViewModel {
             print("Create post error: \(error)")
         }
     }
+
+    // MARK: - Photo Upload
+
+    private func uploadFeedPhoto(image: UIImage, userId: String) async -> String? {
+        guard let data = image.jpegData(compressionQuality: 0.8) else { return nil }
+        let timestamp = Int(Date().timeIntervalSince1970)
+        let path = "\(userId)/\(timestamp).jpg"
+
+        do {
+            try await client.storage
+                .from("feed-photos")
+                .upload(path, data: data, options: FileOptions(
+                    cacheControl: "3600", contentType: "image/jpeg", upsert: true
+                ))
+            let url = try client.storage
+                .from("feed-photos")
+                .getPublicURL(path: path)
+            return url.absoluteString
+        } catch {
+            print("Feed photo upload error: \(error)")
+            return nil
+        }
+    }
+
+    // MARK: - Like / Repost / Delete
 
     func toggleLike(post: SupabaseFeedPost) async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
@@ -176,7 +238,8 @@ class FeedViewModel {
             courtId: nil,
             gameId: nil,
             quoteOfId: nil,
-            repostOfId: post.id
+            repostOfId: post.id,
+            photoUrl: nil
         )
 
         do {
@@ -219,6 +282,8 @@ class FeedViewModel {
         posts.removeAll { $0.authorId == userId }
     }
 
+    // MARK: - Court Search
+
     func searchCourts(query: String) async {
         guard query.count >= 2 else {
             courtResults = []
@@ -240,6 +305,8 @@ class FeedViewModel {
         }
     }
 
+    // MARK: - Trending Tags
+
     func fetchTrendingTags() async {
         guard let rows: [HashtagRow] = try? await client
             .from("feed_posts")
@@ -258,21 +325,49 @@ class FeedViewModel {
         trendingTags = sorted
     }
 
+    // MARK: - Realtime
+
     func subscribeToFeed() async {
         realtimeChannel = client.realtimeV2.channel("feed-live")
         guard let channel = realtimeChannel else { return }
 
-        let changes = channel.postgresChange(
+        let postChanges = channel.postgresChange(
             InsertAction.self,
             schema: "public",
             table: "feed_posts"
         )
 
+        let likeChanges = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "post_likes"
+        )
+
+        let commentChanges = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "post_comments"
+        )
+
         await channel.subscribe()
 
         realtimeTask = Task {
-            for await _ in changes {
-                await fetchFeed(tab: activeTab)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    for await _ in postChanges {
+                        await self.fetchFeed(tab: self.activeTab)
+                    }
+                }
+                group.addTask {
+                    for await _ in likeChanges {
+                        await self.fetchFeed(tab: self.activeTab)
+                    }
+                }
+                group.addTask {
+                    for await _ in commentChanges {
+                        await self.fetchFeed(tab: self.activeTab)
+                    }
+                }
             }
         }
     }
@@ -290,6 +385,8 @@ class FeedViewModel {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return false }
         return post.authorId == userId
     }
+
+    // MARK: - Helpers
 
     private func fetchLikedPostIds(userId: String) async -> Set<String> {
         let rows: [FeedLikeRow]? = try? await client
