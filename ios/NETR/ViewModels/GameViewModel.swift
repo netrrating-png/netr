@@ -234,7 +234,7 @@ class GameViewModel {
             table: "game_players"
         )
 
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
 
         realtimeTask = Task {
             for await _ in changes {

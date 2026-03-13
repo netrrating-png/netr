@@ -321,7 +321,7 @@ struct NETRScoreRing: View {
                 animatedProgress = progress
             }
         }
-        .onChange(of: score) { _ in
+        .onChange(of: score) { _, _ in
             withAnimation(.easeOut(duration: 1.0)) {
                 animatedProgress = progress
             }

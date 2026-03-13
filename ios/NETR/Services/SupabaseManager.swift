@@ -109,7 +109,7 @@ class SupabaseManager {
             provider: .google,
             redirectTo: URL(string: "netr://auth/callback")
         )
-        await UIApplication.shared.open(url)
+        UIApplication.shared.open(url)
     }
 
     func signOut() async throws {

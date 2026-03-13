@@ -350,7 +350,7 @@ class FeedViewModel {
             table: "post_comments"
         )
 
-        await channel.subscribe()
+        try? await channel.subscribeWithError()
 
         realtimeTask = Task {
             await withTaskGroup(of: Void.self) { group in
