@@ -294,7 +294,7 @@ struct RatePlayerCardView: View {
 
     var body: some View {
         Button {
-            if !player.alreadyRated { onTap() }
+            onTap()
         } label: {
             HStack(spacing: 14) {
                 ZStack {
@@ -308,7 +308,7 @@ struct RatePlayerCardView: View {
                         .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
                         .foregroundStyle(netrColor)
                 }
-                .opacity(player.alreadyRated ? 0.4 : 1.0)
+                .opacity(player.alreadyRated ? 0.7 : 1.0)
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -349,11 +349,13 @@ struct RatePlayerCardView: View {
 
                 if player.alreadyRated {
                     VStack(spacing: 3) {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.system(size: 20))
                         LucideIcon("check-circle", size: 20)
                             .foregroundStyle(NETRTheme.neonGreen.opacity(0.6))
-                        Text("Rated")
+                        Text("Update")
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(NETRTheme.subtext)
+                            .foregroundStyle(NETRTheme.neonGreen.opacity(0.6))
                     }
                 } else {
                     VStack(spacing: 2) {
@@ -388,7 +390,6 @@ struct RatePlayerCardView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(player.alreadyRated)
     }
 }
 
@@ -398,6 +399,7 @@ struct RatePlayerSheetView: View {
     let onCancel: () -> Void
 
     @State private var rateVM = RateViewModel()
+    private var isUpdate: Bool { player.alreadyRated }
 
     var body: some View {
         NavigationStack {
@@ -407,6 +409,7 @@ struct RatePlayerSheetView: View {
                 RatePlayerFlowView(
                     viewModel: rateVM,
                     playerIndex: 0,
+                    isUpdate: isUpdate,
                     onDismiss: { onDone(player.gameId) }
                 )
             }
@@ -430,6 +433,7 @@ struct RatePlayerSheetView: View {
                     currentVibe: player.vibeScore
                 )
             ]
+            await rateVM.loadExistingRating(for: 0)
         }
     }
 }
@@ -437,6 +441,7 @@ struct RatePlayerSheetView: View {
 struct RatePlayerFlowView: View {
     @Bindable var viewModel: RateViewModel
     let playerIndex: Int
+    var isUpdate: Bool = false
     let onDismiss: () -> Void
 
     private var player: PlayerToRate? {
@@ -588,7 +593,7 @@ struct RatePlayerFlowView: View {
                         if viewModel.isSubmitting {
                             ProgressView().tint(NETRTheme.background)
                         } else {
-                            Text("SUBMIT RATING")
+                            Text(isUpdate ? "UPDATE RATING" : "SUBMIT RATING")
                                 .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
                                 .tracking(1.5)
                             LucideIcon("arrow-right", size: 14)
