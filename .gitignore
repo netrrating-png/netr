@@ -1,3 +1,4 @@
 node_modules
 .env
 .expo
+ios/NETR/Utilities/SupabaseConfig.swift
