@@ -331,7 +331,7 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
         .alert("Sign Out?", isPresented: $showSignOutConfirm) {
             Button("Sign Out", role: .destructive) {
-                try? supabase.signOut()
+                Task { try? await supabase.signOut() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {

@@ -101,7 +101,7 @@ struct LockScreenView: View {
                     .foregroundStyle(NETRTheme.subtext)
 
                     Button {
-                        try? supabase.signOut()
+                        Task { try? await supabase.signOut() }
                     } label: {
                         Text("Sign in with a different account")
                             .font(.system(size: 13))

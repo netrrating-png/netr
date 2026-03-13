@@ -106,15 +106,15 @@ class SupabaseManager {
         isLoading = true
         authError = nil
         defer { isLoading = false }
-        let url = try await client.auth.getOAuthSignInURL(
+        let url = try client.auth.getOAuthSignInURL(
             provider: .google,
             redirectTo: URL(string: "netr://auth/callback")
         )
         await UIApplication.shared.open(url)
     }
 
-    func signOut() throws {
-        try client.auth.signOut()
+    func signOut() async throws {
+        try await client.auth.signOut()
         session = nil
         currentProfile = nil
     }
