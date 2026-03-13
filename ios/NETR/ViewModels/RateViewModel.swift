@@ -1,6 +1,5 @@
 import SwiftUI
 import Supabase
-import Auth
 
 @MainActor @Observable
 class RateViewModel {
@@ -177,6 +176,71 @@ class RateViewModel {
         }
     }
 
+    func loadExistingRating(for playerIndex: Int) async {
+        guard playerIndex >= 0, playerIndex < players.count,
+              let raterId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+
+        let player = players[playerIndex]
+
+        nonisolated struct ExistingRating: Decodable, Sendable {
+            let catShooting: Int?
+            let catFinishing: Int?
+            let catDribbling: Int?
+            let catPassing: Int?
+            let catDefense: Int?
+            let catRebounding: Int?
+            let catBasketballIq: Int?
+            let vibeCommunication: Int?
+            let vibeUnselfishness: Int?
+            let vibeEffort: Int?
+            let vibeAttitude: Int?
+            let vibeInclusion: Int?
+
+            nonisolated enum CodingKeys: String, CodingKey {
+                case catShooting = "cat_shooting"
+                case catFinishing = "cat_finishing"
+                case catDribbling = "cat_dribbling"
+                case catPassing = "cat_passing"
+                case catDefense = "cat_defense"
+                case catRebounding = "cat_rebounding"
+                case catBasketballIq = "cat_basketball_iq"
+                case vibeCommunication = "vibe_communication"
+                case vibeUnselfishness = "vibe_unselfishness"
+                case vibeEffort = "vibe_effort"
+                case vibeAttitude = "vibe_attitude"
+                case vibeInclusion = "vibe_inclusion"
+            }
+        }
+
+        do {
+            let rows: [ExistingRating] = try await client
+                .from("ratings")
+                .select("cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq, vibe_communication, vibe_unselfishness, vibe_effort, vibe_attitude, vibe_inclusion")
+                .eq("rater_id", value: raterId)
+                .eq("rated_id", value: player.id)
+                .limit(1)
+                .execute()
+                .value
+
+            if let existing = rows.first {
+                players[playerIndex].skillRatings.shooting = existing.catShooting
+                players[playerIndex].skillRatings.finishing = existing.catFinishing
+                players[playerIndex].skillRatings.dribbling = existing.catDribbling
+                players[playerIndex].skillRatings.passing = existing.catPassing
+                players[playerIndex].skillRatings.defense = existing.catDefense
+                players[playerIndex].skillRatings.rebounding = existing.catRebounding
+                players[playerIndex].skillRatings.basketballIQ = existing.catBasketballIq
+                players[playerIndex].vibeRatings.communication = existing.vibeCommunication
+                players[playerIndex].vibeRatings.unselfishness = existing.vibeUnselfishness
+                players[playerIndex].vibeRatings.effort = existing.vibeEffort
+                players[playerIndex].vibeRatings.attitude = existing.vibeAttitude
+                players[playerIndex].vibeRatings.inclusion = existing.vibeInclusion
+            }
+        } catch {
+            print("Load existing rating error: \(error)")
+        }
+    }
+
     func submitRating(for playerIndex: Int) async {
         guard playerIndex >= 0, playerIndex < players.count,
               let raterId = SupabaseManager.shared.session?.user.id.uuidString else { return }
@@ -206,7 +270,7 @@ class RateViewModel {
         do {
             try await client
                 .from("ratings")
-                .insert(submission)
+                .upsert(submission, onConflict: "rater_id,rated_id")
                 .execute()
 
             players[playerIndex].isSubmitted = true

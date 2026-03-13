@@ -61,8 +61,7 @@ struct ComposePostView: View {
                         Task {
                             await viewModel.createPost(
                                 content: postText,
-                                courtId: selectedCourt.map { String($0.id) },
-                                photoImage: selectedImage
+                                courtId: selectedCourt?.id
                             )
                         }
                     } label: {

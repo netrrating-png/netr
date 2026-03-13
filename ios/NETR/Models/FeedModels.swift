@@ -70,7 +70,7 @@ extension FeedAuthor: Decodable {
 }
 
 nonisolated struct FeedCourt: Sendable {
-    let id: Int
+    let id: String
     let name: String
     let neighborhood: String?
     let verified: Bool?
@@ -79,6 +79,18 @@ nonisolated struct FeedCourt: Sendable {
 extension FeedCourt: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
         case id, name, neighborhood, verified
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let intId = try? container.decode(Int.self, forKey: .id) {
+            id = String(intId)
+        } else {
+            id = try container.decode(String.self, forKey: .id)
+        }
+        name = try container.decode(String.self, forKey: .name)
+        neighborhood = try container.decodeIfPresent(String.self, forKey: .neighborhood)
+        verified = try container.decodeIfPresent(Bool.self, forKey: .verified)
     }
 }
 
@@ -175,7 +187,7 @@ nonisolated struct HashtagRow: Decodable, Sendable {
 }
 
 nonisolated struct FeedCourtSearchResult: Sendable {
-    let id: Int
+    let id: String
     let name: String
     let neighborhood: String?
     let verified: Bool?
@@ -184,6 +196,18 @@ nonisolated struct FeedCourtSearchResult: Sendable {
 extension FeedCourtSearchResult: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
         case id, name, neighborhood, verified
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let intId = try? container.decode(Int.self, forKey: .id) {
+            id = String(intId)
+        } else {
+            id = try container.decode(String.self, forKey: .id)
+        }
+        name = try container.decode(String.self, forKey: .name)
+        neighborhood = try container.decodeIfPresent(String.self, forKey: .neighborhood)
+        verified = try container.decodeIfPresent(Bool.self, forKey: .verified)
     }
 }
 

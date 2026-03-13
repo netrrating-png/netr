@@ -1,6 +1,5 @@
 import SwiftUI
 import Supabase
-import Auth
 
 @MainActor @Observable
 class RateTabViewModel {
