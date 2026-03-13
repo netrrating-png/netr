@@ -25,6 +25,7 @@ struct CourtCardView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .highPriorityGesture(TapGesture().onEnded { onFavoriteToggle() })
 
                 if court.verified {
                     LucideIcon("badge-check", size: 12)

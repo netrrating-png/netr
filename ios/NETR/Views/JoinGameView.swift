@@ -9,6 +9,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let created_at: String
     let format: String?
     let max_players: Int?
+    let scheduled_at: String?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -31,7 +32,25 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         if let username = host?.username { return "@\(username)" }
         return "Unknown"
     }
+    var isScheduled: Bool { scheduled_at != nil }
+    var scheduledDate: Date? {
+        guard let str = scheduled_at else { return nil }
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = fmt.date(from: str) { return d }
+        fmt.formatOptions = [.withInternetDateTime]
+        return fmt.date(from: str)
+    }
     var startedAgo: String {
+        if let scheduled = scheduledDate {
+            let diff = scheduled.timeIntervalSinceNow
+            if diff > 0 {
+                let mins = Int(diff / 60)
+                if mins < 60 { return "Starts in \(mins)m" }
+                let hrs = mins / 60
+                return "Starts in \(hrs)h \(mins % 60)m"
+            }
+        }
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         guard let date = fmt.date(from: created_at) else { return "" }
@@ -91,7 +110,7 @@ class JoinGameViewModel {
             let games: [NearbyGame] = try await client
                 .from("games")
                 .select("""
-                    id, join_code, created_at, format, max_players,
+                    id, join_code, created_at, format, max_players, scheduled_at,
                     courts(name, neighborhood, lat, lng),
                     host:profiles!games_host_id_fkey(full_name, username)
                 """)
@@ -425,8 +444,13 @@ private struct NearbyGameCard: View {
 
                 Spacer()
 
-                if let fmt = game.format {
-                    VStack(spacing: 2) {
+                VStack(spacing: 4) {
+                    if game.isScheduled {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(NETRTheme.gold)
+                    }
+                    if let fmt = game.format {
                         Text(fmt)
                             .font(.system(.caption, design: .default, weight: .black).width(.compressed))
                             .foregroundStyle(NETRTheme.neonGreen)
