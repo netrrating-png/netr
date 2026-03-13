@@ -1,6 +1,6 @@
 import SwiftUI
 
-nonisolated enum NETRTheme {
+enum NETRTheme {
     static let neonGreen = Color(red: 0.224, green: 1.0, blue: 0.078)
     static let darkGreen = Color(red: 0.122, green: 0.8, blue: 0.0)
 

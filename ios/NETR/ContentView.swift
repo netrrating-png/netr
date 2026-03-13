@@ -130,9 +130,8 @@ struct ContentView: View {
     }
 
     private var customTabBar: some View {
-        let tabCount = Tab.allCases.count
-
         GeometryReader { geo in
+            let tabCount = Tab.allCases.count
             let barWidth = geo.size.width * 0.85
             let tabWidth = barWidth / CGFloat(tabCount)
 
