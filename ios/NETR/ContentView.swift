@@ -16,18 +16,18 @@ struct ContentView: View {
 
     enum Tab: String, CaseIterable {
         case courts = "Courts"
-        case feed = "Feed"
         case rate = "Rate"
+        case feed = "Feed"
         case profile = "Profile"
         case settings = "Settings"
 
-        var sfSymbol: String {
+        var icon: String {
             switch self {
-            case .courts: return "mappin.and.ellipse"
-            case .feed: return "bubble.left.fill"
-            case .rate: return "house.fill"
-            case .profile: return "person.fill"
-            case .settings: return "gearshape.fill"
+            case .courts: return "map"
+            case .rate: return "star"
+            case .feed: return "messages-square"
+            case .profile: return "user"
+            case .settings: return "settings"
             }
         }
 
@@ -152,8 +152,7 @@ struct ContentView: View {
                             }
                         } label: {
                             ZStack {
-                                Image(systemName: tab.sfSymbol)
-                                    .font(.system(size: 18, weight: .medium))
+                                LucideIcon(tab.icon, size: 18)
                                     .foregroundStyle(
                                         selectedTab == tab
                                             ? NETRTheme.neonGreen
