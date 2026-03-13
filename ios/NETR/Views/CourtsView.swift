@@ -7,12 +7,14 @@ struct CourtsView: View {
     @State private var showAddCourt: Bool = false
     @State private var showCreateGame: Bool = false
     @State private var showJoinGame: Bool = false
+    @State private var isMapExpanded: Bool = false
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955),
             span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
         )
     )
+    @Namespace private var mapNamespace
 
     private let filters = ["All", "Live Now", "Full Court", "Lights", "Indoor", "Verified"]
 
@@ -20,18 +22,21 @@ struct CourtsView: View {
         ZStack {
             NETRTheme.background.ignoresSafeArea()
 
-            ScrollView {
-                VStack(spacing: 0) {
-                    headerSection
-                    mapSection
-                    searchSection
-                    filterChips
-                    neighborhoodChips
-                    resultsHeader
-                    courtsList
+            if isMapExpanded {
+                expandedMapView
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        headerSection
+                        mapSection
+                        searchSection
+                        filterChips
+                        resultsHeader
+                        courtsList
+                    }
                 }
+                .scrollIndicators(.hidden)
             }
-            .scrollIndicators(.hidden)
         }
         .task {
             viewModel.requestLocation()
@@ -42,26 +47,6 @@ struct CourtsView: View {
                     center: loc,
                     span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
                 ))
-            }
-        }
-        .onChange(of: viewModel.selectedNeighborhood) { _, hood in
-            if let hood {
-                let hoodsFiltered = viewModel.courts.filter { $0.neighborhood == hood }
-                if let first = hoodsFiltered.first {
-                    withAnimation {
-                        cameraPosition = .region(MKCoordinateRegion(
-                            center: first.coordinate,
-                            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                        ))
-                    }
-                }
-            } else if let loc = viewModel.userLocation {
-                withAnimation {
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: loc,
-                        span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
-                    ))
-                }
             }
         }
         .sheet(item: $selectedCourt) { court in
@@ -140,8 +125,52 @@ struct CourtsView: View {
         .frame(height: 220)
         .clipShape(.rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
+        .overlay(alignment: .topTrailing) {
+            Button {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isMapExpanded = true
+                }
+            } label: {
+                LucideIcon("maximize-2", size: 14)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 32, height: 32)
+                    .background(.ultraThinMaterial, in: .rect(cornerRadius: 8))
+            }
+            .padding(8)
+        }
         .padding(.horizontal, 16)
         .padding(.top, 12)
+    }
+
+    private var expandedMapView: some View {
+        ZStack(alignment: .topTrailing) {
+            Map(position: $cameraPosition) {
+                ForEach(viewModel.filteredCourts) { court in
+                    Annotation(court.name, coordinate: court.coordinate) {
+                        Button {
+                            selectedCourt = court
+                        } label: {
+                            CourtMapPin(court: court)
+                        }
+                    }
+                }
+            }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .ignoresSafeArea()
+
+            Button {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isMapExpanded = false
+                }
+            } label: {
+                LucideIcon("x", size: 16)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 36, height: 36)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .padding(.top, 8)
+            .padding(.trailing, 16)
+        }
     }
 
     private var searchSection: some View {
@@ -192,43 +221,6 @@ struct CourtsView: View {
         .contentMargins(.horizontal, 16)
         .scrollIndicators(.hidden)
         .padding(.top, 12)
-    }
-
-    private var neighborhoodChips: some View {
-        Group {
-            if !viewModel.neighborhoods.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.neighborhoods, id: \.self) { hood in
-                            Button {
-                                withAnimation(.snappy) {
-                                    if viewModel.selectedNeighborhood == hood {
-                                        viewModel.selectedNeighborhood = nil
-                                    } else {
-                                        viewModel.selectedNeighborhood = hood
-                                    }
-                                }
-                            } label: {
-                                Text(hood)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(viewModel.selectedNeighborhood == hood ? NETRTheme.background : NETRTheme.text)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        viewModel.selectedNeighborhood == hood ? NETRTheme.blue : NETRTheme.surface,
-                                        in: Capsule()
-                                    )
-                                    .overlay(Capsule().stroke(viewModel.selectedNeighborhood == hood ? Color.clear : NETRTheme.border, lineWidth: 1))
-                            }
-                            .buttonStyle(PressButtonStyle())
-                        }
-                    }
-                }
-                .contentMargins(.horizontal, 16)
-                .scrollIndicators(.hidden)
-                .padding(.top, 8)
-            }
-        }
     }
 
     private var resultsHeader: some View {
@@ -327,9 +319,9 @@ struct CourtsView: View {
                         }
                     )
                     .contentShape(Rectangle())
-                    .onTapGesture {
+                    .simultaneousGesture(TapGesture().onEnded {
                         selectedCourt = court
-                    }
+                    })
                 }
             }
         }
