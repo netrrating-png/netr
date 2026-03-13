@@ -110,11 +110,11 @@ class SupabaseManager {
             provider: .google,
             redirectTo: URL(string: "netr://auth/callback")
         )
-        UIApplication.shared.open(url)
+        await UIApplication.shared.open(url)
     }
 
-    func signOut() async throws {
-        try await client.auth.signOut()
+    func signOut() throws {
+        try client.auth.signOut()
         session = nil
         currentProfile = nil
     }
