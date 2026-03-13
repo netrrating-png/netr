@@ -15,6 +15,11 @@ struct NETRApp: App {
                 .environment(appearance)
                 .environment(store)
                 .preferredColorScheme(appearance.colorScheme)
+                .onOpenURL { url in
+                    Task {
+                        try? await supabase.client.auth.session(from: url)
+                    }
+                }
         }
     }
 }
