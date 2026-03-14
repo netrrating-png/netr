@@ -118,7 +118,7 @@ class GameViewModel {
                 .from("game_players")
                 .select("id, user_id, game_id, checked_out_at, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
                 .eq("game_id", value: gameId)
-                .order("joined_at", ascending: true)
+                .order("created_at", ascending: true)
                 .execute()
                 .value
 

@@ -11,6 +11,7 @@ struct CreateGameView: View {
     @State private var gameViewModel = GameViewModel()
     @State private var showLobby: Bool = false
     @State private var isCreating: Bool = false
+    @State private var createError: String?
     @State private var courtSearchQuery: String = ""
     @State private var courtSearchResults: [Court] = []
     @FocusState private var searchFocused: Bool
@@ -455,7 +456,20 @@ struct CreateGameView: View {
 
             Spacer()
 
+            if let err = createError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .foregroundStyle(NETRTheme.red)
+                    Text(err)
+                        .font(.system(size: 13))
+                        .foregroundStyle(NETRTheme.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 16)
+            }
+
             Button {
+                createError = nil
                 isCreating = true
                 Task {
                     do {
@@ -469,7 +483,7 @@ struct CreateGameView: View {
                         withAnimation(.snappy) { showLobby = true }
                     } catch {
                         isCreating = false
-                        print("Create game error: \(error)")
+                        createError = error.localizedDescription
                     }
                 }
             } label: {

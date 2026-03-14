@@ -21,15 +21,14 @@ struct RateablePlayer: Identifiable {
 
 nonisolated struct RateGameRow: Decodable, Sendable {
     let id: String
-    let players: [String]?
     let createdAt: String
     let courtId: String?
     let status: String
 
     nonisolated enum CodingKeys: String, CodingKey {
-        case id, players, status
+        case id, status
         case createdAt = "created_at"
-        case courtId = "court_id"
+        case courtId   = "court_id"
     }
 }
 
@@ -44,7 +43,7 @@ nonisolated struct RateProfileRow: Decodable, Sendable {
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id, position, provisional
-        case fullName = "full_name"
+        case fullName  = "full_name"
         case username
         case netrScore = "netr_score"
         case vibeScore = "vibe_score"
@@ -62,6 +61,24 @@ nonisolated struct RatedRow: Decodable, Sendable {
 
     nonisolated enum CodingKeys: String, CodingKey {
         case ratedId = "rated_id"
+        case gameId  = "game_id"
+    }
+}
+
+nonisolated struct OtherPlayerRow: Decodable, Sendable {
+    let userId: String
+    let gameId: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case gameId = "game_id"
+    }
+}
+
+nonisolated struct MyGameIdRow: Decodable, Sendable {
+    let gameId: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
         case gameId = "game_id"
     }
 }

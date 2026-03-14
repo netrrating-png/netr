@@ -7,6 +7,65 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ADB4D3D42F64A815001D0E5F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */; };
+		ADB4D3D52F64A815001D0E5F /* netr_vid.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = ADB4D39E2F64A815001D0E5F /* netr_vid.mp4 */; };
+		ADB4D3D62F64A815001D0E5F /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A52F64A815001D0E5F /* WeatherService.swift */; };
+		ADB4D3D72F64A815001D0E5F /* CourtDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B52F64A815001D0E5F /* CourtDetailView.swift */; };
+		ADB4D3D82F64A815001D0E5F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3D12F64A815001D0E5F /* ContentView.swift */; };
+		ADB4D3D92F64A815001D0E5F /* SelfAssessmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C72F64A815001D0E5F /* SelfAssessmentView.swift */; };
+		ADB4D3DA2F64A815001D0E5F /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3992F64A815001D0E5F /* Player.swift */; };
+		ADB4D3DB2F64A815001D0E5F /* NETRTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A82F64A815001D0E5F /* NETRTheme.swift */; };
+		ADB4D3DC2F64A815001D0E5F /* CreateGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B72F64A815001D0E5F /* CreateGameView.swift */; };
+		ADB4D3DD2F64A815001D0E5F /* ComposePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B32F64A815001D0E5F /* ComposePostView.swift */; };
+		ADB4D3DE2F64A815001D0E5F /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C22F64A815001D0E5F /* ProfileView.swift */; };
+		ADB4D3DF2F64A815001D0E5F /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C12F64A815001D0E5F /* PostCardView.swift */; };
+		ADB4D3E02F64A815001D0E5F /* NETRComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BE2F64A815001D0E5F /* NETRComponents.swift */; };
+		ADB4D3E12F64A815001D0E5F /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B92F64A815001D0E5F /* FeedView.swift */; };
+		ADB4D3E22F64A815001D0E5F /* RateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C32F64A815001D0E5F /* RateView.swift */; };
+		ADB4D3E32F64A815001D0E5F /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3962F64A815001D0E5F /* GameModels.swift */; };
+		ADB4D3E42F64A815001D0E5F /* FeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AB2F64A815001D0E5F /* FeedViewModel.swift */; };
+		ADB4D3E52F64A815001D0E5F /* JoinGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BA2F64A815001D0E5F /* JoinGameView.swift */; };
+		ADB4D3E62F64A815001D0E5F /* CourtCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B42F64A815001D0E5F /* CourtCardView.swift */; };
+		ADB4D3E72F64A815001D0E5F /* RateTabModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D39A2F64A815001D0E5F /* RateTabModels.swift */; };
+		ADB4D3E82F64A815001D0E5F /* NETRRatingScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3982F64A815001D0E5F /* NETRRatingScale.swift */; };
+		ADB4D3E92F64A815001D0E5F /* SkillRadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CA2F64A815001D0E5F /* SkillRadarView.swift */; };
+		ADB4D3EA2F64A815001D0E5F /* GameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3972F64A815001D0E5F /* GameSession.swift */; };
+		ADB4D3EB2F64A815001D0E5F /* VibeDecalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */; };
+		ADB4D3EC2F64A815001D0E5F /* BiometricAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A02F64A815001D0E5F /* BiometricAuthManager.swift */; };
+		ADB4D3ED2F64A815001D0E5F /* NETRApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3D22F64A815001D0E5F /* NETRApp.swift */; };
+		ADB4D3EE2F64A815001D0E5F /* SelfAssessmentSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C62F64A815001D0E5F /* SelfAssessmentSheetView.swift */; };
+		ADB4D3EF2F64A815001D0E5F /* LucideIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BD2F64A815001D0E5F /* LucideIcon.swift */; };
+		ADB4D3F02F64A815001D0E5F /* VibeAndRepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CB2F64A815001D0E5F /* VibeAndRepView.swift */; };
+		ADB4D3F12F64A815001D0E5F /* SelfAssessmentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A22F64A815001D0E5F /* SelfAssessmentEngine.swift */; };
+		ADB4D3F22F64A815001D0E5F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C82F64A815001D0E5F /* SettingsView.swift */; };
+		ADB4D3F32F64A815001D0E5F /* FeedPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3952F64A815001D0E5F /* FeedPost.swift */; };
+		ADB4D3F42F64A815001D0E5F /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */; };
+		ADB4D3F52F64A815001D0E5F /* CourtsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AA2F64A815001D0E5F /* CourtsViewModel.swift */; };
+		ADB4D3F62F64A815001D0E5F /* LockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BB2F64A815001D0E5F /* LockScreenView.swift */; };
+		ADB4D3F72F64A815001D0E5F /* MockDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A12F64A815001D0E5F /* MockDataStore.swift */; };
+		ADB4D3F82F64A815001D0E5F /* CourtsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B62F64A815001D0E5F /* CourtsView.swift */; };
+		ADB4D3F92F64A815001D0E5F /* AppearanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A72F64A815001D0E5F /* AppearanceManager.swift */; };
+		ADB4D3FA2F64A815001D0E5F /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A42F64A815001D0E5F /* SupabaseManager.swift */; };
+		ADB4D3FB2F64A815001D0E5F /* RateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AF2F64A815001D0E5F /* RateViewModel.swift */; };
+		ADB4D3FC2F64A815001D0E5F /* CommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B22F64A815001D0E5F /* CommentsView.swift */; };
+		ADB4D3FD2F64A815001D0E5F /* EmailSignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B82F64A815001D0E5F /* EmailSignUpView.swift */; };
+		ADB4D3FE2F64A815001D0E5F /* Court.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3932F64A815001D0E5F /* Court.swift */; };
+		ADB4D3FF2F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */; };
+		ADB4D4002F64A815001D0E5F /* FeedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3942F64A815001D0E5F /* FeedModels.swift */; };
+		ADB4D4012F64A815001D0E5F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C92F64A815001D0E5F /* SignInView.swift */; };
+		ADB4D4022F64A815001D0E5F /* RatingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D39B2F64A815001D0E5F /* RatingModels.swift */; };
+		ADB4D4032F64A815001D0E5F /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */; };
+		ADB4D4042F64A815001D0E5F /* AddCourtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */; };
+		ADB4D4052F64A815001D0E5F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C42F64A815001D0E5F /* RootView.swift */; };
+		ADB4D4062F64A815001D0E5F /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3D02F64A815001D0E5F /* Config.swift */; };
+		ADB4D4072F64A815001D0E5F /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */; };
+		ADB4D4082F64A815001D0E5F /* LoopingVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */; };
+		ADB4D4092F64A815001D0E5F /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */; };
+		ADB4D40A2F64A815001D0E5F /* PlayerCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */; };
+		ADB4D40B2F64A815001D0E5F /* SelfAssessmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A32F64A815001D0E5F /* SelfAssessmentStore.swift */; };
+		ADB4D40C2F64A815001D0E5F /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D39C2F64A815001D0E5F /* UserProfile.swift */; };
+		ADB4D40D2F64A815001D0E5F /* RateTabViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */; };
+		ADB4D4112F64ADFD001D0E5F /* SelfAssessmentFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */; };
 		XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = XX1C9FF110ABBCE8BF456CXX /* Supabase */; };
 		XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */ = {isa = PBXBuildFile; productRef = XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */; };
 /* End PBXBuildFile section */
@@ -30,8 +89,67 @@
 
 /* Begin PBXFileReference section */
 		105FC57A2E9EAD3100EA8BCF /* NETR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NETR.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		105FC5892E9EAD3200EA8BCF /* NETRTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NETRTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		105FC5932E9EAD3200EA8BCF /* NETRUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NETRUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		105FC5892E9EAD3200EA8BCF /* NETRTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = NETRTests.xctest; path = NETR.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		105FC5932E9EAD3200EA8BCF /* NETRUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = NETRUITests.xctest; path = NETR.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		ADB4D3932F64A815001D0E5F /* Court.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Court.swift; sourceTree = "<group>"; };
+		ADB4D3942F64A815001D0E5F /* FeedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedModels.swift; sourceTree = "<group>"; };
+		ADB4D3952F64A815001D0E5F /* FeedPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPost.swift; sourceTree = "<group>"; };
+		ADB4D3962F64A815001D0E5F /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		ADB4D3972F64A815001D0E5F /* GameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSession.swift; sourceTree = "<group>"; };
+		ADB4D3982F64A815001D0E5F /* NETRRatingScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRRatingScale.swift; sourceTree = "<group>"; };
+		ADB4D3992F64A815001D0E5F /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
+		ADB4D39A2F64A815001D0E5F /* RateTabModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateTabModels.swift; sourceTree = "<group>"; };
+		ADB4D39B2F64A815001D0E5F /* RatingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingModels.swift; sourceTree = "<group>"; };
+		ADB4D39C2F64A815001D0E5F /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
+		ADB4D39E2F64A815001D0E5F /* netr_vid.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = netr_vid.mp4; sourceTree = "<group>"; };
+		ADB4D3A02F64A815001D0E5F /* BiometricAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthManager.swift; sourceTree = "<group>"; };
+		ADB4D3A12F64A815001D0E5F /* MockDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDataStore.swift; sourceTree = "<group>"; };
+		ADB4D3A22F64A815001D0E5F /* SelfAssessmentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentEngine.swift; sourceTree = "<group>"; };
+		ADB4D3A32F64A815001D0E5F /* SelfAssessmentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentStore.swift; sourceTree = "<group>"; };
+		ADB4D3A42F64A815001D0E5F /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
+		ADB4D3A52F64A815001D0E5F /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
+		ADB4D3A72F64A815001D0E5F /* AppearanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceManager.swift; sourceTree = "<group>"; };
+		ADB4D3A82F64A815001D0E5F /* NETRTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRTheme.swift; sourceTree = "<group>"; };
+		ADB4D3AA2F64A815001D0E5F /* CourtsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtsViewModel.swift; sourceTree = "<group>"; };
+		ADB4D3AB2F64A815001D0E5F /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
+		ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
+		ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
+		ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateTabViewModel.swift; sourceTree = "<group>"; };
+		ADB4D3AF2F64A815001D0E5F /* RateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateViewModel.swift; sourceTree = "<group>"; };
+		ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddCourtView.swift; sourceTree = "<group>"; };
+		ADB4D3B22F64A815001D0E5F /* CommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsView.swift; sourceTree = "<group>"; };
+		ADB4D3B32F64A815001D0E5F /* ComposePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposePostView.swift; sourceTree = "<group>"; };
+		ADB4D3B42F64A815001D0E5F /* CourtCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtCardView.swift; sourceTree = "<group>"; };
+		ADB4D3B52F64A815001D0E5F /* CourtDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtDetailView.swift; sourceTree = "<group>"; };
+		ADB4D3B62F64A815001D0E5F /* CourtsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtsView.swift; sourceTree = "<group>"; };
+		ADB4D3B72F64A815001D0E5F /* CreateGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGameView.swift; sourceTree = "<group>"; };
+		ADB4D3B82F64A815001D0E5F /* EmailSignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailSignUpView.swift; sourceTree = "<group>"; };
+		ADB4D3B92F64A815001D0E5F /* FeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedView.swift; sourceTree = "<group>"; };
+		ADB4D3BA2F64A815001D0E5F /* JoinGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinGameView.swift; sourceTree = "<group>"; };
+		ADB4D3BB2F64A815001D0E5F /* LockScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenView.swift; sourceTree = "<group>"; };
+		ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopingVideoView.swift; sourceTree = "<group>"; };
+		ADB4D3BD2F64A815001D0E5F /* LucideIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LucideIcon.swift; sourceTree = "<group>"; };
+		ADB4D3BE2F64A815001D0E5F /* NETRComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRComponents.swift; sourceTree = "<group>"; };
+		ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerCardView.swift; sourceTree = "<group>"; };
+		ADB4D3C12F64A815001D0E5F /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardView.swift; sourceTree = "<group>"; };
+		ADB4D3C22F64A815001D0E5F /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		ADB4D3C32F64A815001D0E5F /* RateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateView.swift; sourceTree = "<group>"; };
+		ADB4D3C42F64A815001D0E5F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentDisclaimerView.swift; sourceTree = "<group>"; };
+		ADB4D3C62F64A815001D0E5F /* SelfAssessmentSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentSheetView.swift; sourceTree = "<group>"; };
+		ADB4D3C72F64A815001D0E5F /* SelfAssessmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentView.swift; sourceTree = "<group>"; };
+		ADB4D3C82F64A815001D0E5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		ADB4D3C92F64A815001D0E5F /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
+		ADB4D3CA2F64A815001D0E5F /* SkillRadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillRadarView.swift; sourceTree = "<group>"; };
+		ADB4D3CB2F64A815001D0E5F /* VibeAndRepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeAndRepView.swift; sourceTree = "<group>"; };
+		ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeDecalView.swift; sourceTree = "<group>"; };
+		ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		ADB4D3D02F64A815001D0E5F /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
+		ADB4D3D12F64A815001D0E5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		ADB4D3D22F64A815001D0E5F /* NETRApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRApp.swift; sourceTree = "<group>"; };
+		ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentFlow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -82,6 +200,7 @@
 		105FC5712E9EAD3100EA8BCF = {
 			isa = PBXGroup;
 			children = (
+				ADB4D3D32F64A815001D0E5F /* NETR */,
 				105FC57C2E9EAD3100EA8BCF /* NETR */,
 				105FC58C2E9EAD3200EA8BCF /* NETRTests */,
 				105FC5962E9EAD3200EA8BCF /* NETRUITests */,
@@ -97,6 +216,120 @@
 				105FC5932E9EAD3200EA8BCF /* NETRUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		ADB4D39D2F64A815001D0E5F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D3932F64A815001D0E5F /* Court.swift */,
+				ADB4D3942F64A815001D0E5F /* FeedModels.swift */,
+				ADB4D3952F64A815001D0E5F /* FeedPost.swift */,
+				ADB4D3962F64A815001D0E5F /* GameModels.swift */,
+				ADB4D3972F64A815001D0E5F /* GameSession.swift */,
+				ADB4D3982F64A815001D0E5F /* NETRRatingScale.swift */,
+				ADB4D3992F64A815001D0E5F /* Player.swift */,
+				ADB4D39A2F64A815001D0E5F /* RateTabModels.swift */,
+				ADB4D39B2F64A815001D0E5F /* RatingModels.swift */,
+				ADB4D39C2F64A815001D0E5F /* UserProfile.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		ADB4D39F2F64A815001D0E5F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D39E2F64A815001D0E5F /* netr_vid.mp4 */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		ADB4D3A62F64A815001D0E5F /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D3A02F64A815001D0E5F /* BiometricAuthManager.swift */,
+				ADB4D3A12F64A815001D0E5F /* MockDataStore.swift */,
+				ADB4D3A22F64A815001D0E5F /* SelfAssessmentEngine.swift */,
+				ADB4D3A32F64A815001D0E5F /* SelfAssessmentStore.swift */,
+				ADB4D3A42F64A815001D0E5F /* SupabaseManager.swift */,
+				ADB4D3A52F64A815001D0E5F /* WeatherService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		ADB4D3A92F64A815001D0E5F /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D3A72F64A815001D0E5F /* AppearanceManager.swift */,
+				ADB4D3A82F64A815001D0E5F /* NETRTheme.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		ADB4D3B02F64A815001D0E5F /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D3AA2F64A815001D0E5F /* CourtsViewModel.swift */,
+				ADB4D3AB2F64A815001D0E5F /* FeedViewModel.swift */,
+				ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */,
+				ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */,
+				ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */,
+				ADB4D3AF2F64A815001D0E5F /* RateViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		ADB4D3CE2F64A815001D0E5F /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */,
+				ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */,
+				ADB4D3B22F64A815001D0E5F /* CommentsView.swift */,
+				ADB4D3B32F64A815001D0E5F /* ComposePostView.swift */,
+				ADB4D3B42F64A815001D0E5F /* CourtCardView.swift */,
+				ADB4D3B52F64A815001D0E5F /* CourtDetailView.swift */,
+				ADB4D3B62F64A815001D0E5F /* CourtsView.swift */,
+				ADB4D3B72F64A815001D0E5F /* CreateGameView.swift */,
+				ADB4D3B82F64A815001D0E5F /* EmailSignUpView.swift */,
+				ADB4D3B92F64A815001D0E5F /* FeedView.swift */,
+				ADB4D3BA2F64A815001D0E5F /* JoinGameView.swift */,
+				ADB4D3BB2F64A815001D0E5F /* LockScreenView.swift */,
+				ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */,
+				ADB4D3BD2F64A815001D0E5F /* LucideIcon.swift */,
+				ADB4D3BE2F64A815001D0E5F /* NETRComponents.swift */,
+				ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */,
+				ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */,
+				ADB4D3C12F64A815001D0E5F /* PostCardView.swift */,
+				ADB4D3C22F64A815001D0E5F /* ProfileView.swift */,
+				ADB4D3C32F64A815001D0E5F /* RateView.swift */,
+				ADB4D3C42F64A815001D0E5F /* RootView.swift */,
+				ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */,
+				ADB4D3C62F64A815001D0E5F /* SelfAssessmentSheetView.swift */,
+				ADB4D3C72F64A815001D0E5F /* SelfAssessmentView.swift */,
+				ADB4D3C82F64A815001D0E5F /* SettingsView.swift */,
+				ADB4D3C92F64A815001D0E5F /* SignInView.swift */,
+				ADB4D3CA2F64A815001D0E5F /* SkillRadarView.swift */,
+				ADB4D3CB2F64A815001D0E5F /* VibeAndRepView.swift */,
+				ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */,
+				ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		ADB4D3D32F64A815001D0E5F /* NETR */ = {
+			isa = PBXGroup;
+			children = (
+				ADB4D39D2F64A815001D0E5F /* Models */,
+				ADB4D39F2F64A815001D0E5F /* Resources */,
+				ADB4D3A62F64A815001D0E5F /* Services */,
+				ADB4D3A92F64A815001D0E5F /* Utilities */,
+				ADB4D3B02F64A815001D0E5F /* ViewModels */,
+				ADB4D3CE2F64A815001D0E5F /* Views */,
+				ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */,
+				ADB4D3D02F64A815001D0E5F /* Config.swift */,
+				ADB4D3D12F64A815001D0E5F /* ContentView.swift */,
+				ADB4D3D22F64A815001D0E5F /* NETRApp.swift */,
+			);
+			path = NETR;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -204,6 +437,10 @@
 			);
 			mainGroup = 105FC5712E9EAD3100EA8BCF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				XX30AB8C2F7B19A3D1E045XX /* XCRemoteSwiftPackageReference "lucide-icons-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105FC57B2E9EAD3100EA8BCF /* Products */;
 			projectDirPath = "";
@@ -213,10 +450,6 @@
 				105FC5882E9EAD3200EA8BCF /* NETR */,
 				105FC5922E9EAD3200EA8BCF /* NETR */,
 			);
-			packageReferences = (
-				XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */,
-				XX30AB8C2F7B19A3D1E045XX /* XCRemoteSwiftPackageReference "lucide-icons-swift" */,
-			);
 		};
 /* End PBXProject section */
 
@@ -225,6 +458,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ADB4D3D42F64A815001D0E5F /* Assets.xcassets in Resources */,
+				ADB4D3D52F64A815001D0E5F /* netr_vid.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +484,63 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ADB4D3D62F64A815001D0E5F /* WeatherService.swift in Sources */,
+				ADB4D3D72F64A815001D0E5F /* CourtDetailView.swift in Sources */,
+				ADB4D3D82F64A815001D0E5F /* ContentView.swift in Sources */,
+				ADB4D3D92F64A815001D0E5F /* SelfAssessmentView.swift in Sources */,
+				ADB4D3DA2F64A815001D0E5F /* Player.swift in Sources */,
+				ADB4D3DB2F64A815001D0E5F /* NETRTheme.swift in Sources */,
+				ADB4D3DC2F64A815001D0E5F /* CreateGameView.swift in Sources */,
+				ADB4D3DD2F64A815001D0E5F /* ComposePostView.swift in Sources */,
+				ADB4D3DE2F64A815001D0E5F /* ProfileView.swift in Sources */,
+				ADB4D3DF2F64A815001D0E5F /* PostCardView.swift in Sources */,
+				ADB4D3E02F64A815001D0E5F /* NETRComponents.swift in Sources */,
+				ADB4D3E12F64A815001D0E5F /* FeedView.swift in Sources */,
+				ADB4D3E22F64A815001D0E5F /* RateView.swift in Sources */,
+				ADB4D3E32F64A815001D0E5F /* GameModels.swift in Sources */,
+				ADB4D3E42F64A815001D0E5F /* FeedViewModel.swift in Sources */,
+				ADB4D3E52F64A815001D0E5F /* JoinGameView.swift in Sources */,
+				ADB4D3E62F64A815001D0E5F /* CourtCardView.swift in Sources */,
+				ADB4D3E72F64A815001D0E5F /* RateTabModels.swift in Sources */,
+				ADB4D3E82F64A815001D0E5F /* NETRRatingScale.swift in Sources */,
+				ADB4D3E92F64A815001D0E5F /* SkillRadarView.swift in Sources */,
+				ADB4D3EA2F64A815001D0E5F /* GameSession.swift in Sources */,
+				ADB4D3EB2F64A815001D0E5F /* VibeDecalView.swift in Sources */,
+				ADB4D3EC2F64A815001D0E5F /* BiometricAuthManager.swift in Sources */,
+				ADB4D3ED2F64A815001D0E5F /* NETRApp.swift in Sources */,
+				ADB4D3EE2F64A815001D0E5F /* SelfAssessmentSheetView.swift in Sources */,
+				ADB4D3EF2F64A815001D0E5F /* LucideIcon.swift in Sources */,
+				ADB4D3F02F64A815001D0E5F /* VibeAndRepView.swift in Sources */,
+				ADB4D3F12F64A815001D0E5F /* SelfAssessmentEngine.swift in Sources */,
+				ADB4D3F22F64A815001D0E5F /* SettingsView.swift in Sources */,
+				ADB4D3F32F64A815001D0E5F /* FeedPost.swift in Sources */,
+				ADB4D3F42F64A815001D0E5F /* WelcomeView.swift in Sources */,
+				ADB4D3F52F64A815001D0E5F /* CourtsViewModel.swift in Sources */,
+				ADB4D3F62F64A815001D0E5F /* LockScreenView.swift in Sources */,
+				ADB4D3F72F64A815001D0E5F /* MockDataStore.swift in Sources */,
+				ADB4D3F82F64A815001D0E5F /* CourtsView.swift in Sources */,
+				ADB4D3F92F64A815001D0E5F /* AppearanceManager.swift in Sources */,
+				ADB4D3FA2F64A815001D0E5F /* SupabaseManager.swift in Sources */,
+				ADB4D3FB2F64A815001D0E5F /* RateViewModel.swift in Sources */,
+				ADB4D3FC2F64A815001D0E5F /* CommentsView.swift in Sources */,
+				ADB4D3FD2F64A815001D0E5F /* EmailSignUpView.swift in Sources */,
+				ADB4D3FE2F64A815001D0E5F /* Court.swift in Sources */,
+				ADB4D3FF2F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift in Sources */,
+				ADB4D4002F64A815001D0E5F /* FeedModels.swift in Sources */,
+				ADB4D4012F64A815001D0E5F /* SignInView.swift in Sources */,
+				ADB4D4022F64A815001D0E5F /* RatingModels.swift in Sources */,
+				ADB4D4032F64A815001D0E5F /* GameViewModel.swift in Sources */,
+				ADB4D4042F64A815001D0E5F /* AddCourtView.swift in Sources */,
+				ADB4D4052F64A815001D0E5F /* RootView.swift in Sources */,
+				ADB4D4062F64A815001D0E5F /* Config.swift in Sources */,
+				ADB4D4072F64A815001D0E5F /* ProfileViewModel.swift in Sources */,
+				ADB4D4082F64A815001D0E5F /* LoopingVideoView.swift in Sources */,
+				ADB4D4092F64A815001D0E5F /* OnboardingView.swift in Sources */,
+				ADB4D40A2F64A815001D0E5F /* PlayerCardView.swift in Sources */,
+				ADB4D40B2F64A815001D0E5F /* SelfAssessmentStore.swift in Sources */,
+				ADB4D40C2F64A815001D0E5F /* UserProfile.swift in Sources */,
+				ADB4D40D2F64A815001D0E5F /* RateTabViewModel.swift in Sources */,
+				ADB4D4112F64ADFD001D0E5F /* SelfAssessmentFlow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,18 +704,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -432,6 +722,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.7ukt44v6yz4yulrqq6ipj;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -450,18 +742,16 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -470,6 +760,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.7ukt44v6yz4yulrqq6ipj;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -486,14 +778,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.7ukt44v6yz4yulrqq6ipj.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -510,14 +802,14 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.7ukt44v6yz4yulrqq6ipj.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -533,13 +825,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.7ukt44v6yz4yulrqq6ipj.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -555,13 +847,13 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.rork.7ukt44v6yz4yulrqq6ipj.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
