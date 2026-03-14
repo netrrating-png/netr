@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // ─── SUBMISSION ──────────────────────────────────────────────
 
@@ -70,16 +71,19 @@ struct SkillCategory: Identifiable {
     let label: String
     let icon: String
     let description: String
+    let colorHex: String
+
+    var accentColor: Color { Color(hex: colorHex) }
 }
 
 let skillCategories: [SkillCategory] = [
-    SkillCategory(id: "shooting",    label: "Scoring",     icon: "crosshair",        description: "Can they create and hit shots consistently?"),
-    SkillCategory(id: "finishing",   label: "Finishing",   icon: "flame",            description: "Finishing at the rim through contact and traffic."),
-    SkillCategory(id: "dribbling",   label: "Handles",     icon: "dumbbell",         description: "Ball handling, getting to their spot, breaking defenders."),
-    SkillCategory(id: "passing",     label: "Playmaking",  icon: "route",            description: "Court vision, decision-making, setting teammates up."),
-    SkillCategory(id: "defense",     label: "Defense",     icon: "shield",           description: "On-ball, help-side, effort on the defensive end."),
-    SkillCategory(id: "rebounding",  label: "Rebounding",  icon: "arrow-up-circle",  description: "Crashing the boards, boxing out, second chances."),
-    SkillCategory(id: "basketballIQ",label: "IQ",          icon: "brain",            description: "Spacing, reads, off-ball movement, decision-making."),
+    SkillCategory(id: "shooting",     label: "Scoring",    icon: "crosshair",       description: "Shot creation & consistency",      colorHex: "#39FF14"),
+    SkillCategory(id: "finishing",    label: "Finishing",  icon: "flame",           description: "At the rim through contact",       colorHex: "#FF7A00"),
+    SkillCategory(id: "dribbling",    label: "Handles",    icon: "dumbbell",        description: "Ball handling & shot creation",    colorHex: "#FFC247"),
+    SkillCategory(id: "passing",      label: "Playmaking", icon: "route",           description: "Vision, passing & court reads",    colorHex: "#2ECC71"),
+    SkillCategory(id: "defense",      label: "Defense",    icon: "shield",          description: "On-ball, help & intensity",        colorHex: "#FF3B30"),
+    SkillCategory(id: "rebounding",   label: "Rebounding", icon: "arrow-up-circle", description: "Boxing out & crashing the boards", colorHex: "#2DA8FF"),
+    SkillCategory(id: "basketballIQ", label: "IQ",         icon: "brain",           description: "Spacing, reads & decision-making", colorHex: "#9B8BFF"),
 ]
 
 let peerRatingLabels: [Int: String] = [

@@ -5,7 +5,6 @@ import SwiftUI
 struct RateView: View {
     @State private var tabVM = RateTabViewModel()
     @State private var selectedPlayer: RateablePlayer?
-    @State private var showRateFlow: Bool = false
     @State private var section: RateSection = .ratePlayers
 
     enum RateSection { case ratePlayers, ratedBy }
@@ -28,22 +27,18 @@ struct RateView: View {
             }
         }
         .task { await tabVM.load() }
-        .sheet(isPresented: $showRateFlow) {
-            if let player = selectedPlayer {
-                RatePlayerSheetView(
-                    player: player,
-                    onDone: { gameId in
-                        tabVM.markRated(playerId: player.id, gameId: gameId)
-                        showRateFlow = false
-                        selectedPlayer = nil
-                        Task { await tabVM.load() }
-                    },
-                    onCancel: {
-                        showRateFlow = false
-                        selectedPlayer = nil
-                    }
-                )
-            }
+        .fullScreenCover(item: $selectedPlayer) { player in
+            RatePlayerSheetView(
+                player: player,
+                onDone: { gameId in
+                    tabVM.markRated(playerId: player.id, gameId: gameId)
+                    selectedPlayer = nil
+                    Task { await tabVM.load() }
+                },
+                onCancel: {
+                    selectedPlayer = nil
+                }
+            )
         }
     }
 
@@ -114,7 +109,6 @@ struct RateView: View {
                         ForEach(session.players) { player in
                             RatePlayerCardView(player: player) {
                                 selectedPlayer = player
-                                showRateFlow = true
                             }
                         }
                     }
@@ -346,12 +340,6 @@ struct RatePlayerCardView: View {
                     HStack(spacing: 6) {
                         Text(player.fullName).font(.subheadline.weight(.semibold))
                             .foregroundStyle(player.alreadyRated ? NETRTheme.subtext : NETRTheme.text)
-                        if player.provisional {
-                            Text("PROV").font(.system(size: 9, weight: .bold)).foregroundStyle(NETRTheme.gold)
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Capsule().fill(NETRTheme.gold.opacity(0.15))
-                                    .overlay(Capsule().stroke(NETRTheme.gold.opacity(0.4), lineWidth: 1)))
-                        }
                     }
                     HStack(spacing: 8) {
                         Text("@\(player.username)").font(.caption).foregroundStyle(NETRTheme.subtext)
@@ -392,7 +380,7 @@ struct RatePlayerCardView: View {
     }
 }
 
-// MARK: - Rating Sheet Entry
+// MARK: - Rating Sheet (Skill Screen → Vibe Screen)
 
 struct RatePlayerSheetView: View {
     let player: RateablePlayer
@@ -400,20 +388,33 @@ struct RatePlayerSheetView: View {
     let onCancel: () -> Void
 
     @State private var rateVM = RateViewModel()
+    @State private var showVibe = false
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                NETRTheme.background.ignoresSafeArea()
-                RatePlayerFlowView(viewModel: rateVM, playerIndex: 0, onDismiss: { onDone(player.gameId) })
-            }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { onCancel() }.foregroundStyle(NETRTheme.subtext)
-                }
+            SkillRatingScreen(
+                player: player,
+                rateVM: rateVM,
+                onCancel: onCancel,
+                onNext: { showVibe = true }
+            )
+            .navigationBarHidden(true)
+            .navigationDestination(isPresented: $showVibe) {
+                VibeRatingScreen(
+                    player: player,
+                    rateVM: rateVM,
+                    onBack: { showVibe = false },
+                    onSubmit: {
+                        Task {
+                            await rateVM.submitRating(for: 0)
+                            onDone(player.gameId)
+                        }
+                    }
+                )
+                .navigationBarHidden(true)
             }
         }
-        .task {
+        .onAppear {
             rateVM.setGameId(player.gameId)
             rateVM.players = [
                 PlayerToRate(
@@ -430,265 +431,376 @@ struct RatePlayerSheetView: View {
     }
 }
 
-// MARK: - Rating Flow (Skill → Vibe)
+// MARK: - Screen 1: Skill Rating
 
-struct RatePlayerFlowView: View {
-    @Bindable var viewModel: RateViewModel
-    let playerIndex: Int
-    let onDismiss: () -> Void
+struct SkillRatingScreen: View {
+    let player: RateablePlayer
+    @Bindable var rateVM: RateViewModel
+    let onCancel: () -> Void
+    let onNext: () -> Void
 
-    @State private var ratingStep: Int = 0   // 0 = skill categories, 1 = vibe question
-
-    private var player: PlayerToRate? {
-        guard playerIndex >= 0, playerIndex < viewModel.players.count else { return nil }
-        return viewModel.players[playerIndex]
+    private var ratedCount: Int {
+        guard !rateVM.players.isEmpty else { return 0 }
+        let s = rateVM.players[0].skillRatings
+        return [s.shooting, s.finishing, s.dribbling, s.passing, s.defense, s.rebounding, s.basketballIQ]
+            .compactMap { $0 }.count
     }
+    private var allRated: Bool { ratedCount == 7 }
 
     var body: some View {
-        if let player {
-            VStack(spacing: 0) {
-                playerHeader(player: player)
-                stepIndicator
-                if ratingStep == 0 {
-                    skillPage(player: player)
-                } else {
-                    vibePage(player: player)
-                }
-            }
-        } else {
-            Color.clear.onAppear { onDismiss() }
-        }
-    }
-
-    // ── Player Header ─────────────────────────────────────────
-
-    private func playerHeader(player: PlayerToRate) -> some View {
-        HStack(spacing: 14) {
-            RatePlayerAvatar(name: player.name, avatarUrl: player.avatarUrl, size: 52)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(player.name).font(.headline.weight(.black)).foregroundStyle(NETRTheme.text)
-                HStack(spacing: 8) {
-                    Text(player.position)
-                        .font(.system(size: 12, weight: .bold)).foregroundStyle(NETRTheme.neonGreen)
-                        .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(NETRTheme.neonGreen.opacity(0.12), in: .rect(cornerRadius: 6))
-                    if let netr = player.currentNetr {
-                        Text(String(format: "%.1f NETR", netr))
-                            .font(.system(size: 12, weight: .semibold)).foregroundStyle(NETRTheme.subtext)
-                    }
-                    if let vibe = player.currentVibe {
-                        VibeDecalView(vibe: vibe, size: .small)
-                    }
-                }
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
-    }
-
-    // ── Step Indicator ────────────────────────────────────────
-
-    private var stepIndicator: some View {
-        HStack(spacing: 8) {
-            stepDot(number: "1", title: "SKILL", active: ratingStep == 0, done: ratingStep > 0)
-            Rectangle().fill(NETRTheme.border).frame(height: 1).frame(maxWidth: .infinity)
-            stepDot(number: "2", title: "VIBE",  active: ratingStep == 1, done: false)
-        }
-        .padding(.horizontal, 28).padding(.vertical, 10)
-        .background(NETRTheme.surface)
-        .overlay(Rectangle().fill(NETRTheme.border).frame(height: 0.5), alignment: .bottom)
-    }
-
-    private func stepDot(number: String, title: String, active: Bool, done: Bool) -> some View {
-        VStack(spacing: 4) {
-            ZStack {
-                Circle()
-                    .fill(active || done ? NETRTheme.neonGreen : NETRTheme.muted.opacity(0.3))
-                    .frame(width: 28, height: 28)
-                if done {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .black)).foregroundStyle(NETRTheme.background)
-                } else {
-                    Text(number).font(.system(size: 13, weight: .black))
-                        .foregroundStyle(active ? NETRTheme.background : NETRTheme.subtext)
-                }
-            }
-            Text(title).font(.system(size: 10, weight: .bold)).tracking(1)
-                .foregroundStyle(active ? NETRTheme.neonGreen : NETRTheme.subtext)
-        }
-    }
-
-    // ── Skill Page ────────────────────────────────────────────
-
-    private func skillPage(player: PlayerToRate) -> some View {
-        let allRated = player.skillRatings.allRated
-        let ratedCount = [player.skillRatings.shooting, player.skillRatings.finishing,
-                          player.skillRatings.dribbling, player.skillRatings.passing,
-                          player.skillRatings.defense, player.skillRatings.rebounding,
-                          player.skillRatings.basketballIQ].compactMap { $0 }.count
-
-        return VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 12) {
-                    HStack {
-                        Text("Rate this player on each skill")
-                            .font(.system(size: 13)).foregroundStyle(NETRTheme.subtext)
-                        Spacer()
-                        Text("\(ratedCount)/7")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(ratedCount == 7 ? NETRTheme.neonGreen : NETRTheme.subtext)
-                    }
-                    .padding(.horizontal, 16).padding(.top, 16)
-
-                    ForEach(skillCategories) { cat in
-                        RatingCategoryCard(
-                            icon: cat.icon,
-                            label: cat.label,
-                            description: cat.description,
-                            labels: peerRatingLabels,
-                            selectedValue: viewModel.skillValue(for: cat.id, playerIndex: playerIndex),
-                            accentColor: NETRTheme.neonGreen
-                        ) { value in
-                            viewModel.setSkillRating(playerIndex: playerIndex, key: cat.id, value: value)
-                        }
-                        .padding(.horizontal, 16)
-                    }
-                    Color.clear.frame(height: 100)
-                }
-            }
-            .scrollIndicators(.hidden)
-
-            continueBar(enabled: allRated) {
-                withAnimation(.easeInOut(duration: 0.25)) { ratingStep = 1 }
-            }
-        }
-    }
-
-    private func continueBar(enabled: Bool, action: @escaping () -> Void) -> some View {
         VStack(spacing: 0) {
-            Rectangle().fill(NETRTheme.border).frame(height: 0.5)
-            Button(action: action) {
+            // Top bar
+            HStack {
+                Button("Cancel", action: onCancel)
+                    .foregroundStyle(NETRTheme.subtext)
+                Spacer()
+                // Compact player info
                 HStack(spacing: 8) {
-                    Text("NEXT: VIBE CHECK")
-                        .font(.system(.subheadline, design: .default, weight: .black).width(.compressed)).tracking(1.5)
-                    LucideIcon("arrow-right", size: 14)
-                }
-                .foregroundStyle(enabled ? NETRTheme.background : NETRTheme.subtext)
-                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                .background(enabled ? NETRTheme.neonGreen : NETRTheme.muted.opacity(0.2), in: .rect(cornerRadius: 14))
-            }
-            .buttonStyle(PressButtonStyle())
-            .disabled(!enabled)
-            .padding(.horizontal, 16).padding(.vertical, 12)
-        }
-        .background(NETRTheme.background)
-    }
-
-    // ── Vibe Page ─────────────────────────────────────────────
-
-    private func vibePage(player: PlayerToRate) -> some View {
-        let selectedAnswer = viewModel.vibeRunAgainValue(playerIndex: playerIndex)
-
-        return VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 20) {
-                    VStack(spacing: 8) {
-                        Text("VIBE CHECK").font(.system(size: 11, weight: .black)).tracking(2)
-                            .foregroundStyle(NETRTheme.subtext)
-                        Text("Would you run with\n\(player.name.components(separatedBy: " ").first ?? player.name) again?")
-                            .font(NETRTheme.headingFont(size: .title3))
+                    RatePlayerAvatar(name: player.fullName, avatarUrl: nil, size: 30)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(player.fullName)
+                            .font(.system(size: 13, weight: .black))
                             .foregroundStyle(NETRTheme.text)
-                            .multilineTextAlignment(.center).lineSpacing(4)
-                    }
-                    .frame(maxWidth: .infinity).padding(.top, 24)
-
-                    VStack(spacing: 10) {
-                        ForEach(vibeRunAgainOptions) { option in
-                            vibeOptionButton(option: option, selected: selectedAnswer == option.id)
+                        if let netr = player.netrScore {
+                            Text(String(format: "%.1f NETR", netr))
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(NETRTheme.subtext)
                         }
                     }
-                    .padding(.horizontal, 16)
-
-                    Color.clear.frame(height: 100)
                 }
+                Spacer()
+                // Progress
+                Text("\(ratedCount)/7")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundStyle(allRated ? NETRTheme.neonGreen : NETRTheme.subtext)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+            .background(NETRTheme.background)
+
+            Rectangle().fill(NETRTheme.border).frame(height: 0.5)
+
+            ScrollView {
+                VStack(spacing: 8) {
+                    ForEach(skillCategories) { cat in
+                        SkillSliderRow(
+                            category: cat,
+                            value: rateVM.skillValue(for: cat.id, playerIndex: 0)
+                        ) { val in
+                            rateVM.setSkillRating(playerIndex: 0, key: cat.id, value: val)
+                        }
+                    }
+                    Color.clear.frame(height: 16)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
             }
             .scrollIndicators(.hidden)
 
-            // Submit bar
+            // Submit button
             VStack(spacing: 0) {
                 Rectangle().fill(NETRTheme.border).frame(height: 0.5)
-                HStack(spacing: 12) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.25)) { ratingStep = 0 }
-                    } label: {
-                        LucideIcon("arrow-left", size: 16).foregroundStyle(NETRTheme.subtext)
-                            .frame(width: 50, height: 50)
-                            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
-                    }
-                    .buttonStyle(PressButtonStyle())
-
-                    Button {
-                        Task { await viewModel.submitRating(for: playerIndex); onDismiss() }
-                    } label: {
-                        HStack {
-                            if viewModel.isSubmitting {
-                                ProgressView().tint(NETRTheme.background)
-                            } else {
-                                Text("SUBMIT RATING")
-                                    .font(.system(.subheadline, design: .default, weight: .black).width(.compressed)).tracking(1.5)
-                                LucideIcon("arrow-right", size: 14)
-                            }
+                Button(action: onNext) {
+                    HStack(spacing: 8) {
+                        Text(allRated ? "VIBE CHECK" : "RATE ALL 7 TO CONTINUE")
+                            .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
+                            .tracking(1.5)
+                        if allRated {
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 13, weight: .black))
                         }
-                        .foregroundStyle(selectedAnswer != nil ? NETRTheme.background : NETRTheme.subtext)
-                        .frame(maxWidth: .infinity).padding(.vertical, 16)
-                        .background(
-                            selectedAnswer != nil
-                                ? viewModel.vibeAccentColor(playerIndex: playerIndex)
-                                : NETRTheme.muted.opacity(0.2),
-                            in: .rect(cornerRadius: 14)
-                        )
                     }
-                    .buttonStyle(PressButtonStyle())
-                    .disabled(selectedAnswer == nil || viewModel.isSubmitting)
-                    .sensoryFeedback(.success, trigger: viewModel.isSubmitting)
+                    .foregroundStyle(allRated ? NETRTheme.background : NETRTheme.subtext)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(allRated ? NETRTheme.neonGreen : NETRTheme.muted.opacity(0.2),
+                                in: .rect(cornerRadius: 14))
                 }
-                .padding(.horizontal, 16).padding(.vertical, 12)
+                .buttonStyle(PressButtonStyle())
+                .disabled(!allRated)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
             }
             .background(NETRTheme.background)
         }
+        .background(NETRTheme.background.ignoresSafeArea())
     }
+}
 
-    private func vibeOptionButton(option: VibeRunAgainOption, selected: Bool) -> some View {
-        let color = Color(hex: option.colorHex)
-        return Button {
-            withAnimation(.spring(response: 0.25)) {
-                viewModel.setVibeRunAgain(playerIndex: playerIndex, value: option.id)
+// MARK: - Skill Slider Row
+
+struct SkillSliderRow: View {
+    let category: SkillCategory
+    let value: Int?
+    let onSelect: (Int) -> Void
+
+    @State private var isDragging = false
+    private var color: Color { category.accentColor }
+    private let labels = ["", "Weak", "Below Avg", "Solid", "Strong", "Elite"]
+
+    var body: some View {
+        HStack(spacing: 12) {
+            // Icon circle
+            ZStack {
+                Circle()
+                    .fill(value != nil ? color.opacity(0.15) : NETRTheme.muted.opacity(0.08))
+                    .frame(width: 36, height: 36)
+                LucideIcon(category.icon, size: 15)
+                    .foregroundStyle(value != nil ? color : NETRTheme.subtext)
             }
-        } label: {
+            .scaleEffect(isDragging ? 1.15 : 1.0)
+            .animation(.spring(response: 0.2), value: isDragging)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text(category.label.uppercased())
+                        .font(.system(size: 11, weight: .black)).tracking(0.8)
+                        .foregroundStyle(value != nil ? color : NETRTheme.text)
+                    Spacer()
+                    if let v = value {
+                        HStack(spacing: 4) {
+                            Text(labels[v])
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(color.opacity(0.8))
+                            Text("\(v)")
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundStyle(color)
+                                .frame(width: 22, height: 22)
+                                .background(color.opacity(0.15), in: Circle())
+                        }
+                        .transition(.scale(scale: 0.8).combined(with: .opacity))
+                    } else {
+                        Text("Slide →")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                }
+
+                // Drag track
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        // Background track
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(NETRTheme.muted.opacity(0.15))
+                            .frame(height: 8)
+
+                        // Filled portion
+                        if let v = value {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [color.opacity(0.6), color],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: geo.size.width * CGFloat(v) / 5.0, height: 8)
+                                .animation(.spring(response: 0.25), value: v)
+
+                            // Thumb
+                            Circle()
+                                .fill(color)
+                                .frame(width: isDragging ? 20 : 16, height: isDragging ? 20 : 16)
+                                .shadow(color: color.opacity(0.5), radius: isDragging ? 8 : 4)
+                                .offset(x: geo.size.width * CGFloat(v) / 5.0 - (isDragging ? 10 : 8))
+                                .animation(.spring(response: 0.2), value: isDragging)
+                                .animation(.spring(response: 0.25), value: v)
+                        }
+
+                        // Segment ticks
+                        HStack(spacing: 0) {
+                            ForEach(1...5, id: \.self) { i in
+                                Spacer()
+                                Circle()
+                                    .fill((value ?? 0) >= i ? color : NETRTheme.muted.opacity(0.3))
+                                    .frame(width: 4, height: 4)
+                                if i == 5 { Spacer() }
+                            }
+                        }
+                    }
+                    .contentShape(Rectangle().size(CGSize(width: geo.size.width, height: 44)).offset(CGPoint(x: 0, y: -18)))
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { drag in
+                                if !isDragging {
+                                    withAnimation(.spring(response: 0.2)) { isDragging = true }
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                }
+                                let x = min(max(drag.location.x, 0), geo.size.width)
+                                let raw = x / geo.size.width * 5
+                                let snapped = min(max(Int(raw.rounded()), 1), 5)
+                                if snapped != (value ?? 0) {
+                                    withAnimation(.spring(response: 0.15)) { onSelect(snapped) }
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                }
+                            }
+                            .onEnded { _ in
+                                withAnimation(.spring(response: 0.2)) { isDragging = false }
+                            }
+                    )
+                }
+                .frame(height: 20)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(value != nil ? color.opacity(0.05) : NETRTheme.card, in: .rect(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(value != nil ? color.opacity(0.3) : NETRTheme.border, lineWidth: 1)
+        )
+        .animation(.spring(response: 0.3), value: value != nil)
+    }
+}
+
+// MARK: - Screen 2: Vibe Rating
+
+struct VibeRatingScreen: View {
+    let player: RateablePlayer
+    @Bindable var rateVM: RateViewModel
+    let onBack: () -> Void
+    let onSubmit: () -> Void
+
+    private var selectedAnswer: Int? { rateVM.vibeRunAgainValue(playerIndex: 0) }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Top bar
+            HStack {
+                Button(action: onBack) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                    .foregroundStyle(NETRTheme.subtext)
+                }
+                Spacer()
+                Text("VIBE CHECK")
+                    .font(.system(size: 13, weight: .black)).tracking(1.5)
+                    .foregroundStyle(NETRTheme.text)
+                Spacer()
+                Text("2 of 2")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+
+            ScrollView {
+                VStack(spacing: 28) {
+                    // Profile
+                    VStack(spacing: 10) {
+                        RatePlayerAvatar(name: player.fullName, avatarUrl: nil, size: 88)
+                        Text(player.fullName)
+                            .font(.title2.weight(.black))
+                            .foregroundStyle(NETRTheme.text)
+                    }
+                    .padding(.top, 8)
+
+                    // Question
+                    Text("Would you run with \(player.fullName.components(separatedBy: " ").first ?? player.fullName) again?")
+                        .font(NETRTheme.headingFont(size: .title3))
+                        .foregroundStyle(NETRTheme.text)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+
+                    // Options
+                    VStack(spacing: 10) {
+                        ForEach(vibeRunAgainOptions) { option in
+                            VibeOptionCard(
+                                option: option,
+                                selected: selectedAnswer == option.id
+                            ) {
+                                withAnimation(.spring(response: 0.2)) {
+                                    rateVM.setVibeRunAgain(playerIndex: 0, value: option.id)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+
+                    Color.clear.frame(height: 100)
+                }
+            }
+            .scrollIndicators(.hidden)
+
+            // Submit button
+            VStack(spacing: 0) {
+                Rectangle().fill(NETRTheme.border).frame(height: 0.5)
+                Button(action: onSubmit) {
+                    HStack(spacing: 8) {
+                        if rateVM.isSubmitting {
+                            ProgressView().tint(NETRTheme.background)
+                        } else {
+                            Text("SUBMIT RATING")
+                                .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
+                                .tracking(1.5)
+                        }
+                    }
+                    .foregroundStyle(selectedAnswer != nil ? NETRTheme.background : NETRTheme.subtext)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        selectedAnswer != nil
+                            ? rateVM.vibeAccentColor(playerIndex: 0)
+                            : NETRTheme.muted.opacity(0.2),
+                        in: .rect(cornerRadius: 14)
+                    )
+                }
+                .buttonStyle(PressButtonStyle())
+                .disabled(selectedAnswer == nil || rateVM.isSubmitting)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+            .background(NETRTheme.background)
+        }
+        .background(NETRTheme.background.ignoresSafeArea())
+    }
+}
+
+// MARK: - Vibe Option Card
+
+struct VibeOptionCard: View {
+    let option: VibeRunAgainOption
+    let selected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        let color = Color(hex: option.colorHex)
+        Button(action: onTap) {
             HStack(spacing: 14) {
                 ZStack {
-                    Circle().fill(selected ? color : NETRTheme.muted.opacity(0.2)).frame(width: 22, height: 22)
+                    Circle()
+                        .fill(selected ? color : NETRTheme.muted.opacity(0.2))
+                        .frame(width: 24, height: 24)
                     if selected {
-                        Image(systemName: "checkmark").font(.system(size: 10, weight: .black))
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .black))
                             .foregroundStyle(NETRTheme.background)
                     }
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(option.label).font(.system(size: 15, weight: .bold))
+                    Text(option.label)
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(selected ? color : NETRTheme.text)
-                    Text(option.sublabel).font(.system(size: 12)).foregroundStyle(NETRTheme.subtext)
+                    Text(option.sublabel)
+                        .font(.system(size: 12))
+                        .foregroundStyle(NETRTheme.subtext)
                 }
                 Spacer()
-                Circle().fill(color.opacity(selected ? 1.0 : 0.3)).frame(width: 12, height: 12)
+                Circle()
+                    .fill(color.opacity(selected ? 1.0 : 0.3))
+                    .frame(width: 14, height: 14)
             }
-            .padding(.horizontal, 18).padding(.vertical, 16)
-            .background(selected ? color.opacity(0.1) : NETRTheme.card, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14)
-                .stroke(selected ? color.opacity(0.5) : NETRTheme.border, lineWidth: selected ? 1.5 : 1))
+            .padding(.horizontal, 18).padding(.vertical, 18)
+            .background(selected ? color.opacity(0.1) : NETRTheme.card, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16)
+                .stroke(selected ? color.opacity(0.6) : NETRTheme.border, lineWidth: selected ? 1.5 : 1))
         }
         .buttonStyle(PressButtonStyle())
-        .animation(.spring(response: 0.25), value: selected)
+        .animation(.spring(response: 0.2), value: selected)
     }
 }
 
@@ -726,59 +838,6 @@ struct RatePlayerAvatar: View {
     }
 }
 
-struct RatingCategoryCard: View {
-    let icon: String
-    let label: String
-    let description: String
-    let labels: [Int: String]
-    let selectedValue: Int?
-    let accentColor: Color
-    let onSelect: (Int) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                LucideIcon(icon, size: 16)
-                    .foregroundStyle(selectedValue != nil ? accentColor : NETRTheme.subtext)
-                    .frame(width: 24)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(label.uppercased())
-                        .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
-                        .tracking(1).foregroundStyle(NETRTheme.text)
-                    Text(description).font(.system(size: 12)).foregroundStyle(NETRTheme.subtext)
-                }
-            }
-            HStack(spacing: 6) {
-                ForEach(1...5, id: \.self) { value in
-                    Button {
-                        withAnimation(.spring(response: 0.25)) { onSelect(value) }
-                    } label: {
-                        Circle()
-                            .fill((selectedValue ?? 0) >= value ? accentColor : NETRTheme.muted)
-                            .frame(width: 28, height: 28)
-                            .overlay {
-                                Text("\(value)").font(.system(size: 12, weight: .black))
-                                    .foregroundStyle((selectedValue ?? 0) >= value
-                                                     ? NETRTheme.background : NETRTheme.subtext)
-                            }
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-            }
-            if let val = selectedValue, let labelText = labels[val] {
-                Text(labelText).font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(accentColor)
-                    .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(accentColor.opacity(0.10), in: .rect(cornerRadius: 8))
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
-            }
-        }
-        .padding(16)
-        .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-        .overlay(RoundedRectangle(cornerRadius: 14)
-            .stroke(selectedValue != nil ? accentColor.opacity(0.25) : NETRTheme.border, lineWidth: 1))
-    }
-}
 
 struct HowItWorksRow: View {
     let icon: String

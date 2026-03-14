@@ -7,14 +7,13 @@ struct RecentGameSession: Identifiable {
     var players: [RateablePlayer]
 }
 
-struct RateablePlayer: Identifiable {
+struct RateablePlayer: Identifiable, Hashable {
     let id: String
     let fullName: String
     let username: String
     let netrScore: Double?
     let vibeScore: Double?
     let position: String?
-    let provisional: Bool
     let gameId: String
     var alreadyRated: Bool
 }
@@ -39,10 +38,9 @@ nonisolated struct RateProfileRow: Decodable, Sendable {
     let netrScore: Double?
     let vibeScore: Double?
     let position: String?
-    let provisional: Bool?
 
     nonisolated enum CodingKeys: String, CodingKey {
-        case id, position, provisional
+        case id, position
         case fullName  = "full_name"
         case username
         case netrScore = "netr_score"
@@ -81,4 +79,8 @@ nonisolated struct MyGameIdRow: Decodable, Sendable {
     nonisolated enum CodingKeys: String, CodingKey {
         case gameId = "game_id"
     }
+}
+
+nonisolated struct RatingCountRow: Decodable, Sendable {
+    let id: String
 }

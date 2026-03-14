@@ -84,7 +84,7 @@ class RateTabViewModel {
             // ── Step 4: Load profiles ──
             let profiles: [RateProfileRow] = try await supabase.client
                 .from("profiles")
-                .select("id, full_name, username, netr_score, vibe_score, position, provisional")
+                .select("id, full_name, username, netr_score, vibe_score, position")
                 .in("id", values: allPlayerIds)
                 .execute()
                 .value
@@ -134,7 +134,6 @@ class RateTabViewModel {
                         netrScore:   profile.netrScore,
                         vibeScore:   profile.vibeScore,
                         position:    profile.position,
-                        provisional: profile.provisional ?? false,
                         gameId:      game.id,
                         alreadyRated: rated
                     ))
@@ -171,9 +170,7 @@ class RateTabViewModel {
             from: Calendar.current.startOfDay(for: Date())
         )
         do {
-            // Fetch today's ratings where I am the rated player
-            nonisolated struct CountRow: Decodable, Sendable { let id: String }
-            let rows: [CountRow] = try await supabase.client
+            let rows: [RatingCountRow] = try await supabase.client
                 .from("ratings")
                 .select("id")
                 .eq("rated_id", value: userId)
