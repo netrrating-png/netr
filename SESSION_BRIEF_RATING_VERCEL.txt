@@ -1,0 +1,102 @@
+NETR — SESSION BRIEF: Rating System → Vercel Website
+======================================================
+Date: 2026-03-15
+Repo: netrrating-png/netr
+Branch to use: claude/<new-session-id>
+
+---
+
+CONTEXT
+-------
+NETR is a peer-rating basketball app for NYC pickup players.
+The iOS app (ios/) is built in SwiftUI. The backend uses Supabase.
+The website is deployed on Vercel (separate from the iOS app).
+
+The rating system works as follows:
+- Scale: 2.0 – 9.9
+- Bayesian prior: 3.2 (average pickup player starting point)
+- Regular player ceiling: 9.4
+- 9.5–9.9 = "In The League" — locked to verified pros only (NBA/WNBA/G-League)
+
+TIERS (low → high):
+  2.0–3.9  Just Lacing Up   (beginner)
+  4.0–4.9  Getting Buckets  (casual)
+  5.0–5.9  Hold Your Own    (solid pickup)
+  6.0–6.9  Gym Rat          (competitive)
+  7.0–7.9  Built Different  (top 10%)
+  8.0–8.9  Elite            (top 3%)
+  9.0–9.4  Certified        (top 1%, highest reachable by pickup)
+  9.5–9.9  In The League    (verified pros only — LOCKED)
+
+SKILL CATEGORIES rated per player:
+  Shooting, Finishing, Dribbling, Passing, Defense, Rebounding, Basketball IQ
+
+VIBE CATEGORIES (separate score):
+  Communication, Unselfishness, Effort, Attitude, Inclusion
+
+SELF-ASSESSMENT (onboarding baseline):
+  Players pick from 4-option cards per skill category to seed their initial NETR score.
+  Playing level (brand new → semi-pro) also factors into the starting score.
+
+---
+
+WHAT NEEDS TO BE DONE — VERCEL WEBSITE
+----------------------------------------
+Goal: Expose the NETR rating system on the public-facing Vercel website.
+
+Specific tasks for this session:
+
+1. RATING EXPLAINER PAGE
+   - Build a page (e.g. /rating or /how-it-works) that explains the tier system
+   - Show each tier: name, score range, color, description, percentile
+   - Use the same color palette as the app (dark bg #040406, neon green #39FF14)
+   - Pull tier data from: ios/NETR/Models/NETRRatingScale.swift (source of truth)
+
+2. PLAYER PROFILE DISPLAY
+   - Show a player's NETR score with the correct tier color/label
+   - Display skill bars for all 7 skill categories (color-coded, 1–10 scale)
+   - Display vibe score separately from skill score
+   - Avatar ring color should match tier (green=high, yellow=mid, red=low, purple=Prospect)
+
+3. SUPABASE INTEGRATION
+   - Rating submissions are stored via: ios/NETR/Services/SupabaseManager.swift
+   - Table schema reference: sql/feed_and_court_photos_migration.sql
+   - Verified pro flag: sql/add_is_verified_pro_migration.sql
+   - Website should READ ratings from Supabase (read-only public display)
+
+4. ENVIRONMENT / VERCEL CONFIG
+   - Supabase URL and anon key go in Vercel environment variables:
+       NEXT_PUBLIC_SUPABASE_URL
+       NEXT_PUBLIC_SUPABASE_ANON_KEY
+   - Do NOT hardcode keys in source
+
+---
+
+KEY FILES TO READ FIRST
+------------------------
+ios/NETR/Models/NETRRatingScale.swift     — full tier definitions + colors
+ios/NETR/Models/RatingModels.swift        — RatingSubmission + PlayerToRate structs
+ios/NETR/Services/SelfAssessmentEngine.swift  — baseline score logic
+ios/NETR/Services/SupabaseManager.swift   — how iOS writes to Supabase
+sql/feed_and_court_photos_migration.sql   — DB schema
+PLAN.md                                   — full feature overview
+
+---
+
+DESIGN RULES (match the iOS app)
+----------------------------------
+- Background: #040406 (near-black)
+- Primary accent: #39FF14 (electric lime green / neon)
+- Card surface: #0F0F14
+- Font: Inter or SF Pro (web equivalent)
+- Neon glow on badges and active states
+- Rating ring colors by tier (see NETRRatingScale.swift hexColor fields)
+
+---
+
+NOTES
+------
+- iOS data is currently mock/hardcoded — website should connect to real Supabase data
+- "Prospect" tier = players age ≤15, shown with purple ring
+- Provisional players (< enough ratings) shown with dashed gray ring
+- Do not expose the is_verified_pro flag editing on the frontend — backend/admin only
