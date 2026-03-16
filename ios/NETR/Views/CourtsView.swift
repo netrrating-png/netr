@@ -8,12 +8,12 @@ struct CourtsView: View {
     @State private var showCreateGame: Bool = false
     @State private var showJoinGame: Bool = false
     @State private var showFullScreenMap: Bool = false
-    @State private var cameraPosition: MapCameraPosition = .region(
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955),
             span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
         )
-    )
+    ))
 
     private let filters = ["All", "Live Now", "Full Court", "Lights", "Indoor", "Verified"]
 
@@ -145,6 +145,7 @@ struct CourtsView: View {
                 }
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls { MapUserLocationButton() }
 
             Button {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
@@ -180,6 +181,7 @@ struct CourtsView: View {
                 }
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls { MapUserLocationButton() }
             .ignoresSafeArea()
 
             Button {

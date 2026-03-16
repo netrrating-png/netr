@@ -73,6 +73,32 @@ struct PublicPlayerProfileView: View {
     // MARK: - Header
 
     private func headerGradient(user: Player) -> some View {
+        ZStack(alignment: .bottom) {
+            if let bannerUrlStr = user.bannerUrl, let url = URL(string: bannerUrlStr) {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 140)
+                            .clipped()
+                            .overlay(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.clear, NETRTheme.background]),
+                                    startPoint: .center, endPoint: .bottom
+                                )
+                            )
+                    } else {
+                        defaultGradient(user: user)
+                    }
+                }
+            } else {
+                defaultGradient(user: user)
+            }
+        }
+        .frame(height: 140)
+    }
+
+    private func defaultGradient(user: Player) -> some View {
         LinearGradient(
             gradient: Gradient(colors: [
                 NETRRating.color(for: user.rating).opacity(0.18),
@@ -80,7 +106,7 @@ struct PublicPlayerProfileView: View {
             ]),
             startPoint: .top, endPoint: .bottom
         )
-        .frame(height: 100)
+        .frame(height: 140)
     }
 
     // MARK: - Profile Content

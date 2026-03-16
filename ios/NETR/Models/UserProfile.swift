@@ -8,6 +8,8 @@ nonisolated struct UserProfile: Codable, Sendable {
     var dateOfBirth: String?
     var bio: String?
     var avatarUrl: String?
+    var bannerUrl: String?
+    var city: String?
     var isProspect: Bool?
     var totalRatings: Int?
     var totalGames: Int?
@@ -36,6 +38,8 @@ nonisolated struct UserProfile: Codable, Sendable {
         case dateOfBirth = "date_of_birth"
         case bio
         case avatarUrl = "avatar_url"
+        case bannerUrl = "banner_url"
+        case city
         case isProspect = "is_prospect"
         case totalRatings = "total_ratings"
         case totalGames = "total_games"
@@ -101,7 +105,7 @@ extension UserProfile {
             reviews: totalRatings ?? 0,
             age: ageFromDOB(),
             tier: tier,
-            city: "New York, NY",
+            city: city ?? "New York, NY",
             position: posEnum,
             trend: trend,
             games: totalGames ?? 0,
@@ -116,7 +120,8 @@ extension UserProfile {
                 basketballIQ: catBasketballIq
             ),
             profileImageData: nil,
-            avatarUrl: avatarUrl
+            avatarUrl: avatarUrl,
+            bannerUrl: bannerUrl
         )
     }
 

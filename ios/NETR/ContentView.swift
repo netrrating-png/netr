@@ -133,21 +133,44 @@ struct ContentView: View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases, id: \.rawValue) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        selectedTab = tab
+                    if selectedTab != tab {
+                        let impact = UIImpactFeedbackGenerator(style: .light)
+                        impact.impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            selectedTab = tab
+                        }
                     }
                 } label: {
                     VStack(spacing: 4) {
-                        LucideIcon(tab.icon, size: 18)
-                            .foregroundStyle(selectedTab == tab ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        ZStack {
+                            if selectedTab == tab {
+                                Capsule()
+                                    .fill(Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.18))
+                                    .blur(radius: 4)
+                                    .frame(width: 40, height: 28)
+                            }
+
+                            LucideIcon(tab.icon, size: 18)
+                                .foregroundStyle(
+                                    selectedTab == tab
+                                        ? Color(red: 0.224, green: 1.0, blue: 0.078)
+                                        : Color(hex: "#6A6A82").opacity(0.7)
+                                )
+                                .shadow(
+                                    color: selectedTab == tab
+                                        ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.6)
+                                        : .clear,
+                                    radius: 12
+                                )
+                        }
 
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(selectedTab == tab ? NETRTheme.neonGreen : NETRTheme.subtext)
-
-                        Circle()
-                            .fill(selectedTab == tab ? NETRTheme.neonGreen : .clear)
-                            .frame(width: 4, height: 4)
+                            .foregroundStyle(
+                                selectedTab == tab
+                                    ? Color(red: 0.224, green: 1.0, blue: 0.078)
+                                    : Color(hex: "#6A6A82").opacity(0.7)
+                            )
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
@@ -155,11 +178,24 @@ struct ContentView: View {
                 }
             }
         }
+        .padding(.horizontal, 8)
         .padding(.bottom, 16)
         .background(
-            NETRTheme.surface
-                .shadow(color: .black.opacity(0.3), radius: 10, y: -5)
-                .ignoresSafeArea(edges: .bottom)
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThickMaterial)
+                    .ignoresSafeArea(edges: .bottom)
+
+                Rectangle()
+                    .fill(Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.12))
+                    .ignoresSafeArea(edges: .bottom)
+            }
         )
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.25))
+                .frame(height: 1.5)
+        }
+        .shadow(color: .black.opacity(0.4), radius: 20, y: -5)
     }
 }
