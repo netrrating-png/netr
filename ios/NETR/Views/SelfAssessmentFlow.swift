@@ -513,11 +513,9 @@ class SelfAssessmentViewModel: ObservableObject {
         }
 
         guard wt > 0 else { return (3.2, [:]) }
-        let discounted = (ws / wt) * 0.72                                // step 4
-        let n = Double(answers.count)
-        let bayesian = (n * discounted + 8.0 * 3.2) / (n + 8.0)         // step 5
-        let capped   = min(bayesian, profile.effectiveCeiling)           // step 6
-        return (max(2.0, min(7.0, capped)), catNorm)                     // step 7
+        let discounted = (ws / wt) * 0.72                                // step 4: self-report discount
+        let capped     = min(discounted, profile.effectiveCeiling)       // step 5: level/age/freq ceiling
+        return (max(2.0, min(9.4, capped)), catNorm)                     // step 6
     }
 }
 
