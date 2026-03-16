@@ -5,6 +5,7 @@ import Auth
 @Observable
 class RateTabViewModel {
     var sessions: [RecentGameSession] = []
+    var ratingsReceivedToday: Int = 0
     var isLoading: Bool = true
     var isEmpty: Bool = false
     var errorMessage: String?
@@ -23,59 +24,94 @@ class RateTabViewModel {
 
         do {
             let cutoff = ISO8601DateFormatter().string(
-                from: Date().addingTimeInterval(-24 * 60 * 60)
+                from: Date().addingTimeInterval(-2 * 60 * 60)
             )
 
-            let gamesResponse: [RateGameRow] = try await supabase.client
+            // ── Step 1: All game_ids the current user participated in ──
+            let myGameIdRows: [MyGameIdRow] = try await supabase.client
+                .from("game_players")
+                .select("game_id")
+                .eq("user_id", value: userId)
+                .execute()
+                .value
+
+            let myGameIds = myGameIdRows.map { $0.gameId }
+
+            guard !myGameIds.isEmpty else {
+                isEmpty = true
+                isLoading = false
+                await loadRatedByCount(userId: userId)
+                return
+            }
+
+            // ── Step 2: Filter to completed games from last 24h ──
+            let games: [RateGameRow] = try await supabase.client
                 .from("games")
-                .select("id, players, created_at, court_id, status")
+                .select("id, court_id, created_at, status")
+                .in("id", values: myGameIds)
                 .eq("status", value: "completed")
                 .gte("created_at", value: cutoff)
-                .contains("players", value: [userId])
                 .order("created_at", ascending: false)
                 .execute()
                 .value
 
-            if gamesResponse.isEmpty {
+            guard !games.isEmpty else {
                 isEmpty = true
                 isLoading = false
+                await loadRatedByCount(userId: userId)
                 return
             }
 
-            var gamePlayerMap: [(gameId: String, courtId: String?, createdAt: String, playerIds: [String])] = []
+            let completedGameIds = games.map { $0.id }
 
-            for game in gamesResponse {
-                let opponents = (game.players ?? []).filter { $0 != userId }
-                if !opponents.isEmpty {
-                    gamePlayerMap.append((
-                        gameId: game.id,
-                        courtId: game.courtId,
-                        createdAt: game.createdAt,
-                        playerIds: opponents
-                    ))
+            // ── Step 3: Other players in those games (checked-in, not removed) ──
+            nonisolated struct RateOtherPlayerRow: Decodable, Sendable {
+                let userId: String
+                let gameId: String
+                let checkedInAt: String?
+                let removed: Bool?
+                nonisolated enum CodingKeys: String, CodingKey {
+                    case userId = "user_id"
+                    case gameId = "game_id"
+                    case checkedInAt = "checked_in_at"
+                    case removed
                 }
             }
 
-            let allPlayerIds = Array(Set(gamePlayerMap.flatMap { $0.playerIds }))
+            let rawOtherPlayers: [RateOtherPlayerRow] = try await supabase.client
+                .from("game_players")
+                .select("user_id, game_id, checked_in_at, removed")
+                .in("game_id", values: completedGameIds)
+                .neq("user_id", value: userId)
+                .execute()
+                .value
 
+            // Only include players who checked in and were not removed
+            let otherPlayerRows: [OtherPlayerRow] = rawOtherPlayers
+                .filter { $0.checkedInAt != nil && !($0.removed ?? false) }
+                .map { OtherPlayerRow(userId: $0.userId, gameId: $0.gameId) }
+
+            let allPlayerIds = Array(Set(otherPlayerRows.map { $0.userId }))
             guard !allPlayerIds.isEmpty else {
                 isEmpty = true
                 isLoading = false
+                await loadRatedByCount(userId: userId)
                 return
             }
 
+            // ── Step 4: Load profiles ──
             let profiles: [RateProfileRow] = try await supabase.client
                 .from("profiles")
-                .select("id, full_name, username, netr_score, vibe_score, position, provisional")
+                .select("id, full_name, username, netr_score, vibe_score, position")
                 .in("id", values: allPlayerIds)
                 .execute()
                 .value
 
             let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
 
-            let courtIds = Array(Set(gamePlayerMap.compactMap { $0.courtId }))
+            // ── Step 5: Load court names ──
+            let courtIds = Array(Set(games.compactMap { $0.courtId }))
             var courtMap: [String: String] = [:]
-
             if !courtIds.isEmpty {
                 let courts: [RateCourtNameRow] = try await supabase.client
                     .from("courts")
@@ -86,48 +122,49 @@ class RateTabViewModel {
                 courtMap = Dictionary(uniqueKeysWithValues: courts.map { ($0.id, $0.name) })
             }
 
-            let gameIds = gamePlayerMap.map { $0.gameId }
+            // ── Step 6: Which players are already rated ──
             let ratedRows: [RatedRow] = try await supabase.client
                 .from("ratings")
                 .select("rated_id, game_id")
                 .eq("rater_id", value: userId)
-                .in("game_id", values: gameIds)
+                .in("game_id", values: completedGameIds)
                 .execute()
                 .value
 
             let alreadyRatedSet = Set(ratedRows.map { "\($0.gameId)|\($0.ratedId)" })
 
+            // ── Step 7: Build sessions ──
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
             var builtSessions: [RecentGameSession] = []
-
-            for entry in gamePlayerMap {
+            for game in games {
+                let gamePlayers = otherPlayerRows.filter { $0.gameId == game.id }
                 var players: [RateablePlayer] = []
 
-                for pid in entry.playerIds {
-                    guard let profile = profileMap[pid] else { continue }
-                    let rated = alreadyRatedSet.contains("\(entry.gameId)|\(pid)")
+                for row in gamePlayers {
+                    guard let profile = profileMap[row.userId] else { continue }
+                    let rated = alreadyRatedSet.contains("\(game.id)|\(row.userId)")
                     players.append(RateablePlayer(
-                        id: profile.id,
-                        fullName: profile.fullName ?? "Player",
-                        username: profile.username ?? "",
-                        netrScore: profile.netrScore,
-                        vibeScore: profile.vibeScore,
-                        position: profile.position,
-                        provisional: profile.provisional ?? false,
-                        gameId: entry.gameId,
+                        id:          profile.id,
+                        fullName:    profile.fullName ?? "Player",
+                        username:    profile.username ?? "",
+                        netrScore:   profile.netrScore,
+                        vibeScore:   profile.vibeScore,
+                        position:    profile.position,
+                        gameId:      game.id,
                         alreadyRated: rated
                     ))
                 }
 
                 players.sort { !$0.alreadyRated && $1.alreadyRated }
+                guard !players.isEmpty else { continue }
 
-                let playedAt = formatter.date(from: entry.createdAt) ?? Date()
-                let courtName = entry.courtId.flatMap { courtMap[$0] } ?? "Unknown Court"
+                let playedAt = formatter.date(from: game.createdAt) ?? Date()
+                let courtName = game.courtId.flatMap { courtMap[$0] } ?? "Unknown Court"
 
                 builtSessions.append(RecentGameSession(
-                    id: entry.gameId,
+                    id: game.id,
                     courtName: courtName,
                     playedAt: playedAt,
                     players: players
@@ -138,9 +175,29 @@ class RateTabViewModel {
             isEmpty = builtSessions.isEmpty
             isLoading = false
 
+            await loadRatedByCount(userId: userId)
+
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
+        }
+    }
+
+    private func loadRatedByCount(userId: String) async {
+        let todayStr = ISO8601DateFormatter().string(
+            from: Calendar.current.startOfDay(for: Date())
+        )
+        do {
+            let rows: [RatingCountRow] = try await supabase.client
+                .from("ratings")
+                .select("id")
+                .eq("rated_id", value: userId)
+                .gte("created_at", value: todayStr)
+                .execute()
+                .value
+            ratingsReceivedToday = rows.count
+        } catch {
+            ratingsReceivedToday = 0
         }
     }
 

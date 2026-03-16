@@ -11,9 +11,7 @@ struct OnboardingView: View {
     @State private var fullName: String = ""
     @State private var username: String = ""
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
-    @State private var selectedPosition: Position?
     @State private var selfAssessmentScore: Double? = nil
-    @State private var selfAssessmentCategoryScores: [String: Double] = [:]
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -23,14 +21,14 @@ struct OnboardingView: View {
     @State private var signUpError: String?
     @State private var isSigningUp: Bool = false
 
-    private let totalSteps = 8
+    private let totalSteps = 7
 
     var body: some View {
         ZStack {
             NETRTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if currentStep > 0 && currentStep < 4 {
+                if currentStep > 0 && currentStep < 3 {
                     progressBar
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
@@ -42,11 +40,10 @@ struct OnboardingView: View {
                     }.tag(0)
                     locationStep.tag(1)
                     accountStep.tag(2)
-                    positionStep.tag(3)
-                    ratingExplainedStep.tag(4)
-                    disclaimerStep.tag(5)
-                    selfAssessmentStep.tag(6)
-                    ratingRevealStep.tag(7)
+                    ratingExplainedStep.tag(3)
+                    disclaimerStep.tag(4)
+                    selfAssessmentStep.tag(5)
+                    ratingRevealStep.tag(6)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.snappy(duration: 0.3), value: currentStep)
@@ -207,7 +204,7 @@ struct OnboardingView: View {
                 .padding(.bottom, 32)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
+        .dismissKeyboardOnScroll()
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
             Task {
@@ -220,48 +217,6 @@ struct OnboardingView: View {
 
     private var canContinueAccount: Bool {
         !fullName.isEmpty && !username.isEmpty
-    }
-
-    private var positionStep: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 8) {
-                    Text("WHAT'S YOUR POSITION?")
-                        .font(NETRTheme.headingFont)
-                        .foregroundStyle(NETRTheme.text)
-                    Text("Pick the spot where you feel most comfortable")
-                        .font(.subheadline)
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-                .padding(.top, 24)
-
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    ForEach(Position.allCases) { pos in
-                        PositionCard(position: pos, isSelected: selectedPosition == pos) {
-                            withAnimation(.snappy) { selectedPosition = pos }
-                        }
-                    }
-                }
-                .padding(.horizontal, 24)
-
-                Spacer(minLength: 40)
-
-                Button {
-                    withAnimation { currentStep = 4 }
-                } label: {
-                    Text("CONTINUE")
-                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                        .tracking(1)
-                        .foregroundStyle(NETRTheme.background)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
-                }
-                .buttonStyle(PressButtonStyle())
-                .padding(.horizontal, 24)
-                .padding(.bottom, 32)
-            }
-        }
     }
 
     private var ratingTiers: [(range: String, label: String, description: String, color: Color)] {
@@ -357,7 +312,7 @@ struct OnboardingView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    withAnimation { currentStep = 5 }
+                    withAnimation { currentStep = 4 }
                 } label: {
                     Text("START SELF ASSESSMENT")
                         .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -392,37 +347,25 @@ struct OnboardingView: View {
     private var disclaimerStep: some View {
         SelfAssessmentDisclaimerView(
             onContinue: {
-                withAnimation { currentStep = 6 }
+                withAnimation { currentStep = 5 }
             },
             onBack: {
-                withAnimation { currentStep = 4 }
+                withAnimation { currentStep = 3 }
             }
         )
     }
 
     private var selfAssessmentStep: some View {
-        SelfAssessmentView(
-            estimatedScore: $selfAssessmentScore,
-            categoryScores: $selfAssessmentCategoryScores,
-            onComplete: {
-                if let score = selfAssessmentScore {
-                    SelfAssessmentStore.save(
-                        score: score,
-                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
-                    )
+        SelfAssessmentFlowView { score, _ in
+            selfAssessmentScore = score
+            SelfAssessmentStore.save(score: score, categoryScores: nil)
+            withAnimation { currentStep = 6 }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
+                    showRatingReveal = true
                 }
-                withAnimation { currentStep = 7 }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                    withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
-                        showRatingReveal = true
-                    }
-                }
-            },
-            onBack: {
-                withAnimation { currentStep = 5 }
-            },
-            preselectedPosition: selectedPosition.flatMap { PlayerPosition(rawValue: $0.rawValue.lowercased()) }
-        )
+            }
+        }
     }
 
     private func ratingTierInfo(for rating: Double) -> (name: String, color: Color) {
@@ -564,7 +507,7 @@ struct OnboardingView: View {
         let name = fullName
         let handle = username
         let dob = dateOfBirth
-        let pos = selectedPosition?.rawValue ?? "?"
+        let pos = "?"
         let score = selfAssessmentScore
 
         Task {
@@ -615,7 +558,7 @@ struct OnboardingView: View {
                 if let score, supabase.session != nil {
                     try await supabase.saveSelfAssessmentScore(
                         score: score,
-                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
+                        categoryScores: nil
                     )
                 }
 

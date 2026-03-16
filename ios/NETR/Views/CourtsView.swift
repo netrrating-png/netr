@@ -7,14 +7,11 @@ struct CourtsView: View {
     @State private var showAddCourt: Bool = false
     @State private var showCreateGame: Bool = false
     @State private var showJoinGame: Bool = false
-    @State private var cameraPosition: MapCameraPosition = .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955),
-            span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
-        )
-    )
+    @State private var showFullScreenMap: Bool = false
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var hasSetInitialLocation: Bool = false
 
-    private let filters = ["All", "Live Now", "Full Court", "Lights", "Indoor", "Verified"]
+    private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
 
     var body: some View {
         ZStack {
@@ -32,12 +29,22 @@ struct CourtsView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .dismissKeyboardOnScroll()
+
+            if showFullScreenMap {
+                fullScreenMapOverlay
+                    .transition(.opacity)
+            }
         }
         .task {
             viewModel.requestLocation()
             await viewModel.loadCourts()
             await viewModel.loadFavorites()
-            if let loc = viewModel.userLocation {
+        }
+        .onChange(of: viewModel.userLocation?.latitude) { _, _ in
+            guard !hasSetInitialLocation, let loc = viewModel.userLocation else { return }
+            hasSetInitialLocation = true
+            withAnimation {
                 cameraPosition = .region(MKCoordinateRegion(
                     center: loc,
                     span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
@@ -125,18 +132,34 @@ struct CourtsView: View {
     }
 
     private var mapSection: some View {
-        Map(position: $cameraPosition) {
-            ForEach(viewModel.filteredCourts) { court in
-                Annotation(court.name, coordinate: court.coordinate) {
-                    Button {
-                        selectedCourt = court
-                    } label: {
-                        CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+        ZStack(alignment: .topTrailing) {
+            Map(position: $cameraPosition) {
+                ForEach(viewModel.filteredCourts) { court in
+                    Annotation(court.name, coordinate: court.coordinate) {
+                        Button {
+                            selectedCourt = court
+                        } label: {
+                            CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+                        }
                     }
                 }
             }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls { MapUserLocationButton() }
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    showFullScreenMap = true
+                }
+            } label: {
+                LucideIcon("maximize-2", size: 14)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 32, height: 32)
+                    .background(NETRTheme.card.opacity(0.9), in: .rect(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
+            }
+            .padding(8)
         }
-        .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .frame(height: 220)
         .clipShape(.rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
@@ -144,13 +167,48 @@ struct CourtsView: View {
         .padding(.top, 12)
     }
 
+    private var fullScreenMapOverlay: some View {
+        ZStack(alignment: .topTrailing) {
+            Map(position: $cameraPosition) {
+                ForEach(viewModel.filteredCourts) { court in
+                    Annotation(court.name, coordinate: court.coordinate) {
+                        Button {
+                            selectedCourt = court
+                        } label: {
+                            CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+                        }
+                    }
+                }
+            }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .mapControls { MapUserLocationButton() }
+            .ignoresSafeArea()
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    showFullScreenMap = false
+                }
+            } label: {
+                LucideIcon("x", size: 16)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 40, height: 40)
+                    .background(NETRTheme.card.opacity(0.9), in: Circle())
+                    .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.3), radius: 8)
+            }
+            .padding(.top, 56)
+            .padding(.trailing, 16)
+        }
+    }
+
     private var searchSection: some View {
         HStack(spacing: 10) {
             LucideIcon("search")
                 .foregroundStyle(NETRTheme.subtext)
-            TextField("Search courts, neighborhoods, cities...", text: $viewModel.searchText)
+            TextField("Search courts, neighborhoods, zip codes...", text: $viewModel.searchText)
                 .foregroundStyle(NETRTheme.text)
                 .autocorrectionDisabled()
+                .submitLabel(.done)
             if !viewModel.searchText.isEmpty {
                 Button {
                     viewModel.searchText = ""
@@ -300,11 +358,23 @@ struct CourtsView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 .padding(.vertical, 40)
+            } else if viewModel.selectedFilter == "Favorites" && viewModel.filteredCourts.isEmpty {
+                VStack(spacing: 12) {
+                    LucideIcon("heart", size: 28)
+                        .foregroundStyle(NETRTheme.subtext)
+                    Text("No favorites yet")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Tap \u{2665} on any court to save it here")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+                .padding(.vertical, 40)
             } else if viewModel.filteredCourts.isEmpty {
                 VStack(spacing: 12) {
                     LucideIcon("map-pin-off", size: 28)
                         .foregroundStyle(NETRTheme.subtext)
-                    Text(viewModel.searchText.isEmpty ? "No courts found" : "No courts found for \"\(viewModel.searchText)\"")
+                    Text(viewModel.searchText.isEmpty ? "No courts found" : "No courts match \"\(viewModel.searchText)\"")
                         .font(.subheadline)
                         .foregroundStyle(NETRTheme.subtext)
                     Button {
@@ -318,20 +388,18 @@ struct CourtsView: View {
                 .padding(.vertical, 40)
             } else {
                 ForEach(viewModel.filteredCourts) { court in
-                    Button {
-                        selectedCourt = court
-                    } label: {
-                        CourtCardView(
-                            court: court,
-                            distance: viewModel.distanceString(for: court),
-                            isFavorite: viewModel.isFavorite(court.id),
-                            isHomeCourt: viewModel.isHomeCourt(court.id),
-                            onFavoriteToggle: {
-                                Task { await viewModel.toggleFavorite(courtId: court.id) }
-                            }
-                        )
-                    }
-                    .buttonStyle(PressButtonStyle())
+                    CourtCardView(
+                        court: court,
+                        distance: viewModel.distanceString(for: court),
+                        isFavorite: viewModel.isFavorite(court.id),
+                        isHomeCourt: viewModel.isHomeCourt(court.id),
+                        onFavoriteToggle: {
+                            Task { await viewModel.toggleFavorite(courtId: court.id) }
+                        },
+                        onTap: {
+                            selectedCourt = court
+                        }
+                    )
                 }
             }
         }

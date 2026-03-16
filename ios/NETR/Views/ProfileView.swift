@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var showFollowing: Bool = false
     @State private var showBioEdit: Bool = false
     @State private var showRatingScale: Bool = false
+    @State private var showEditProfile: Bool = false
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -147,11 +148,45 @@ struct ProfileView: View {
         .sheet(isPresented: $showFollowing) { ProfileFollowListSheet(title: "Following", count: viewModel.followingCount) }
         .sheet(isPresented: $showBioEdit) { ProfileBioEditSheet() }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
+        .sheet(isPresented: $showEditProfile) {
+            if let user = viewModel.player {
+                EditProfileView(viewModel: viewModel, player: user)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(NETRTheme.background)
+            }
+        }
     }
 
     // MARK: - Header Gradient
 
     private func profileHeaderGradient(user: Player) -> some View {
+        ZStack(alignment: .bottom) {
+            if let bannerUrlStr = user.bannerUrl, let url = URL(string: bannerUrlStr) {
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image.resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 160)
+                            .clipped()
+                            .overlay(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [.clear, NETRTheme.background]),
+                                    startPoint: .center, endPoint: .bottom
+                                )
+                            )
+                    } else {
+                        defaultHeaderGradient(user: user)
+                    }
+                }
+            } else {
+                defaultHeaderGradient(user: user)
+            }
+        }
+        .frame(height: 160)
+    }
+
+    private func defaultHeaderGradient(user: Player) -> some View {
         LinearGradient(
             gradient: Gradient(colors: [
                 ratingColor(for: user).opacity(0.18),
@@ -159,7 +194,7 @@ struct ProfileView: View {
             ]),
             startPoint: .top, endPoint: .bottom
         )
-        .frame(height: 120)
+        .frame(height: 160)
     }
 
     // MARK: - Avatar + Follow Row
@@ -250,7 +285,7 @@ struct ProfileView: View {
 
             HStack(spacing: 10) {
                 if viewModel.isCurrentUser {
-                    NavigationLink(destination: EmptyView()) {
+                    Button { showEditProfile = true } label: {
                         profileActionButton(label: "Edit Profile", icon: "pencil", filled: false)
                     }
                     .buttonStyle(.plain)
@@ -547,7 +582,7 @@ struct ProfileView: View {
                 }
             }
 
-            SkillRadarView(skills: buildRadarSkills(from: user.skills), size: 280, animated: true)
+            SkillRadarView(skills: buildRadarSkills(from: user.skills), size: 280, animated: true, tierColor: NETRRating.color(for: user.rating))
         }
     }
 

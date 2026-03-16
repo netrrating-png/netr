@@ -88,8 +88,11 @@ nonisolated struct PostComment: Identifiable, Sendable {
     let userId: String
     let content: String
     let likeCount: Int
+    let photoUrl: String?
+    let courtId: String?
     let createdAt: String
     var author: FeedAuthor?
+    var taggedCourt: FeedCourt?
 }
 
 extension PostComment: Decodable {
@@ -99,8 +102,11 @@ extension PostComment: Decodable {
         case userId = "user_id"
         case content
         case likeCount = "like_count"
+        case photoUrl = "photo_url"
+        case courtId = "court_id"
         case createdAt = "created_at"
         case author = "profiles"
+        case taggedCourt = "courts"
     }
 }
 
@@ -152,11 +158,15 @@ nonisolated struct CreateCommentPayload: Encodable, Sendable {
     let postId: String
     let userId: String
     let content: String
+    let photoUrl: String?
+    let courtId: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case postId = "post_id"
         case userId = "user_id"
         case content
+        case photoUrl = "photo_url"
+        case courtId = "court_id"
     }
 }
 
@@ -189,8 +199,25 @@ extension FeedCourtSearchResult: Decodable {
 
 enum FeedTab: String, CaseIterable {
     case forYou = "For You"
-    case all = "All"
-    case trending = "Trending"
+    case live = "Live"
+}
+
+nonisolated struct UserSearchResult: Identifiable, Sendable {
+    let id: String
+    let username: String?
+    let fullName: String?
+    let avatarUrl: String?
+    let netrScore: Double?
+}
+
+extension UserSearchResult: Decodable {
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id
+        case username
+        case fullName = "full_name"
+        case avatarUrl = "avatar_url"
+        case netrScore = "netr_score"
+    }
 }
 
 nonisolated struct CourtPhoto: Identifiable, Sendable {

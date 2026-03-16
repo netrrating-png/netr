@@ -1,3 +1,11 @@
 node_modules
 .env
 .expo
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Secrets
+ios/NETR/Config.swift
+ios/NETR/SupabaseConfig.swift

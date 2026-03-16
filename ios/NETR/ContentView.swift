@@ -18,16 +18,14 @@ struct ContentView: View {
         case courts = "Courts"
         case rate = "Rate"
         case feed = "Feed"
-        case profile = "Profile"
-        case settings = "Settings"
+        case bench = "Bench"
 
         var icon: String {
             switch self {
             case .courts: return "map"
             case .rate: return "star"
             case .feed: return "messages-square"
-            case .profile: return "user"
-            case .settings: return "settings"
+            case .bench: return "settings"
             }
         }
     }
@@ -47,9 +45,7 @@ struct ContentView: View {
                         RateView()
                     case .feed:
                         FeedView()
-                    case .profile:
-                        ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
-                    case .settings:
+                    case .bench:
                         SettingsView(store: store, appearance: appearance, courtsViewModel: courtsViewModel)
                     }
                 }
@@ -129,21 +125,37 @@ struct ContentView: View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases, id: \.rawValue) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.3)) {
-                        selectedTab = tab
+                    if selectedTab != tab {
+                        let impact = UIImpactFeedbackGenerator(style: .light)
+                        impact.impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            selectedTab = tab
+                        }
                     }
                 } label: {
                     VStack(spacing: 4) {
-                        LucideIcon(tab.icon, size: 18)
-                            .foregroundStyle(selectedTab == tab ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        ZStack {
+                            if selectedTab == tab {
+                                Capsule()
+                                    .fill(Color(hex: "#39FF14").opacity(0.10))
+                                    .frame(width: 40, height: 28)
+                            }
+
+                            LucideIcon(tab.icon, size: 18)
+                                .foregroundStyle(
+                                    selectedTab == tab
+                                        ? Color(hex: "#39FF14")
+                                        : Color(hex: "#6A6A82")
+                                )
+                        }
 
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(selectedTab == tab ? NETRTheme.neonGreen : NETRTheme.subtext)
-
-                        Circle()
-                            .fill(selectedTab == tab ? NETRTheme.neonGreen : .clear)
-                            .frame(width: 4, height: 4)
+                            .foregroundStyle(
+                                selectedTab == tab
+                                    ? Color(hex: "#39FF14")
+                                    : Color(hex: "#6A6A82")
+                            )
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
@@ -151,11 +163,18 @@ struct ContentView: View {
                 }
             }
         }
+        .padding(.horizontal, 8)
         .padding(.bottom, 16)
         .background(
-            NETRTheme.surface
-                .shadow(color: .black.opacity(0.3), radius: 10, y: -5)
+            Rectangle()
+                .fill(Color(hex: "#040406"))
+                .overlay(.ultraThinMaterial)
                 .ignoresSafeArea(edges: .bottom)
         )
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 0.5)
+        }
     }
 }

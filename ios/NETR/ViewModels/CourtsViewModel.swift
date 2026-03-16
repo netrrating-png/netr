@@ -22,7 +22,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     private let client = SupabaseManager.shared.client
 
-    private let filters = ["All", "Live Now", "Full Court", "Lights", "Indoor", "Verified"]
+    private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
 
     var neighborhoods: [String] {
         let hoods = Set(courts.map { $0.neighborhood }).sorted()
@@ -33,10 +33,17 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         var results = courts
 
         if !searchText.isEmpty {
-            results = results.filter {
-                $0.name.localizedStandardContains(searchText) ||
-                $0.neighborhood.localizedStandardContains(searchText) ||
-                $0.city.localizedStandardContains(searchText)
+            let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+            let isZip = trimmed.count == 5 && trimmed.allSatisfy(\.isNumber)
+            if isZip {
+                results = results.filter { $0.zipCode == trimmed }
+            } else {
+                results = results.filter {
+                    $0.name.localizedStandardContains(searchText) ||
+                    $0.neighborhood.localizedStandardContains(searchText) ||
+                    $0.city.localizedStandardContains(searchText) ||
+                    ($0.zipCode?.hasPrefix(trimmed) ?? false)
+                }
             }
         }
 
@@ -46,7 +53,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
         switch selectedFilter {
         case "Live Now": results = results.filter { $0.verified }
-        case "Full Court": results = results.filter { $0.fullCourt }
+        case "Favorites": results = results.filter { favoriteCourtIds.contains($0.id) }
         case "Lights": results = results.filter { $0.lights }
         case "Indoor": results = results.filter { $0.indoor }
         case "Verified": results = results.filter { $0.verified }
@@ -96,9 +103,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            self.userLocation = CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955)
-        }
+        print("Location error: \(error.localizedDescription)")
     }
 
     func distanceString(for court: Court) -> String {
@@ -132,13 +137,21 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func searchCourts(query: String) -> [Court] {
-        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return [] }
+        let isZip = q.count == 5 && q.allSatisfy(\.isNumber)
+        if isZip {
+            return courts
+                .filter { $0.zipCode == q }
+                .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
+        }
+        let lower = q.lowercased()
         return courts
             .filter {
-                $0.name.localizedStandardContains(q) ||
-                $0.neighborhood.localizedStandardContains(q) ||
-                $0.city.localizedStandardContains(q)
+                $0.name.localizedStandardContains(lower) ||
+                $0.neighborhood.localizedStandardContains(lower) ||
+                $0.city.localizedStandardContains(lower) ||
+                ($0.zipCode?.hasPrefix(q) ?? false)
             }
             .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
     }
@@ -162,7 +175,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         do {
             let result: [Court] = try await client
                 .from("courts")
-                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, cosign_count, court_rating, submitted_by")
+                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
                 .execute()
                 .value
             courts = result
@@ -347,21 +360,4 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func cosignCourt(courtId: String) async {
-        do {
-            if let idx = courts.firstIndex(where: { $0.id == courtId }) {
-                courts[idx].cosignCount += 1
-            }
-            try await client
-                .from("courts")
-                .update(["cosign_count": courts.first(where: { $0.id == courtId })?.cosignCount ?? 1])
-                .eq("id", value: courtId)
-                .execute()
-        } catch {
-            if let idx = courts.firstIndex(where: { $0.id == courtId }) {
-                courts[idx].cosignCount -= 1
-            }
-            print("Cosign error: \(error)")
-        }
-    }
 }

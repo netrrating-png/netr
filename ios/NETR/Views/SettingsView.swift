@@ -8,7 +8,8 @@ struct SettingsView: View {
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
-    @State private var showPlayerCard: Bool = false
+    @State private var showOwnProfile: Bool = false
+    @State private var showMyGames: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
     @State private var profileViewModel = ProfileViewModel()
@@ -22,7 +23,8 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     profileCard
-                    playerCardButton
+                    myGamesButton
+                    visitProfileButton
                     appearanceSection
                     securitySection
                     accountSection
@@ -34,10 +36,21 @@ struct SettingsView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .sheet(isPresented: $showPlayerCard) {
-            PlayerCardView(player: user, courts: Array(courtsViewModel.courts.prefix(3)))
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showOwnProfile) {
+            NavigationStack {
+                PublicPlayerProfileView(userId: supabase.session?.user.id.uuidString ?? "")
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
+        }
+        .sheet(isPresented: $showMyGames) {
+            NavigationStack {
+                MyGamesView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
         }
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
@@ -151,24 +164,62 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
     }
 
-    private var playerCardButton: some View {
+    private var myGamesButton: some View {
         Button {
-            showPlayerCard = true
+            showMyGames = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(NETRTheme.gold.opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    LucideIcon("trophy")
+                        .foregroundStyle(NETRTheme.gold)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("My Games")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Active and upcoming games")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                LucideIcon("chevron-right", size: 12)
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            .padding(14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(NETRTheme.gold.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PressButtonStyle())
+        .padding(.horizontal, 16)
+    }
+
+    private var visitProfileButton: some View {
+        Button {
+            showOwnProfile = true
         } label: {
             HStack(spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(NETRTheme.neonGreen.opacity(0.1))
                         .frame(width: 40, height: 40)
-                    LucideIcon("id-card")
+                    LucideIcon("user")
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("View Player Card")
+                    Text("Visit Your Profile")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(NETRTheme.text)
-                    Text("Your basketball card with stats & scouting report")
+                    Text("See how others see your profile")
                         .font(.caption)
                         .foregroundStyle(NETRTheme.subtext)
                 }
