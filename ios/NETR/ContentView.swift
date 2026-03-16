@@ -16,20 +16,16 @@ struct ContentView: View {
 
     enum Tab: String, CaseIterable {
         case courts = "Courts"
-        case myGames = "My Games"
         case rate = "Rate"
         case feed = "Feed"
-        case profile = "Profile"
-        case settings = "Settings"
+        case bench = "Bench"
 
         var icon: String {
             switch self {
             case .courts: return "map"
-            case .myGames: return "trophy"
             case .rate: return "star"
             case .feed: return "messages-square"
-            case .profile: return "user"
-            case .settings: return "settings"
+            case .bench: return "settings"
             }
         }
     }
@@ -45,15 +41,11 @@ struct ContentView: View {
                     switch selectedTab {
                     case .courts:
                         CourtsView(viewModel: courtsViewModel)
-                    case .myGames:
-                        MyGamesView()
                     case .rate:
                         RateView()
                     case .feed:
                         FeedView()
-                    case .profile:
-                        ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
-                    case .settings:
+                    case .bench:
                         SettingsView(store: store, appearance: appearance, courtsViewModel: courtsViewModel)
                     }
                 }

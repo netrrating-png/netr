@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @State private var showOwnProfile: Bool = false
+    @State private var showMyGames: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
     @State private var profileViewModel = ProfileViewModel()
@@ -22,6 +23,7 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     profileCard
+                    myGamesButton
                     visitProfileButton
                     appearanceSection
                     securitySection
@@ -37,6 +39,14 @@ struct SettingsView: View {
         .sheet(isPresented: $showOwnProfile) {
             NavigationStack {
                 PublicPlayerProfileView(userId: supabase.session?.user.id.uuidString ?? "")
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
+        }
+        .sheet(isPresented: $showMyGames) {
+            NavigationStack {
+                MyGamesView()
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -151,6 +161,44 @@ struct SettingsView: View {
         .padding(16)
         .background(NETRTheme.card, in: .rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    private var myGamesButton: some View {
+        Button {
+            showMyGames = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(NETRTheme.gold.opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    LucideIcon("trophy")
+                        .foregroundStyle(NETRTheme.gold)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("My Games")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Active and upcoming games")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                LucideIcon("chevron-right", size: 12)
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            .padding(14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(NETRTheme.gold.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PressButtonStyle())
         .padding(.horizontal, 16)
     }
 
