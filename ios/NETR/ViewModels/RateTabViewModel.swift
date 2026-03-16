@@ -24,7 +24,7 @@ class RateTabViewModel {
 
         do {
             let cutoff = ISO8601DateFormatter().string(
-                from: Date().addingTimeInterval(-24 * 60 * 60)
+                from: Date().addingTimeInterval(-2 * 60 * 60)
             )
 
             // ── Step 1: All game_ids the current user participated in ──
@@ -64,14 +64,32 @@ class RateTabViewModel {
 
             let completedGameIds = games.map { $0.id }
 
-            // ── Step 3: Other players in those games ──
-            let otherPlayerRows: [OtherPlayerRow] = try await supabase.client
+            // ── Step 3: Other players in those games (checked-in, not removed) ──
+            nonisolated struct RateOtherPlayerRow: Decodable, Sendable {
+                let userId: String
+                let gameId: String
+                let checkedInAt: String?
+                let removed: Bool?
+                nonisolated enum CodingKeys: String, CodingKey {
+                    case userId = "user_id"
+                    case gameId = "game_id"
+                    case checkedInAt = "checked_in_at"
+                    case removed
+                }
+            }
+
+            let rawOtherPlayers: [RateOtherPlayerRow] = try await supabase.client
                 .from("game_players")
-                .select("user_id, game_id")
+                .select("user_id, game_id, checked_in_at, removed")
                 .in("game_id", values: completedGameIds)
                 .neq("user_id", value: userId)
                 .execute()
                 .value
+
+            // Only include players who checked in and were not removed
+            let otherPlayerRows: [OtherPlayerRow] = rawOtherPlayers
+                .filter { $0.checkedInAt != nil && !($0.removed ?? false) }
+                .map { OtherPlayerRow(userId: $0.userId, gameId: $0.gameId) }
 
             let allPlayerIds = Array(Set(otherPlayerRows.map { $0.userId }))
             guard !allPlayerIds.isEmpty else {
