@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var courtsViewModel = CourtsViewModel()
     @State private var showSelfAssessment: Bool = false
     @State private var dismissedAssessmentBanner: Bool = false
+    @State private var showSettings: Bool = false
 
     private var isUnrated: Bool {
         guard let profile = supabase.currentProfile else { return false }
@@ -18,14 +19,14 @@ struct ContentView: View {
         case courts = "Courts"
         case rate = "Rate"
         case feed = "Feed"
-        case bench = "Bench"
+        case profile = "Profile"
 
         var icon: String {
             switch self {
             case .courts: return "map"
             case .rate: return "star"
             case .feed: return "messages-square"
-            case .bench: return "settings"
+            case .profile: return "user"
             }
         }
     }
@@ -45,8 +46,29 @@ struct ContentView: View {
                         RateView()
                     case .feed:
                         FeedView()
-                    case .bench:
-                        SettingsView(store: store, appearance: appearance, courtsViewModel: courtsViewModel)
+                    case .profile:
+                        ZStack(alignment: .topTrailing) {
+                            ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
+                            Button {
+                                showSettings = true
+                            } label: {
+                                LucideIcon("settings", size: 18)
+                                    .foregroundStyle(NETRTheme.text)
+                                    .frame(width: 36, height: 36)
+                                    .background(.ultraThinMaterial, in: Circle())
+                                    .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                            }
+                            .padding(.top, 52)
+                            .padding(.trailing, 16)
+                        }
+                        .sheet(isPresented: $showSettings) {
+                            NavigationStack {
+                                SettingsView(store: store, appearance: appearance, courtsViewModel: courtsViewModel)
+                            }
+                            .presentationDetents([.large])
+                            .presentationDragIndicator(.visible)
+                            .presentationBackground(NETRTheme.background)
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
