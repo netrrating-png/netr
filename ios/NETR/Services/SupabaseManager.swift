@@ -217,4 +217,18 @@ class SupabaseManager {
 
         await loadProfile(userId: userId)
     }
+
+    func flagProVerificationPending() async throws {
+        guard let userId = session?.user.id.uuidString else { return }
+        do {
+            try await client
+                .from("profiles")
+                .update(["pro_verification_pending": AnyJSON.bool(true)])
+                .eq("id", value: userId)
+                .execute()
+            await loadProfile(userId: userId)
+        } catch {
+            print("[NETR] flagProVerificationPending failed: \(error)")
+        }
+    }
 }

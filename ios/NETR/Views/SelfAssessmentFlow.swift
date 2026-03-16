@@ -442,7 +442,7 @@ struct PlayerProfile {
         let base       = level.baseCeiling
         let afterDecay = levelIsCurrent ? base : base * decay
         let afterFreq  = (level == .nba) ? afterDecay : afterDecay * freq.modifier
-        return min(7.0, max(2.0, afterFreq))
+        return max(2.0, afterFreq)
     }
 }
 
@@ -496,26 +496,29 @@ class SelfAssessmentViewModel: ObservableObject {
         withAnimation(.easeInOut(duration: 0.22)) { questionIndex -= 1 }
     }
 
-    // 7-step scoring algorithm — all internal
     private func calculateFinalScore() -> (Double, [SASkillCategory: Double]) {
         guard let position = profile.position else { return (3.2, [:]) }
-        var catNorm: [SASkillCategory: Double] = [:]
+        var catRaw: [SASkillCategory: Double] = [:]
         var ws = 0.0, wt = 0.0
 
         for cat in SASkillCategory.allCases {
             let vals = questions.filter { $0.category == cat }.compactMap { answers[$0.id] }
             guard !vals.isEmpty else { continue }
-            let avg  = Double(vals.reduce(0, +)) / Double(vals.count)   // step 1
-            let norm = 2.0 + (avg - 1.0) * (7.4 / 3.0)                  // step 2
-            catNorm[cat] = norm
-            let w = cat.weight(for: position)                            // step 3
+            let avg  = Double(vals.reduce(0, +)) / Double(vals.count)
+            let norm = 2.0 + (avg - 1.0) * (7.4 / 3.0)
+            catRaw[cat] = norm
+            let w = cat.weight(for: position)
             ws += norm * w; wt += w
         }
 
         guard wt > 0 else { return (3.2, [:]) }
-        let discounted = (ws / wt) * 0.72                                // step 4: self-report discount
-        let capped     = min(discounted, profile.effectiveCeiling)       // step 5: level/age/freq ceiling
-        return (max(2.0, min(9.4, capped)), catNorm)                     // step 6
+        let ceiling    = profile.effectiveCeiling
+        let discounted = (ws / wt) * 0.72
+        let overall    = max(2.0, min(9.4, min(discounted, ceiling)))
+        // Apply the same discount + ceiling to each category so the breakdown
+        // is consistent with the overall score
+        let catScores  = catRaw.mapValues { min($0 * 0.72, ceiling) }
+        return (overall, catScores)
     }
 }
 

@@ -13,6 +13,7 @@ struct OnboardingView: View {
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
     @State private var selfAssessmentScore: Double? = nil
     @State private var selfAssessmentCategoryScores: [String: Double] = [:]
+    @State private var selfAssessmentIsProClaim: Bool = false
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -357,9 +358,10 @@ struct OnboardingView: View {
     }
 
     private var selfAssessmentStep: some View {
-        SelfAssessmentFlowView { score, _, catScores in
+        SelfAssessmentFlowView { score, profile, catScores in
             selfAssessmentScore = score
             selfAssessmentCategoryScores = catScores
+            selfAssessmentIsProClaim = (profile.highestLevel == .nba)
             SelfAssessmentStore.save(score: score, categoryScores: catScores)
             withAnimation { currentStep = 6 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
@@ -562,6 +564,9 @@ struct OnboardingView: View {
                         score: score,
                         categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
                     )
+                    if selfAssessmentIsProClaim {
+                        try? await supabase.flagProVerificationPending()
+                    }
                 }
 
                 biometrics.isUnlocked = true
