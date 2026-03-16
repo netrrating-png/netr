@@ -97,6 +97,22 @@ enum PlayLevel: String, CaseIterable, Identifiable {
         }
     }
 
+    // Internal floor — guarantees a minimum score for the playing level
+    // regardless of how conservatively someone answers. After the 28%
+    // self-assessment discount the achievable ceiling is floor+(ceiling-floor)*0.72.
+    var baseFloor: Double {
+        switch self {
+        case .nba:       return 8.5
+        case .d1:        return 6.2
+        case .d2d3:      return 5.7
+        case .hsVarsity: return 5.3
+        case .hsJV:      return 4.7
+        case .aau:       return 5.0
+        case .rec:       return 3.5
+        case .pickup:    return 2.5
+        }
+    }
+
     // Per-level age decay — internal, never shown to users.
     //
     // Decay is years-past the typical exit age for each level.
@@ -444,6 +460,17 @@ struct PlayerProfile {
         let afterFreq  = (level == .nba) ? afterDecay : afterDecay * freq.modifier
         return max(2.0, afterFreq)
     }
+
+    // Internal effective floor — never displayed
+    // Decays in proportion to the ceiling so the spread stays consistent.
+    var effectiveFloor: Double {
+        guard let level = highestLevel, let freq = frequency, let age else { return 2.0 }
+        let decay      = PlayLevel.ageDecay(level: level, age: age, isCurrent: levelIsCurrent)
+        let base       = level.baseFloor
+        let afterDecay = levelIsCurrent ? base : base * decay
+        let afterFreq  = afterDecay * freq.modifier
+        return max(2.0, min(afterFreq, effectiveCeiling - 0.5))
+    }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -498,26 +525,31 @@ class SelfAssessmentViewModel: ObservableObject {
 
     private func calculateFinalScore() -> (Double, [SASkillCategory: Double]) {
         guard let position = profile.position else { return (3.2, [:]) }
-        var catRaw: [SASkillCategory: Double] = [:]
+        var catRatios: [SASkillCategory: Double] = [:]
         var ws = 0.0, wt = 0.0
 
         for cat in SASkillCategory.allCases {
             let vals = questions.filter { $0.category == cat }.compactMap { answers[$0.id] }
             guard !vals.isEmpty else { continue }
-            let avg  = Double(vals.reduce(0, +)) / Double(vals.count)
-            let norm = 2.0 + (avg - 1.0) * (7.4 / 3.0)
-            catRaw[cat] = norm
+            let avg   = Double(vals.reduce(0, +)) / Double(vals.count)
+            let ratio = (avg - 1.0) / 3.0   // 0.0–1.0 answer quality
+            catRatios[cat] = ratio
             let w = cat.weight(for: position)
-            ws += norm * w; wt += w
+            ws += ratio * w; wt += w
         }
 
         guard wt > 0 else { return (3.2, [:]) }
-        let ceiling    = profile.effectiveCeiling
-        let discounted = (ws / wt) * 0.72
-        let overall    = max(2.0, min(9.4, min(discounted, ceiling)))
-        // Apply the same discount + ceiling to each category so the breakdown
-        // is consistent with the overall score
-        let catScores  = catRaw.mapValues { min($0 * 0.72, ceiling) }
+        let ceiling         = profile.effectiveCeiling
+        let floor           = profile.effectiveFloor
+        let avgRatio        = ws / wt
+        let discountedRatio = avgRatio * 0.72   // 28% self-assessment discount
+        let overall         = max(floor, min(ceiling, floor + discountedRatio * (ceiling - floor)))
+
+        // Map each category into the same [floor, ceiling] range for the breakdown
+        let catScores = catRatios.mapValues { ratio in
+            let dr = ratio * 0.72
+            return max(floor, min(ceiling, floor + dr * (ceiling - floor)))
+        }
         return (overall, catScores)
     }
 }
