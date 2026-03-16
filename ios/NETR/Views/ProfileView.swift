@@ -547,7 +547,7 @@ struct ProfileView: View {
                 }
             }
 
-            SkillRadarView(skills: buildRadarSkills(from: user.skills), size: 280, animated: true)
+            SkillRadarView(skills: buildRadarSkills(from: user.skills), size: 280, animated: true, tierColor: NETRRating.color(for: user.rating))
         }
     }
 
