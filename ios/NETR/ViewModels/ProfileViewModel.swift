@@ -22,6 +22,9 @@ class ProfileViewModel {
     private let client = SupabaseManager.shared.client
     private var profileUserId: String?
 
+    var bio: String?
+    var userPosts: [SupabaseFeedPost] = []
+
     func loadProfile(userId: String? = nil) async {
         isLoading = true
         error = nil
@@ -53,7 +56,10 @@ class ProfileViewModel {
 
             player = bridgedPlayer
             vibeScore = profile.vibeScore
+            bio = profile.bio
             isLoading = false
+
+            await loadSocialCounts(targetId: targetId)
         } catch {
             if isCurrentUser {
                 let fallback = buildLocalOnlyPlayer()
@@ -69,9 +75,76 @@ class ProfileViewModel {
         }
     }
 
+    private func loadSocialCounts(targetId: String) async {
+        nonisolated struct IdRow: Decodable, Sendable { let followerId: String
+            nonisolated enum CodingKeys: String, CodingKey { case followerId = "follower_id" }
+        }
+        nonisolated struct IdRow2: Decodable, Sendable { let followingId: String
+            nonisolated enum CodingKeys: String, CodingKey { case followingId = "following_id" }
+        }
+
+        // Follower count
+        if let rows: [IdRow] = try? await client
+            .from("follows")
+            .select("follower_id")
+            .eq("following_id", value: targetId)
+            .execute()
+            .value {
+            followerCount = rows.count
+        }
+
+        // Following count
+        if let rows: [IdRow2] = try? await client
+            .from("follows")
+            .select("following_id")
+            .eq("follower_id", value: targetId)
+            .execute()
+            .value {
+            followingCount = rows.count
+        }
+
+        // Check if current user follows this profile
+        if !isCurrentUser,
+           let currentId = SupabaseManager.shared.session?.user.id.uuidString {
+            let rows: [FollowingIdRow]? = try? await client
+                .from("follows")
+                .select("following_id")
+                .eq("follower_id", value: currentId)
+                .eq("following_id", value: targetId)
+                .execute()
+                .value
+            isFollowing = !(rows?.isEmpty ?? true)
+        }
+    }
+
+    func loadUserPosts() async {
+        guard let targetId = profileUserId else { return }
+
+        let selectQuery = """
+            id, author_id, content, hashtags, mentioned_user_ids,
+            court_id, game_id, repost_of_id, quote_of_id, photo_url,
+            like_count, comment_count, repost_count, created_at,
+            profiles(id, full_name, username, avatar_url, netr_score, vibe_score),
+            courts(id, name, neighborhood, verified)
+        """
+
+        let fetched: [SupabaseFeedPost]? = try? await client
+            .from("feed_posts")
+            .select(selectQuery)
+            .eq("author_id", value: targetId)
+            .is("repost_of_id", value: nil)
+            .order("created_at", ascending: false)
+            .limit(20)
+            .execute()
+            .value
+
+        userPosts = fetched ?? []
+    }
+
     func toggleFollow() async {
         guard let currentId = SupabaseManager.shared.session?.user.id.uuidString,
-              let targetId = profileUserId else { return }
+              let targetId = profileUserId,
+              currentId != targetId else { return }
 
         nonisolated struct FollowPayload: Encodable, Sendable {
             let followerId: String
