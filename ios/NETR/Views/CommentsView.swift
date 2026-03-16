@@ -1,6 +1,7 @@
 import SwiftUI
 import Supabase
 import Auth
+import PhotosUI
 
 struct CommentsView: View {
     let post: SupabaseFeedPost
@@ -8,6 +9,17 @@ struct CommentsView: View {
     @State private var isLoading: Bool = true
     @State private var commentText: String = ""
     @State private var isSubmitting: Bool = false
+
+    // Photo attachment
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var selectedImage: UIImage?
+    @State private var isUploadingPhoto: Bool = false
+
+    // Court attachment
+    @State private var selectedCourt: FeedCourtSearchResult?
+    @State private var showCourtSearch: Bool = false
+    @State private var feedViewModel = FeedViewModel()
+
     @Environment(\.dismiss) private var dismiss
 
     private let client = SupabaseManager.shared.client
@@ -71,6 +83,22 @@ struct CommentsView: View {
             .task {
                 await loadComments()
             }
+            .onChange(of: selectedPhotoItem) { _, newValue in
+                guard let item = newValue else { return }
+                Task {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        selectedImage = image
+                    }
+                    selectedPhotoItem = nil
+                }
+            }
+            .sheet(isPresented: $showCourtSearch) {
+                CourtSearchSheet(viewModel: feedViewModel, selectedCourt: $selectedCourt)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(NETRTheme.background)
+            }
         }
     }
 
@@ -121,7 +149,79 @@ struct CommentsView: View {
     private var commentInput: some View {
         VStack(spacing: 0) {
             Divider().background(NETRTheme.border)
-            HStack(spacing: 10) {
+
+            // Attachment previews
+            if selectedImage != nil || selectedCourt != nil {
+                VStack(spacing: 8) {
+                    if let image = selectedImage {
+                        HStack {
+                            Image(uiImage: image)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 60, height: 45)
+                                .clipShape(.rect(cornerRadius: 8))
+                            Text("Photo attached")
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.subtext)
+                            Spacer()
+                            Button {
+                                selectedImage = nil
+                            } label: {
+                                LucideIcon("x-circle", size: 14)
+                                    .foregroundStyle(NETRTheme.subtext)
+                            }
+                        }
+                    }
+
+                    if let court = selectedCourt {
+                        HStack(spacing: 6) {
+                            LucideIcon("map-pin", size: 12)
+                                .foregroundStyle(NETRTheme.blue)
+                            Text(court.name)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(NETRTheme.text)
+                            if let hood = court.neighborhood {
+                                Text("· \(hood)")
+                                    .font(.caption)
+                                    .foregroundStyle(NETRTheme.subtext)
+                            }
+                            Spacer()
+                            Button {
+                                selectedCourt = nil
+                            } label: {
+                                LucideIcon("x-circle", size: 12)
+                                    .foregroundStyle(NETRTheme.subtext)
+                            }
+                        }
+                        .padding(8)
+                        .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 8))
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+
+            HStack(spacing: 8) {
+                // Court button
+                Button {
+                    showCourtSearch = true
+                } label: {
+                    LucideIcon("map-pin", size: 16)
+                        .foregroundStyle(selectedCourt != nil ? NETRTheme.blue : NETRTheme.subtext)
+                        .frame(width: 34, height: 34)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                // Photo button
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    LucideIcon("camera", size: 16)
+                        .foregroundStyle(selectedImage != nil ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        .frame(width: 34, height: 34)
+                        .contentShape(Rectangle())
+                }
+                .disabled(selectedImage != nil)
+
                 TextField("Reply...", text: $commentText)
                     .font(.subheadline)
                     .foregroundStyle(NETRTheme.text)
@@ -135,7 +235,7 @@ struct CommentsView: View {
                     Task { await submitComment() }
                 } label: {
                     Group {
-                        if isSubmitting {
+                        if isSubmitting || isUploadingPhoto {
                             ProgressView()
                                 .tint(NETRTheme.background)
                         } else {
@@ -145,18 +245,21 @@ struct CommentsView: View {
                     }
                     .frame(width: 34, height: 34)
                     .background(
-                        commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? NETRTheme.muted
-                        : NETRTheme.neonGreen,
+                        canSubmit ? NETRTheme.neonGreen : NETRTheme.muted,
                         in: Circle()
                     )
                 }
-                .disabled(commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
+                .disabled(!canSubmit || isSubmitting || isUploadingPhoto)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(NETRTheme.surface)
         }
+    }
+
+    private var canSubmit: Bool {
+        !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || selectedImage != nil
     }
 
     private func feedAvatar(name: String, url: String?, size: CGFloat) -> some View {
@@ -190,7 +293,7 @@ struct CommentsView: View {
         do {
             let result: [PostComment] = try await client
                 .from("post_comments")
-                .select("id, post_id, user_id, content, like_count, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)")
+                .select("id, post_id, user_id, content, like_count, photo_url, court_id, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score), courts(id, name, neighborhood, verified)")
                 .eq("post_id", value: post.id)
                 .order("created_at", ascending: true)
                 .execute()
@@ -207,22 +310,53 @@ struct CommentsView: View {
     private func submitComment() async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let text = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return }
+        guard !text.isEmpty || selectedImage != nil else { return }
 
         isSubmitting = true
 
+        // Upload photo if present
+        var photoUrl: String?
+        if let image = selectedImage, let data = image.jpegData(compressionQuality: 0.8) {
+            isUploadingPhoto = true
+            let timestamp = Int(Date().timeIntervalSince1970)
+            let path = "comments/\(userId)/\(timestamp).jpg"
+            do {
+                try await client.storage
+                    .from("feed-photos")
+                    .upload(path, data: data, options: FileOptions(
+                        cacheControl: "3600", contentType: "image/jpeg", upsert: true
+                    ))
+                let url = try client.storage
+                    .from("feed-photos")
+                    .getPublicURL(path: path)
+                photoUrl = url.absoluteString
+            } catch {
+                print("Comment photo upload error: \(error)")
+            }
+            isUploadingPhoto = false
+        }
+
         do {
-            let payload = CreateCommentPayload(postId: post.id, userId: userId, content: text)
+            let courtIdStr = selectedCourt.map { String($0.id) }
+            let payload = CreateCommentPayload(
+                postId: post.id,
+                userId: userId,
+                content: text.isEmpty ? "" : text,
+                photoUrl: photoUrl,
+                courtId: courtIdStr
+            )
             let created: PostComment = try await client
                 .from("post_comments")
                 .insert(payload)
-                .select("id, post_id, user_id, content, like_count, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)")
+                .select("id, post_id, user_id, content, like_count, photo_url, court_id, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score), courts(id, name, neighborhood, verified)")
                 .single()
                 .execute()
                 .value
 
             comments.append(created)
             commentText = ""
+            selectedImage = nil
+            selectedCourt = nil
             isSubmitting = false
         } catch {
             isSubmitting = false
@@ -253,10 +387,49 @@ struct CommentRow: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
 
-                Text(comment.content)
-                    .font(.subheadline)
-                    .foregroundStyle(NETRTheme.text)
-                    .fixedSize(horizontal: false, vertical: true)
+                if !comment.content.isEmpty {
+                    Text(comment.content)
+                        .font(.subheadline)
+                        .foregroundStyle(NETRTheme.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Attached photo
+                if let photoUrl = comment.photoUrl, let url = URL(string: photoUrl) {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(maxWidth: 220, maxHeight: 160)
+                                .clipShape(.rect(cornerRadius: 10))
+                        } else if phase.error == nil {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(NETRTheme.card)
+                                .frame(width: 120, height: 80)
+                                .overlay { ProgressView().tint(NETRTheme.neonGreen) }
+                        }
+                    }
+                }
+
+                // Attached court
+                if let court = comment.taggedCourt {
+                    HStack(spacing: 5) {
+                        LucideIcon("map-pin", size: 10)
+                            .foregroundStyle(NETRTheme.blue)
+                        Text(court.name)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        if let hood = court.neighborhood {
+                            Text("· \(hood)")
+                                .font(.caption2)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 6))
+                }
 
                 if comment.likeCount > 0 {
                     HStack(spacing: 4) {

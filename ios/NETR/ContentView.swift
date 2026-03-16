@@ -137,22 +137,15 @@ struct ContentView: View {
                         ZStack {
                             if selectedTab == tab {
                                 Capsule()
-                                    .fill(Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.18))
-                                    .blur(radius: 4)
+                                    .fill(Color(hex: "#39FF14").opacity(0.10))
                                     .frame(width: 40, height: 28)
                             }
 
                             LucideIcon(tab.icon, size: 18)
                                 .foregroundStyle(
                                     selectedTab == tab
-                                        ? Color(red: 0.224, green: 1.0, blue: 0.078)
-                                        : Color(hex: "#6A6A82").opacity(0.7)
-                                )
-                                .shadow(
-                                    color: selectedTab == tab
-                                        ? Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.6)
-                                        : .clear,
-                                    radius: 12
+                                        ? Color(hex: "#39FF14")
+                                        : Color(hex: "#6A6A82")
                                 )
                         }
 
@@ -160,8 +153,8 @@ struct ContentView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(
                                 selectedTab == tab
-                                    ? Color(red: 0.224, green: 1.0, blue: 0.078)
-                                    : Color(hex: "#6A6A82").opacity(0.7)
+                                    ? Color(hex: "#39FF14")
+                                    : Color(hex: "#6A6A82")
                             )
                     }
                     .frame(maxWidth: .infinity)
@@ -173,21 +166,15 @@ struct ContentView: View {
         .padding(.horizontal, 8)
         .padding(.bottom, 16)
         .background(
-            ZStack {
-                Rectangle()
-                    .fill(.ultraThickMaterial)
-                    .ignoresSafeArea(edges: .bottom)
-
-                Rectangle()
-                    .fill(Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.12))
-                    .ignoresSafeArea(edges: .bottom)
-            }
+            Rectangle()
+                .fill(Color(hex: "#040406"))
+                .overlay(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .bottom)
         )
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(Color(red: 0.224, green: 1.0, blue: 0.078).opacity(0.25))
-                .frame(height: 1.5)
+                .fill(Color.white.opacity(0.08))
+                .frame(height: 0.5)
         }
-        .shadow(color: .black.opacity(0.4), radius: 20, y: -5)
     }
 }
