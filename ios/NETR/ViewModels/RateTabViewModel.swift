@@ -4,21 +4,22 @@ import Auth
 
 @Observable
 class RateTabViewModel {
-    var sessions: [RecentGameSession] = []
+    var sessions: [RecentGameSession] = Self.demoSession
     var ratingsReceivedToday: Int = 0
-    var isLoading: Bool = true
+    var isLoading: Bool = false
     var isEmpty: Bool = false
     var errorMessage: String?
 
     private let supabase = SupabaseManager.shared
 
     func load() async {
-        isLoading = true
+        isLoading = false
         errorMessage = nil
 
         guard let userId = supabase.session?.user.id.uuidString else {
+            sessions = Self.demoSession
+            isEmpty = false
             isLoading = false
-            isEmpty = true
             return
         }
 
