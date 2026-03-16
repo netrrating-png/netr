@@ -38,7 +38,8 @@ class RateTabViewModel {
             let myGameIds = myGameIdRows.map { $0.gameId }
 
             guard !myGameIds.isEmpty else {
-                isEmpty = true
+                sessions = Self.demoSession
+                isEmpty = false
                 isLoading = false
                 await loadRatedByCount(userId: userId)
                 return
@@ -56,7 +57,8 @@ class RateTabViewModel {
                 .value
 
             guard !games.isEmpty else {
-                isEmpty = true
+                sessions = Self.demoSession
+                isEmpty = false
                 isLoading = false
                 await loadRatedByCount(userId: userId)
                 return
@@ -93,7 +95,8 @@ class RateTabViewModel {
 
             let allPlayerIds = Array(Set(otherPlayerRows.map { $0.userId }))
             guard !allPlayerIds.isEmpty else {
-                isEmpty = true
+                sessions = Self.demoSession
+                isEmpty = false
                 isLoading = false
                 await loadRatedByCount(userId: userId)
                 return
@@ -171,17 +174,51 @@ class RateTabViewModel {
                 ))
             }
 
-            sessions = builtSessions
-            isEmpty = builtSessions.isEmpty
+            let merged = Self.demoSession + builtSessions
+            sessions = merged
+            isEmpty = merged.isEmpty
             isLoading = false
 
             await loadRatedByCount(userId: userId)
 
         } catch {
-            errorMessage = error.localizedDescription
+            // Still show demo players even if Supabase fails
+            sessions = Self.demoSession
+            isEmpty = false
             isLoading = false
         }
     }
+
+    // ── Demo players (always visible for focus group / testing) ──
+    static let demoSession: [RecentGameSession] = [
+        RecentGameSession(
+            id: "demo-game-rucker-001",
+            courtName: "Rucker Park",
+            playedAt: Date().addingTimeInterval(-45 * 60),
+            players: [
+                RateablePlayer(
+                    id: "demo-player-marcus",
+                    fullName: "Marcus T.",
+                    username: "@marc_t",
+                    netrScore: 7.2,
+                    vibeScore: 4.1,
+                    position: "SG",
+                    gameId: "demo-game-rucker-001",
+                    alreadyRated: false
+                ),
+                RateablePlayer(
+                    id: "demo-player-dre",
+                    fullName: "Dre Williams",
+                    username: "@dre_w",
+                    netrScore: 6.1,
+                    vibeScore: 3.8,
+                    position: "PG",
+                    gameId: "demo-game-rucker-001",
+                    alreadyRated: false
+                ),
+            ]
+        )
+    ]
 
     private func loadRatedByCount(userId: String) async {
         let todayStr = ISO8601DateFormatter().string(
