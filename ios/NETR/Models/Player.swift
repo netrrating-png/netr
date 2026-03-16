@@ -87,6 +87,7 @@ struct Player: Identifiable, Equatable {
     var skills: SkillRatings
     var profileImageData: Data?
     var avatarUrl: String?
+    var bannerUrl: String?
 
     var isProvisional: Bool { reviews < 5 }
     var isVerified: Bool { tier == .verified && reviews >= 5 }

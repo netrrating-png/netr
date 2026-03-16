@@ -169,10 +169,12 @@ struct CourtDetailView: View {
                         .foregroundStyle(NETRTheme.text)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(NETRTheme.card, in: .rect(cornerRadius: 10))
+                .frame(minHeight: 44)
+                .background(isFav ? NETRTheme.red.opacity(0.06) : NETRTheme.card, in: .rect(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(isFav ? NETRTheme.red.opacity(0.3) : NETRTheme.border, lineWidth: 1))
+                .contentShape(.rect(cornerRadius: 10))
             }
+            .buttonStyle(.plain)
             .sensoryFeedback(.selection, trigger: isFav)
 
             Button {
@@ -186,12 +188,13 @@ struct CourtDetailView: View {
                         .foregroundStyle(NETRTheme.text)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .frame(minHeight: 44)
                 .background(isHome ? NETRTheme.neonGreen.opacity(0.08) : NETRTheme.card, in: .rect(cornerRadius: 10))
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(isHome ? NETRTheme.neonGreen.opacity(0.3) : NETRTheme.border, lineWidth: 1))
+                .contentShape(.rect(cornerRadius: 10))
             }
+            .buttonStyle(.plain)
             .sensoryFeedback(.success, trigger: isHome)
-
         }
         .padding(.horizontal, 16)
     }

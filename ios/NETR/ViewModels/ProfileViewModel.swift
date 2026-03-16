@@ -306,4 +306,78 @@ class ProfileViewModel {
 
         await loadProfile()
     }
+
+    func updateFullProfile(fullName: String, username: String, bio: String?, city: String?, position: String?) async throws {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+
+        nonisolated struct FullProfileUpdate: Encodable, Sendable {
+            let fullName: String
+            let username: String
+            let bio: String?
+            let city: String?
+            let position: String?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case fullName = "full_name"
+                case username
+                case bio
+                case city
+                case position
+            }
+        }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        try await client
+            .from("profiles")
+            .update(FullProfileUpdate(fullName: fullName, username: username, bio: bio, city: city, position: position))
+            .eq("id", value: userId)
+            .execute()
+
+        await SupabaseManager.shared.loadProfile(userId: userId)
+        await loadProfile()
+    }
+
+    func uploadBanner(_ image: UIImage) async -> String? {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+              let imageData = image.jpegData(compressionQuality: 0.8) else { return nil }
+
+        let path = "\(userId)/banner.jpg"
+
+        do {
+            try await client.storage
+                .from("banners")
+                .upload(
+                    path,
+                    data: imageData,
+                    options: FileOptions(
+                        cacheControl: "3600",
+                        contentType: "image/jpeg",
+                        upsert: true
+                    )
+                )
+
+            let publicURL = try client.storage
+                .from("banners")
+                .getPublicURL(path: path)
+
+            nonisolated struct BannerUpdate: Encodable, Sendable {
+                let bannerUrl: String
+                nonisolated enum CodingKeys: String, CodingKey {
+                    case bannerUrl = "banner_url"
+                }
+            }
+
+            try await client
+                .from("profiles")
+                .update(BannerUpdate(bannerUrl: publicURL.absoluteString))
+                .eq("id", value: userId)
+                .execute()
+
+            return publicURL.absoluteString
+        } catch {
+            print("Banner upload error: \(error)")
+            return nil
+        }
+    }
 }
