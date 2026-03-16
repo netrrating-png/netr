@@ -8,6 +8,7 @@ struct PostCardView: View {
     let onRepost: () -> Void
     let onDelete: () -> Void
     let onBlock: () -> Void
+    var onProfileTap: ((String) -> Void)? = nil
 
     @State private var showFullPhoto: Bool = false
 
@@ -16,7 +17,11 @@ struct PostCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
-                avatarView
+                Button { onProfileTap?(post.authorId) } label: {
+                    avatarView
+                }
+                .buttonStyle(.plain)
+
                 VStack(alignment: .leading, spacing: 2) {
                     authorLine
                     contentView
@@ -99,10 +104,13 @@ struct PostCardView: View {
 
     private var authorLine: some View {
         HStack(spacing: 4) {
-            Text(author?.displayName ?? "Player")
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(NETRTheme.text)
-                .lineLimit(1)
+            Button { onProfileTap?(post.authorId) } label: {
+                Text(author?.displayName ?? "Player")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(NETRTheme.text)
+                    .lineLimit(1)
+            }
+            .buttonStyle(.plain)
 
             if let netr = author?.netrScore {
                 Text(String(format: "%.1f", netr))

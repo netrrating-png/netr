@@ -6,7 +6,6 @@ import Auth
 class FeedViewModel {
 
     var posts: [SupabaseFeedPost] = []
-    var trendingTags: [String] = []
     var isLoading: Bool = false
     var isPosting: Bool = false
     var activeTab: FeedTab = .forYou
@@ -22,9 +21,19 @@ class FeedViewModel {
     var followingIds: Set<String> = []
     var followingLoaded: Bool = false
 
+    // User search
+    var userSearchText: String = ""
+    var userSearchResults: [UserSearchResult] = []
+    var isSearching: Bool = false
+    var showSearchResults: Bool = false
+
+    // Public profile navigation
+    var selectedProfileUserId: String? = nil
+
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
+    private var searchTask: Task<Void, Never>?
 
     private let selectQuery = """
         id, author_id, content, hashtags, mentioned_user_ids,
@@ -76,7 +85,7 @@ class FeedViewModel {
                         .value
                 }
 
-            case .all:
+            case .live:
                 fetched = try await client
                     .from("feed_posts")
                     .select(selectQuery)
@@ -85,18 +94,6 @@ class FeedViewModel {
                     .limit(30)
                     .execute()
                     .value
-
-            case .trending:
-                fetched = try await client
-                    .from("feed_posts")
-                    .select(selectQuery)
-                    .is("repost_of_id", value: nil)
-                    .order("like_count", ascending: false)
-                    .limit(30)
-                    .execute()
-                    .value
-
-                await fetchTrendingTags()
             }
 
             var results = fetched
@@ -119,6 +116,63 @@ class FeedViewModel {
             isLoading = false
             hasLoadedOnce = true
             print("Feed fetch error: \(error)")
+        }
+    }
+
+    // MARK: - User Search
+
+    func searchUsers(query: String) {
+        searchTask?.cancel()
+
+        guard query.count >= 1 else {
+            userSearchResults = []
+            showSearchResults = false
+            isSearching = false
+            return
+        }
+
+        isSearching = true
+        showSearchResults = true
+
+        searchTask = Task {
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+
+            do {
+                let results: [UserSearchResult] = try await client
+                    .from("profiles")
+                    .select("id, username, full_name, avatar_url, netr_score")
+                    .ilike("username", pattern: "\(query)%")
+                    .limit(8)
+                    .execute()
+                    .value
+
+                guard !Task.isCancelled else { return }
+                userSearchResults = results
+                isSearching = false
+            } catch {
+                guard !Task.isCancelled else { return }
+                isSearching = false
+                print("User search error: \(error)")
+            }
+        }
+    }
+
+    func dismissSearch() {
+        userSearchText = ""
+        userSearchResults = []
+        showSearchResults = false
+        isSearching = false
+        searchTask?.cancel()
+    }
+
+    // MARK: - Follow changed - refresh For You
+
+    func onFollowChanged() async {
+        followingLoaded = false
+        await loadFollowingIds()
+        if activeTab == .forYou {
+            await fetchFeed(tab: .forYou)
         }
     }
 
@@ -304,26 +358,6 @@ class FeedViewModel {
         } catch {
             print("Court search error: \(error)")
         }
-    }
-
-    // MARK: - Trending Tags
-
-    func fetchTrendingTags() async {
-        guard let rows: [HashtagRow] = try? await client
-            .from("feed_posts")
-            .select("hashtags")
-            .order("created_at", ascending: false)
-            .limit(100)
-            .execute()
-            .value
-        else { return }
-
-        var counts: [String: Int] = [:]
-        for row in rows {
-            for tag in row.hashtags { counts[tag, default: 0] += 1 }
-        }
-        let sorted = counts.sorted { $0.value > $1.value }.prefix(10).map { $0.key }
-        trendingTags = sorted
     }
 
     // MARK: - Realtime
