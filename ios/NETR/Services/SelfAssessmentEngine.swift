@@ -516,6 +516,24 @@ nonisolated enum AssessmentScoringEngine: Sendable {
         "rebounding": 0.85,
     ]
 
+    // When age implies someone is still actively playing at a level (e.g. a 21-year-old
+    // "ex-D1" is almost certainly a current player), upgrade the base/ceiling to match.
+    static func effectiveRange(level: PlayingLevel, age: AgeGroup) -> (base: Double, ceiling: Double) {
+        switch (age, level) {
+        case (.youngAdult, .exD1D2):
+            // 19-25 + D1/D2 label → treat as current high-level player
+            return (PlayingLevel.currentSemiPro.baseScore, PlayingLevel.currentSemiPro.scoreCeiling)
+        case (.youngAdult, .exJucoOrD3):
+            // 19-25 + JUCO/D3 → likely still competing at that level
+            return (6.0, 8.0)
+        case (.youth, .exHighSchool):
+            // 13-18 flagged as "ex" HS → treat as current HS player
+            return (PlayingLevel.exHighSchool.baseScore, PlayingLevel.exHighSchool.scoreCeiling)
+        default:
+            return (level.baseScore, level.scoreCeiling)
+        }
+    }
+
     static func calculate(
         answers: [String: Int],
         context: AssessmentContext
@@ -525,8 +543,9 @@ nonisolated enum AssessmentScoringEngine: Sendable {
         let freqMod = context.playFrequency.frequencyModifier
         let floorMod = context.playFrequency.floorModifier
 
-        let base = context.playingLevel.baseScore * floorMod
-        let ceiling = min(context.playingLevel.scoreCeiling, absoluteCeiling)
+        let range = effectiveRange(level: context.playingLevel, age: context.ageGroup)
+        let base = range.base * floorMod
+        let ceiling = min(range.ceiling, absoluteCeiling)
 
         let posOverrides = context.position.categoryWeightOverrides
 
