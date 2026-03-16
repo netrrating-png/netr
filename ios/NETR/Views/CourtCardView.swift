@@ -80,15 +80,6 @@ struct CourtCardView: View {
                 }
 
                 Spacer()
-
-                if court.cosignCount > 0 {
-                    HStack(spacing: 3) {
-                        LucideIcon("thumbs-up", size: 10)
-                        Text("\(court.cosignCount)")
-                            .font(.caption.weight(.bold))
-                    }
-                    .foregroundStyle(NETRTheme.neonGreen)
-                }
             }
         }
         .padding(14)
