@@ -32,6 +32,7 @@ struct CourtsView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .dismissKeyboardOnScroll()
         }
         .task {
             viewModel.requestLocation()
@@ -151,6 +152,7 @@ struct CourtsView: View {
             TextField("Search courts, neighborhoods, cities...", text: $viewModel.searchText)
                 .foregroundStyle(NETRTheme.text)
                 .autocorrectionDisabled()
+                .submitLabel(.done)
             if !viewModel.searchText.isEmpty {
                 Button {
                     viewModel.searchText = ""

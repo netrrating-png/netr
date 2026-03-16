@@ -101,8 +101,9 @@ struct EmailSignUpView: View {
                             .padding(.bottom, 32)
                     }
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .dismissKeyboardOnScroll()
             }
+            .hideKeyboardOnTap()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

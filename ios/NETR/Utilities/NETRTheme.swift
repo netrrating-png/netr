@@ -97,4 +97,14 @@ extension View {
     func neonGlow(_ color: Color = NETRTheme.neonGreen, radius: CGFloat = 8) -> some View {
         modifier(NeonGlowModifier(color: color, radius: radius))
     }
+
+    func hideKeyboardOnTap() -> some View {
+        self.onTapGesture {
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        }
+    }
+
+    func dismissKeyboardOnScroll() -> some View {
+        self.scrollDismissesKeyboard(.immediately)
+    }
 }

@@ -18,6 +18,7 @@ struct NETRTextField: View {
                 .foregroundStyle(NETRTheme.text)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
+                .submitLabel(.done)
         }
         .padding(14)
         .background(NETRTheme.card, in: .rect(cornerRadius: 12))
@@ -54,6 +55,7 @@ struct NETRSecureField: View {
             .foregroundStyle(NETRTheme.text)
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
+            .submitLabel(.done)
 
             Button {
                 isVisible.toggle()

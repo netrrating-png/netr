@@ -76,6 +76,8 @@ struct FeedView: View {
                 .focused($searchFocused)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
+                .submitLabel(.done)
+                .onSubmit { searchFocused = false }
                 .onChange(of: viewModel.userSearchText) { _, newValue in
                     viewModel.searchUsers(query: newValue)
                 }
@@ -317,6 +319,7 @@ struct FeedView: View {
                 .padding(.bottom, 100)
             }
             .scrollIndicators(.hidden)
+            .dismissKeyboardOnScroll()
             .refreshable {
                 await viewModel.fetchFeed(tab: viewModel.activeTab)
             }

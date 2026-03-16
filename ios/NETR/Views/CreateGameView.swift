@@ -156,6 +156,8 @@ struct CreateGameView: View {
                 .foregroundStyle(NETRTheme.text)
                 .tint(NETRTheme.neonGreen)
                 .focused($searchFocused)
+                .submitLabel(.done)
+                .onSubmit { searchFocused = false }
                 .onChange(of: courtSearchQuery) { _, newValue in
                     courtSearchResults = viewModel.searchCourts(query: newValue)
                 }
