@@ -91,10 +91,12 @@ final class JoinLocationManager: NSObject, CLLocationManagerDelegate {
 
 @Observable
 class JoinGameViewModel {
-    var nearbyGames: [NearbyGame] = []
+    var liveGames: [NearbyGame] = []
+    var scheduledGames: [NearbyGame] = []
     var isLoading = false
     var errorMessage: String? = nil
     var isJoining = false
+    var joinedGameIds: Set<String> = []
 
     private let client = SupabaseManager.shared.client
 
@@ -103,11 +105,27 @@ class JoinGameViewModel {
         errorMessage = nil
 
         do {
+            // Load user's joined game IDs
+            if let userId = SupabaseManager.shared.session?.user.id.uuidString {
+                nonisolated struct JoinedId: Decodable, Sendable {
+                    let gameId: String
+                    nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+                }
+                let rows: [JoinedId] = try await client
+                    .from("game_players")
+                    .select("game_id")
+                    .eq("user_id", value: userId)
+                    .execute()
+                    .value
+                joinedGameIds = Set(rows.map { $0.gameId })
+            }
+
             let fmt = ISO8601DateFormatter()
             fmt.formatOptions = [.withInternetDateTime]
             let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
 
-            let games: [NearbyGame] = try await client
+            // Live games (waiting status within last 4 hours)
+            let live: [NearbyGame] = try await client
                 .from("games")
                 .select("""
                     id, join_code, created_at, format, max_players, scheduled_at,
@@ -120,7 +138,20 @@ class JoinGameViewModel {
                 .execute()
                 .value
 
-            var filtered = games.map { game -> NearbyGame in
+            // Scheduled games (future)
+            let scheduled: [NearbyGame] = try await client
+                .from("games")
+                .select("""
+                    id, join_code, created_at, format, max_players, scheduled_at,
+                    courts(name, neighborhood, lat, lng),
+                    host:profiles!games_host_id_fkey(full_name, username)
+                """)
+                .eq("status", value: "scheduled")
+                .order("scheduled_at", ascending: true)
+                .execute()
+                .value
+
+            var filteredLive = live.map { game -> NearbyGame in
                 var g = game
                 if let loc = userLocation, let court = game.courts, let lat = court.lat, let lng = court.lng {
                     let courtLoc = CLLocation(latitude: lat, longitude: lng)
@@ -130,12 +161,13 @@ class JoinGameViewModel {
             }
 
             if userLocation != nil {
-                filtered = filtered
+                filteredLive = filteredLive
                     .filter { $0.distanceMiles <= 5.0 }
                     .sorted { $0.distanceMiles < $1.distanceMiles }
             }
 
-            nearbyGames = filtered
+            liveGames = filteredLive
+            scheduledGames = scheduled
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -143,15 +175,22 @@ class JoinGameViewModel {
         isLoading = false
     }
 
+    func isJoined(_ gameId: String) -> Bool {
+        joinedGameIds.contains(gameId)
+    }
+
     func joinGameDirectly(_ game: NearbyGame) async -> SupabaseGame? {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return nil }
         isJoining = true
         errorMessage = nil
 
+        let nowFmt = ISO8601DateFormatter()
+        nowFmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
         do {
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: game.id, userId: userId))
+                .insert(GamePlayerPayload(gameId: game.id, userId: userId, checkedInAt: nowFmt.string(from: Date())))
                 .execute()
 
             let found: SupabaseGame = try await client
@@ -162,6 +201,7 @@ class JoinGameViewModel {
                 .execute()
                 .value
 
+            joinedGameIds.insert(game.id)
             isJoining = false
             return found
         } catch {
@@ -190,7 +230,9 @@ struct JoinGameView: View {
                     joinTabPicker
 
                     if selectedTab == 0 {
-                        nearbyRunsTab
+                        liveNowTab
+                    } else if selectedTab == 1 {
+                        scheduledTab
                     } else {
                         qrScannerTab
                     }
@@ -247,8 +289,9 @@ struct JoinGameView: View {
 
     private var joinTabPicker: some View {
         HStack(spacing: 0) {
-            tabButton(title: "Nearby Runs", icon: "location.fill", index: 0)
-            tabButton(title: "Scan / Code", icon: "qrcode.viewfinder", index: 1)
+            tabButton(title: "Live Now", icon: "circle-dot", index: 0)
+            tabButton(title: "Scheduled", icon: "clock", index: 1)
+            tabButton(title: "Code", icon: "keyboard", index: 2)
         }
         .overlay(
             Rectangle()
@@ -280,9 +323,9 @@ struct JoinGameView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Nearby Runs
+    // MARK: - Live Now Tab
 
-    private var nearbyRunsTab: some View {
+    private var liveNowTab: some View {
         Group {
             if joinVM.isLoading {
                 VStack(spacing: 14) {
@@ -309,8 +352,8 @@ struct JoinGameView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            } else if joinVM.nearbyGames.isEmpty {
-                noNearbyRunsView
+            } else if joinVM.liveGames.isEmpty {
+                noLiveRunsView
 
             } else {
                 ScrollView(showsIndicators: false) {
@@ -320,14 +363,14 @@ struct JoinGameView: View {
                                 .fill(NETRTheme.neonGreen)
                                 .frame(width: 7, height: 7)
                                 .shadow(color: NETRTheme.neonGreen.opacity(0.7), radius: 4)
-                            Text("\(joinVM.nearbyGames.count) active run\(joinVM.nearbyGames.count == 1 ? "" : "s") nearby")
+                            Text("\(joinVM.liveGames.count) live run\(joinVM.liveGames.count == 1 ? "" : "s") nearby")
                                 .font(.system(size: 12))
                                 .foregroundStyle(NETRTheme.subtext)
                         }
                         .padding(.horizontal, 20)
 
-                        ForEach(Array(joinVM.nearbyGames.enumerated()), id: \.element.id) { i, game in
-                            NearbyGameCard(game: game, delay: Double(i) * 0.06) {
+                        ForEach(Array(joinVM.liveGames.enumerated()), id: \.element.id) { i, game in
+                            NearbyGameCard(game: game, delay: Double(i) * 0.06, isJoined: joinVM.isJoined(game.id)) {
                                 Task {
                                     if let joined = await joinVM.joinGameDirectly(game) {
                                         gameViewModel.game = joined
@@ -350,7 +393,7 @@ struct JoinGameView: View {
         }
     }
 
-    private var noNearbyRunsView: some View {
+    private var noLiveRunsView: some View {
         VStack(spacing: 20) {
             ZStack {
                 Circle().fill(NETRTheme.muted.opacity(0.3)).frame(width: 80, height: 80)
@@ -358,10 +401,10 @@ struct JoinGameView: View {
                     .foregroundStyle(NETRTheme.muted)
             }
             VStack(spacing: 8) {
-                Text("NO ACTIVE RUNS NEARBY")
+                Text("NO LIVE RUNS NEARBY")
                     .font(.system(.title3, design: .default, weight: .black).width(.compressed))
                     .foregroundStyle(NETRTheme.text)
-                Text("No games near you right now.\nScan a QR or enter a code to join, or start your own run.")
+                Text("No games near you right now.\nCheck Scheduled or enter a code to join.")
                     .font(.system(size: 14))
                     .foregroundStyle(NETRTheme.subtext)
                     .multilineTextAlignment(.center)
@@ -370,6 +413,78 @@ struct JoinGameView: View {
         }
         .padding(.horizontal, 32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Scheduled Tab
+
+    private var scheduledTab: some View {
+        Group {
+            if joinVM.isLoading {
+                VStack(spacing: 14) {
+                    ProgressView().tint(NETRTheme.neonGreen).scaleEffect(1.2)
+                    Text("Loading scheduled games…")
+                        .font(.system(size: 14))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            } else if joinVM.scheduledGames.isEmpty {
+                VStack(spacing: 20) {
+                    ZStack {
+                        Circle().fill(NETRTheme.muted.opacity(0.3)).frame(width: 80, height: 80)
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 36))
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    VStack(spacing: 8) {
+                        Text("NO SCHEDULED GAMES")
+                            .font(.system(.title3, design: .default, weight: .black).width(.compressed))
+                            .foregroundStyle(NETRTheme.text)
+                        Text("No upcoming games scheduled.\nCreate a game and schedule it for later.")
+                            .font(.system(size: 14))
+                            .foregroundStyle(NETRTheme.subtext)
+                            .multilineTextAlignment(.center)
+                            .lineSpacing(3)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            } else {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(NETRTheme.gold)
+                            Text("\(joinVM.scheduledGames.count) upcoming game\(joinVM.scheduledGames.count == 1 ? "" : "s")")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                        .padding(.horizontal, 20)
+
+                        ForEach(Array(joinVM.scheduledGames.enumerated()), id: \.element.id) { i, game in
+                            NearbyGameCard(game: game, delay: Double(i) * 0.06, isJoined: joinVM.isJoined(game.id)) {
+                                Task {
+                                    if let joined = await joinVM.joinGameDirectly(game) {
+                                        gameViewModel.game = joined
+                                        await gameViewModel.loadPlayers(gameId: joined.id)
+                                        showLobby = true
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+
+                        Spacer(minLength: 40)
+                    }
+                    .padding(.top, 16)
+                }
+                .refreshable {
+                    await joinVM.loadNearby(userLocation: locMgr.location)
+                }
+            }
+        }
     }
 
     // MARK: - QR / Code Tab
@@ -387,6 +502,7 @@ struct JoinGameView: View {
 private struct NearbyGameCard: View {
     let game: NearbyGame
     let delay: Double
+    var isJoined: Bool = false
     let onJoin: () -> Void
 
     @State private var appeared: Bool = false
@@ -461,20 +577,36 @@ private struct NearbyGameCard: View {
             .padding(.top, 16)
             .padding(.bottom, 14)
 
-            Button(action: onJoin) {
+            if isJoined {
                 HStack(spacing: 8) {
-                    LucideIcon("arrow-right-circle", size: 16)
-                    Text("Join This Run")
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 16))
+                    Text("JOINED")
                         .font(.system(size: 15, weight: .bold))
                 }
-                .foregroundStyle(.black)
+                .foregroundStyle(NETRTheme.neonGreen)
                 .frame(maxWidth: .infinity)
                 .frame(height: 46)
-                .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
+                .background(NETRTheme.neonGreen.opacity(0.1), in: .rect(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            } else {
+                Button(action: onJoin) {
+                    HStack(spacing: 8) {
+                        LucideIcon("arrow-right-circle", size: 16)
+                        Text("Join This Run")
+                            .font(.system(size: 15, weight: .bold))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 46)
+                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
+                }
+                .buttonStyle(PressButtonStyle())
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .buttonStyle(PressButtonStyle())
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
         }
         .background(NETRTheme.card)
         .overlay(

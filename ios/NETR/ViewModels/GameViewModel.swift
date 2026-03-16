@@ -18,6 +18,8 @@ class GameViewModel {
     var showRateScreen: Bool = false
     var completedGameId: String?
     var isCheckingOut: Bool = false
+    var checkOutError: String?
+    var noShowReports: [NoShowReport] = []
 
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
@@ -106,9 +108,11 @@ class GameViewModel {
 
     private func addPlayerToGame(gameId: String) async throws {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         try await client
             .from("game_players")
-            .insert(GamePlayerPayload(gameId: gameId, userId: userId))
+            .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: fmt.string(from: Date())))
             .execute()
     }
 
@@ -116,13 +120,13 @@ class GameViewModel {
         do {
             let result: [LobbyPlayer] = try await client
                 .from("game_players")
-                .select("id, user_id, game_id, checked_out_at, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
+                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
                 .eq("game_id", value: gameId)
                 .order("created_at", ascending: true)
                 .execute()
                 .value
 
-            players = result
+            players = result.filter { !$0.isRemoved }
         } catch {
             print("Load players error: \(error)")
         }
@@ -178,7 +182,13 @@ class GameViewModel {
               let userId = SupabaseManager.shared.session?.user.id.uuidString
         else { return }
 
+        if !canCheckOut {
+            checkOutError = "You must be checked in for at least 15 minutes before checking out."
+            return
+        }
+
         isCheckingOut = true
+        checkOutError = nil
 
         nonisolated struct CheckOutUpdate: Encodable, Sendable {
             let checkedOutAt: String
@@ -216,12 +226,165 @@ class GameViewModel {
     }
 
     var checkedInPlayerIds: Set<String> {
-        Set(players.filter { !$0.isCheckedOut }.map { $0.userId })
+        Set(players.filter { !$0.isCheckedOut && !$0.isRemoved }.map { $0.userId })
     }
 
     var uncheckedOutCount: Int {
-        players.filter { !$0.isCheckedOut }.count
+        players.filter { !$0.isCheckedOut && !$0.isRemoved }.count
     }
+
+    // MARK: - 15-Minute Checkout Guard
+
+    var canCheckOut: Bool {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+              let player = players.first(where: { $0.userId == userId }),
+              let checkedInStr = player.checkedInAt
+        else { return false }
+
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = fmt.date(from: checkedInStr) {
+            return Date().timeIntervalSince(d) >= 900
+        }
+        fmt.formatOptions = [.withInternetDateTime]
+        if let d = fmt.date(from: checkedInStr) {
+            return Date().timeIntervalSince(d) >= 900
+        }
+        return true
+    }
+
+    var minutesUntilCheckOut: Int {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+              let player = players.first(where: { $0.userId == userId }),
+              let checkedInStr = player.checkedInAt
+        else { return 0 }
+
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        var checkedInDate: Date?
+        checkedInDate = fmt.date(from: checkedInStr)
+        if checkedInDate == nil {
+            fmt.formatOptions = [.withInternetDateTime]
+            checkedInDate = fmt.date(from: checkedInStr)
+        }
+        guard let d = checkedInDate else { return 0 }
+        let remaining = max(0, 900 - Date().timeIntervalSince(d))
+        return Int(ceil(remaining / 60))
+    }
+
+    // MARK: - Join Game Directly (by ID)
+
+    func joinGameDirectly(_ gameId: String) async -> SupabaseGame? {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return nil }
+        isJoining = true
+        joinError = nil
+
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        do {
+            try await client
+                .from("game_players")
+                .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: fmt.string(from: Date())))
+                .execute()
+
+            let found: SupabaseGame = try await client
+                .from("games")
+                .select()
+                .eq("id", value: gameId)
+                .single()
+                .execute()
+                .value
+
+            isJoining = false
+            return found
+        } catch {
+            joinError = error.localizedDescription
+            isJoining = false
+            return nil
+        }
+    }
+
+    // MARK: - Kick Player (Host only)
+
+    func kickPlayer(playerId: String) async {
+        guard let gameId = game?.id else { return }
+
+        nonisolated struct RemoveUpdate: Encodable, Sendable {
+            let removed: Bool
+        }
+
+        do {
+            try await client
+                .from("game_players")
+                .update(RemoveUpdate(removed: true))
+                .eq("game_id", value: gameId)
+                .eq("user_id", value: playerId)
+                .execute()
+
+            await loadPlayers(gameId: gameId)
+        } catch {
+            print("Kick player error: \(error)")
+        }
+    }
+
+    // MARK: - No-Show Reporting
+
+    func reportNoShow(playerId: String) async {
+        guard let gameId = game?.id,
+              let userId = SupabaseManager.shared.session?.user.id.uuidString
+        else { return }
+
+        do {
+            try await client
+                .from("no_show_reports")
+                .insert(NoShowReportPayload(gameId: gameId, reporterId: userId, reportedId: playerId))
+                .execute()
+
+            let reports: [NoShowReport] = try await client
+                .from("no_show_reports")
+                .select("id, game_id, reporter_id, reported_id")
+                .eq("game_id", value: gameId)
+                .eq("reported_id", value: playerId)
+                .execute()
+                .value
+
+            if reports.count >= 2 {
+                await kickPlayer(playerId: playerId)
+            }
+
+            await loadNoShowReports(gameId: gameId)
+        } catch {
+            print("Report no-show error: \(error)")
+        }
+    }
+
+    func loadNoShowReports(gameId: String) async {
+        do {
+            noShowReports = try await client
+                .from("no_show_reports")
+                .select("id, game_id, reporter_id, reported_id")
+                .eq("game_id", value: gameId)
+                .execute()
+                .value
+        } catch {
+            print("Load no-show reports error: \(error)")
+        }
+    }
+
+    func hasReportedNoShow(playerId: String) -> Bool {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+              let gameId = game?.id
+        else { return false }
+        return noShowReports.contains { $0.gameId == gameId && $0.reporterId == userId && $0.reportedId == playerId }
+    }
+
+    func noShowReportCount(playerId: String) -> Int {
+        guard let gameId = game?.id else { return 0 }
+        return noShowReports.filter { $0.gameId == gameId && $0.reportedId == playerId }.count
+    }
+
+    // MARK: - Realtime
 
     func subscribeToLobby(gameId: String) async {
         realtimeChannel = client.realtimeV2.channel("lobby-\(gameId)")
