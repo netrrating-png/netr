@@ -141,6 +141,12 @@ struct PublicPlayerProfileView: View {
 
             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
 
+            radarSection(user: user)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+
+            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
+
             if !viewModel.userPosts.isEmpty {
                 recentPostsSection
                     .padding(.bottom, 40)
@@ -330,6 +336,44 @@ struct PublicPlayerProfileView: View {
                 .scaleEffect(ratingAnimated ? 1.0 : 0.8)
                 .opacity(ratingAnimated ? 1.0 : 0)
                 .animation(.spring(response: 0.55, dampingFraction: 0.7), value: ratingAnimated)
+        }
+    }
+
+    // MARK: - Radar Chart
+
+    private func radarSection(user: Player) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SKILL BREAKDOWN")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.5)
+
+            let skills = buildRadarSkills(from: user.skills)
+            let hasRatings = skills.contains { $0.raw > 2.5 }
+
+            if hasRatings {
+                SkillRadarView(
+                    skills: skills,
+                    size: 280,
+                    animated: true,
+                    tierColor: NETRRating.color(for: user.rating)
+                )
+            } else {
+                VStack(spacing: 12) {
+                    SkillRadarView(
+                        skills: skills,
+                        size: 220,
+                        animated: false,
+                        tierColor: NETRTheme.muted
+                    )
+                    .opacity(0.4)
+
+                    Text("Play games to unlock your radar")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
     }
 

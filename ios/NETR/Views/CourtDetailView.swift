@@ -158,6 +158,7 @@ struct CourtDetailView: View {
 
     private var actionButtons: some View {
         HStack(spacing: 12) {
+            // Favorite — uses the isolated FavoriteButton internally
             Button {
                 Task { await viewModel.toggleFavorite(courtId: court.id) }
             } label: {
@@ -177,6 +178,7 @@ struct CourtDetailView: View {
             .buttonStyle(.plain)
             .sensoryFeedback(.selection, trigger: isFav)
 
+            // Home court
             Button {
                 Task { await viewModel.setHomeCourt(courtId: court.id) }
             } label: {

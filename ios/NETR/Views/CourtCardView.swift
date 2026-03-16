@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// Court card using the isolated-button pattern:
+/// - The card body is a plain VStack (no Button, no NavigationLink, no gesture modifier)
+/// - The outer HStack separates the tappable card area from the FavoriteButton
+/// - The FavoriteButton is a sibling, NOT nested inside any other interactive element
+/// - Navigation is triggered by onTap on the card body alone
 struct CourtCardView: View {
     let court: Court
     let distance: String
@@ -9,67 +14,37 @@ struct CourtCardView: View {
     var onTap: (() -> Void)? = nil
 
     var body: some View {
-        cardContent
-            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
-            )
-            .contentShape(.rect(cornerRadius: 14))
-            .onTapGesture { onTap?() }
-            // Heart button overlaid in a separate Z-layer so it NEVER
-            // competes with the card's onTapGesture for hit testing
-            .overlay(alignment: .topTrailing) {
-                HStack(spacing: 0) {
-                    Button {
-                        onFavoriteToggle()
-                    } label: {
-                        LucideIcon(isFavorite ? "heart" : "heart", size: 16)
-                            .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
+        HStack(spacing: 0) {
+            // Card body — tappable for navigation
+            cardBody
+                .contentShape(.rect)
+                .onTapGesture { onTap?() }
 
-                    // Invisible spacer matching the verified badge width
-                    // so the heart aligns with its placeholder in the layout
-                    Group {
-                        if court.verified {
-                            LucideIcon("badge-check", size: 12)
-                        } else {
-                            Text("PENDING")
-                                .font(.system(size: 9, weight: .bold))
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                        }
-                    }
-                    .hidden()
-                }
-                .padding(.top, 14)
-                .padding(.trailing, 14)
-            }
+            // Favorite button — completely isolated, never nested
+            FavoriteButton(isFavorite: isFavorite, onToggle: onFavoriteToggle)
+                .padding(.trailing, 4)
+        }
+        .padding(.leading, 14)
+        .padding(.vertical, 10)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
+        )
     }
 
-    private var cardContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
+    private var cardBody: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
                 Text(court.name)
                     .font(.system(.headline, design: .default, weight: .bold))
                     .foregroundStyle(NETRTheme.text)
                     .lineLimit(1)
 
-                Spacer()
-
                 if isHomeCourt {
                     LucideIcon("home", size: 12)
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
-
-                // Non-interactive placeholder — the real button is in the overlay
-                LucideIcon(isFavorite ? "heart" : "heart", size: 16)
-                    .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
-                    .frame(width: 44, height: 44)
-                    .opacity(0)
 
                 if court.verified {
                     LucideIcon("badge-check", size: 12)
@@ -82,6 +57,8 @@ struct CourtCardView: View {
                         .padding(.vertical, 2)
                         .background(NETRTheme.gold.opacity(0.15), in: Capsule())
                 }
+
+                Spacer(minLength: 0)
             }
 
             HStack(spacing: 8) {
@@ -116,11 +93,10 @@ struct CourtCardView: View {
                 if court.fullCourt {
                     CourtTagChip(text: "Full Court", icon: "circle-dot")
                 }
-
-                Spacer()
             }
         }
-        .padding(14)
+        .padding(.trailing, 4)
+        .padding(.vertical, 4)
     }
 }
 
