@@ -8,12 +8,8 @@ struct CourtsView: View {
     @State private var showCreateGame: Bool = false
     @State private var showJoinGame: Bool = false
     @State private var showFullScreenMap: Bool = false
-    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .region(
-        MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955),
-            span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
-        )
-    ))
+    @State private var cameraPosition: MapCameraPosition = .automatic
+    @State private var hasSetInitialLocation: Bool = false
 
     private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
 
@@ -44,7 +40,11 @@ struct CourtsView: View {
             viewModel.requestLocation()
             await viewModel.loadCourts()
             await viewModel.loadFavorites()
-            if let loc = viewModel.userLocation {
+        }
+        .onChange(of: viewModel.userLocation?.latitude) { _, _ in
+            guard !hasSetInitialLocation, let loc = viewModel.userLocation else { return }
+            hasSetInitialLocation = true
+            withAnimation {
                 cameraPosition = .region(MKCoordinateRegion(
                     center: loc,
                     span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)

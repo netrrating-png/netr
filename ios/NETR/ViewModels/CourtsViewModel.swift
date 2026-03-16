@@ -103,9 +103,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in
-            self.userLocation = CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955)
-        }
+        print("Location error: \(error.localizedDescription)")
     }
 
     func distanceString(for court: Court) -> String {
