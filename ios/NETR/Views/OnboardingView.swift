@@ -12,6 +12,7 @@ struct OnboardingView: View {
     @State private var username: String = ""
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
     @State private var selfAssessmentScore: Double? = nil
+    @State private var selfAssessmentCategoryScores: [String: Double] = [:]
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -356,9 +357,10 @@ struct OnboardingView: View {
     }
 
     private var selfAssessmentStep: some View {
-        SelfAssessmentFlowView { score, _ in
+        SelfAssessmentFlowView { score, _, catScores in
             selfAssessmentScore = score
-            SelfAssessmentStore.save(score: score, categoryScores: nil)
+            selfAssessmentCategoryScores = catScores
+            SelfAssessmentStore.save(score: score, categoryScores: catScores)
             withAnimation { currentStep = 6 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
@@ -558,7 +560,7 @@ struct OnboardingView: View {
                 if let score, supabase.session != nil {
                     try await supabase.saveSelfAssessmentScore(
                         score: score,
-                        categoryScores: nil
+                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
                     )
                 }
 

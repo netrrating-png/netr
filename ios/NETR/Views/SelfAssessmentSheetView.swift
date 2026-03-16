@@ -9,9 +9,9 @@ struct SelfAssessmentSheetView: View {
     var onComplete: (() -> Void)?
 
     var body: some View {
-        SelfAssessmentFlowView { score, _ in
-            SelfAssessmentStore.save(score: score, categoryScores: nil)
-            Task { try? await supabase.saveSelfAssessmentScore(score: score, categoryScores: nil) }
+        SelfAssessmentFlowView { score, _, catScores in
+            SelfAssessmentStore.save(score: score, categoryScores: catScores)
+            Task { try? await supabase.saveSelfAssessmentScore(score: score, categoryScores: catScores) }
             onComplete?()
             dismiss()
         }

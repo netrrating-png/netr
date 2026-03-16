@@ -260,6 +260,19 @@ enum SASkillCategory: String, CaseIterable {
         }
     }
 
+    // Maps to the storage key used by SelfAssessmentStore and SupabaseManager
+    var storageKey: String {
+        switch self {
+        case .shooting:   return "scoring"
+        case .finishing:  return "finishing"
+        case .rebounding: return "rebounding"
+        case .handles:    return "handles"
+        case .passing:    return "playmaking"
+        case .iq:         return "iq"
+        case .defense:    return "defense"
+        }
+    }
+
     // Internal position weights — never shown to users
     func weight(for position: SAPosition) -> Double {
         switch self {
@@ -513,7 +526,7 @@ class SelfAssessmentViewModel: ObservableObject {
 // ─────────────────────────────────────────────────────────────
 
 struct SelfAssessmentFlowView: View {
-    var onComplete: ((Double, PlayerProfile) -> Void)? = nil
+    var onComplete: ((Double, PlayerProfile, [String: Double]) -> Void)? = nil
     @StateObject private var vm = SelfAssessmentViewModel()
 
     var body: some View {
@@ -524,7 +537,10 @@ struct SelfAssessmentFlowView: View {
                     score: vm.finalScore,
                     categoryScores: vm.categoryScores,
                     profile: vm.profile,
-                    onDone: { onComplete?(vm.finalScore, vm.profile) }
+                    onDone: {
+                        let mapped = Dictionary(uniqueKeysWithValues: vm.categoryScores.map { ($0.key.storageKey, $0.value) })
+                        onComplete?(vm.finalScore, vm.profile, mapped)
+                    }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if vm.onboardingComplete {
