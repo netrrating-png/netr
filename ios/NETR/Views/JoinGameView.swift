@@ -769,6 +769,7 @@ private struct JoinCodeInput: View {
                 .keyboardType(.asciiCapable)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.characters)
+                .submitLabel(.done)
                 .focused($focused)
                 .frame(width: 1, height: 1)
                 .opacity(0.01)

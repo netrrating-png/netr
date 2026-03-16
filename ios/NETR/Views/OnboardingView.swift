@@ -204,7 +204,7 @@ struct OnboardingView: View {
                 .padding(.bottom, 32)
             }
         }
-        .scrollDismissesKeyboard(.interactively)
+        .dismissKeyboardOnScroll()
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
             Task {

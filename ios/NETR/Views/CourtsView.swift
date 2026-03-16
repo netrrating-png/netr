@@ -7,6 +7,7 @@ struct CourtsView: View {
     @State private var showAddCourt: Bool = false
     @State private var showCreateGame: Bool = false
     @State private var showJoinGame: Bool = false
+    @State private var showFullScreenMap: Bool = false
     @State private var cameraPosition: MapCameraPosition = .region(
         MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 40.758, longitude: -73.955),
@@ -32,6 +33,12 @@ struct CourtsView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .dismissKeyboardOnScroll()
+
+            if showFullScreenMap {
+                fullScreenMapOverlay
+                    .transition(.opacity)
+            }
         }
         .task {
             viewModel.requestLocation()
@@ -125,18 +132,33 @@ struct CourtsView: View {
     }
 
     private var mapSection: some View {
-        Map(position: $cameraPosition) {
-            ForEach(viewModel.filteredCourts) { court in
-                Annotation(court.name, coordinate: court.coordinate) {
-                    Button {
-                        selectedCourt = court
-                    } label: {
-                        CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+        ZStack(alignment: .topTrailing) {
+            Map(position: $cameraPosition) {
+                ForEach(viewModel.filteredCourts) { court in
+                    Annotation(court.name, coordinate: court.coordinate) {
+                        Button {
+                            selectedCourt = court
+                        } label: {
+                            CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+                        }
                     }
                 }
             }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    showFullScreenMap = true
+                }
+            } label: {
+                LucideIcon("maximize-2", size: 14)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 32, height: 32)
+                    .background(NETRTheme.card.opacity(0.9), in: .rect(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
+            }
+            .padding(8)
         }
-        .mapStyle(.standard(pointsOfInterest: .excludingAll))
         .frame(height: 220)
         .clipShape(.rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
@@ -144,13 +166,47 @@ struct CourtsView: View {
         .padding(.top, 12)
     }
 
+    private var fullScreenMapOverlay: some View {
+        ZStack(alignment: .topTrailing) {
+            Map(position: $cameraPosition) {
+                ForEach(viewModel.filteredCourts) { court in
+                    Annotation(court.name, coordinate: court.coordinate) {
+                        Button {
+                            selectedCourt = court
+                        } label: {
+                            CourtMapPin(court: court, isHomeCourt: viewModel.isHomeCourt(court.id))
+                        }
+                    }
+                }
+            }
+            .mapStyle(.standard(pointsOfInterest: .excludingAll))
+            .ignoresSafeArea()
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    showFullScreenMap = false
+                }
+            } label: {
+                LucideIcon("x", size: 16)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 40, height: 40)
+                    .background(NETRTheme.card.opacity(0.9), in: Circle())
+                    .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.3), radius: 8)
+            }
+            .padding(.top, 56)
+            .padding(.trailing, 16)
+        }
+    }
+
     private var searchSection: some View {
         HStack(spacing: 10) {
             LucideIcon("search")
                 .foregroundStyle(NETRTheme.subtext)
-            TextField("Search courts, neighborhoods, cities...", text: $viewModel.searchText)
+            TextField("Search courts, neighborhoods, zip codes...", text: $viewModel.searchText)
                 .foregroundStyle(NETRTheme.text)
                 .autocorrectionDisabled()
+                .submitLabel(.done)
             if !viewModel.searchText.isEmpty {
                 Button {
                     viewModel.searchText = ""
@@ -304,7 +360,7 @@ struct CourtsView: View {
                 VStack(spacing: 12) {
                     LucideIcon("map-pin-off", size: 28)
                         .foregroundStyle(NETRTheme.subtext)
-                    Text(viewModel.searchText.isEmpty ? "No courts found" : "No courts found for \"\(viewModel.searchText)\"")
+                    Text(viewModel.searchText.isEmpty ? "No courts found" : "No courts match \"\(viewModel.searchText)\"")
                         .font(.subheadline)
                         .foregroundStyle(NETRTheme.subtext)
                     Button {

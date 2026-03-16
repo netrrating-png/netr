@@ -87,7 +87,7 @@ final class WeatherService {
         let task = Task { [weak self] () -> CourtWeather? in
             defer { Task { @MainActor in self?.inFlight.removeValue(forKey: courtId) } }
 
-            let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(lat)&longitude=\(lng)&current=temperature_2m,weathercode,windspeed_10m&temperature_unit=fahrenheit"
+            let urlString = "https://api.open-meteo.com/v1/forecast?latitude=\(lat)&longitude=\(lng)&current=temperature_2m,weather_code,wind_speed_10m&temperature_unit=fahrenheit&wind_speed_unit=mph"
             guard let url = URL(string: urlString) else { return nil }
 
             do {
@@ -95,8 +95,8 @@ final class WeatherService {
                 let response = try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
                 let result = CourtWeather(
                     temperatureF: response.current.temperature_2m,
-                    weatherCode: response.current.weathercode,
-                    windSpeedMph: response.current.windspeed_10m,
+                    weatherCode: response.current.weather_code,
+                    windSpeedMph: response.current.wind_speed_10m,
                     fetchedAt: Date()
                 )
                 await MainActor.run {
@@ -118,7 +118,7 @@ private struct OpenMeteoResponse: Decodable {
 
     struct CurrentWeather: Decodable {
         let temperature_2m: Double
-        let weathercode: Int
-        let windspeed_10m: Double
+        let weather_code: Int
+        let wind_speed_10m: Double
     }
 }

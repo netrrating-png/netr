@@ -23,7 +23,7 @@ struct AddCourtView: View {
                     formView
                 }
             }
-            .scrollDismissesKeyboard(.interactively)
+            .dismissKeyboardOnScroll()
             .scrollIndicators(.hidden)
             .navigationTitle("Add Court")
             .navigationBarTitleDisplayMode(.inline)

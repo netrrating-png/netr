@@ -22,7 +22,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
     var fullCourt: Bool
     var verified: Bool
     var tags: [String]?
-    var cosignCount: Int
+    var zipCode: String?
     var courtRating: Double?
     var submittedBy: String?
 
@@ -39,7 +39,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         case surfaceType = "surface"
         case lights, indoor, verified, tags
         case fullCourt = "full_court"
-        case cosignCount = "cosign_count"
+        case zipCode = "zip_code"
         case courtRating = "court_rating"
         case submittedBy = "submitted_by"
     }
@@ -48,8 +48,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         id: String, name: String, address: String, neighborhood: String, city: String,
         lat: Double, lng: Double, surfaceType: SurfaceType, lights: Bool,
         indoor: Bool, fullCourt: Bool, verified: Bool, tags: [String]?,
-        cosignCount: Int,
-        courtRating: Double? = nil,
+        zipCode: String? = nil, courtRating: Double? = nil,
         submittedBy: String? = nil
     ) {
         self.id = id
@@ -65,7 +64,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         self.fullCourt = fullCourt
         self.verified = verified
         self.tags = tags
-        self.cosignCount = cosignCount
+        self.zipCode = zipCode
         self.courtRating = courtRating
         self.submittedBy = submittedBy
     }
@@ -90,7 +89,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         fullCourt = try container.decodeIfPresent(Bool.self, forKey: .fullCourt) ?? true
         verified = try container.decodeIfPresent(Bool.self, forKey: .verified) ?? false
         tags = try container.decodeIfPresent([String].self, forKey: .tags)
-        cosignCount = try container.decodeIfPresent(Int.self, forKey: .cosignCount) ?? 0
+        zipCode = try container.decodeIfPresent(String.self, forKey: .zipCode)
         courtRating = try container.decodeIfPresent(Double.self, forKey: .courtRating)
         submittedBy = try container.decodeIfPresent(String.self, forKey: .submittedBy)
     }

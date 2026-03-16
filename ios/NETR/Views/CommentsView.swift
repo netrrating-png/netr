@@ -52,10 +52,12 @@ struct CommentsView: View {
                     .padding(.bottom, 80)
                 }
                 .scrollIndicators(.hidden)
+                .dismissKeyboardOnScroll()
 
                 commentInput
             }
             .background(NETRTheme.background)
+            .hideKeyboardOnTap()
             .navigationTitle("Comments")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -123,6 +125,8 @@ struct CommentsView: View {
                 TextField("Reply...", text: $commentText)
                     .font(.subheadline)
                     .foregroundStyle(NETRTheme.text)
+                    .submitLabel(.send)
+                    .onSubmit { Task { await submitComment() } }
                     .padding(10)
                     .background(NETRTheme.card, in: .rect(cornerRadius: 20))
                     .overlay(RoundedRectangle(cornerRadius: 20).stroke(NETRTheme.border, lineWidth: 1))

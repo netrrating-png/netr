@@ -44,12 +44,14 @@ struct ComposePostView: View {
                     }
                 }
                 .scrollIndicators(.hidden)
+                .dismissKeyboardOnScroll()
 
                 Divider().background(NETRTheme.border)
 
                 bottomBar
             }
             .background(NETRTheme.background)
+            .hideKeyboardOnTap()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -266,6 +268,7 @@ struct CourtSearchSheet: View {
                     TextField("Search courts...", text: $searchText)
                         .foregroundStyle(NETRTheme.text)
                         .autocorrectionDisabled()
+                        .submitLabel(.done)
                 }
                 .padding(12)
                 .background(NETRTheme.card, in: .rect(cornerRadius: 12))
@@ -322,6 +325,7 @@ struct CourtSearchSheet: View {
                         .padding(.top, 8)
                     }
                     .scrollIndicators(.hidden)
+                    .dismissKeyboardOnScroll()
                 }
             }
             .navigationTitle("Tag a Court")

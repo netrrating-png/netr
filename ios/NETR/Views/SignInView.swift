@@ -107,8 +107,9 @@ struct SignInView: View {
                         Spacer(minLength: 32)
                     }
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .dismissKeyboardOnScroll()
             }
+            .hideKeyboardOnTap()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
