@@ -457,7 +457,8 @@ struct PlayerProfile {
         let decay      = PlayLevel.ageDecay(level: level, age: age, isCurrent: levelIsCurrent)
         let base       = level.baseCeiling
         let afterDecay = levelIsCurrent ? base : base * decay
-        let afterFreq  = (level == .nba) ? afterDecay : afterDecay * freq.modifier
+        // Don't apply frequency penalty for active players — they're still competing at this level
+        let afterFreq  = levelIsCurrent ? afterDecay : afterDecay * freq.modifier
         return max(2.0, afterFreq)
     }
 
@@ -468,7 +469,8 @@ struct PlayerProfile {
         let decay      = PlayLevel.ageDecay(level: level, age: age, isCurrent: levelIsCurrent)
         let base       = level.baseFloor
         let afterDecay = levelIsCurrent ? base : base * decay
-        let afterFreq  = afterDecay * freq.modifier
+        // Don't apply frequency penalty for active players — their floor reflects current skill
+        let afterFreq  = levelIsCurrent ? afterDecay : afterDecay * freq.modifier
         return max(2.0, min(afterFreq, effectiveCeiling - 0.5))
     }
 }
