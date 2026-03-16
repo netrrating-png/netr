@@ -547,7 +547,7 @@ struct SelfAssessmentView: View {
                                 }
                             }
 
-                            SkillRadarView(skills: buildRadarSkillsFromResult(result), size: 260, animated: true)
+                            SkillRadarView(skills: buildRadarSkillsFromResult(result), size: 260, animated: true, tierColor: NETRRating.color(for: result.overallScore))
                         }
                         .padding(20)
                         .background(NETRTheme.card, in: .rect(cornerRadius: 20))
@@ -659,13 +659,22 @@ struct SelfAssessmentView: View {
     }
 
     private func buildRadarSkillsFromResult(_ result: AssessmentResult) -> [RadarSkill] {
+        let categoryColors: [String: Color] = [
+            "scoring":     Color(hex: "#39FF14"),
+            "finishing":   Color(hex: "#FF7A00"),
+            "handles":     Color(hex: "#FFC247"),
+            "playmaking":  Color(hex: "#2ECC71"),
+            "defense":     Color(hex: "#FF3B30"),
+            "rebounding":  Color(hex: "#2DA8FF"),
+            "iq":          Color(hex: "#9B8BFF"),
+        ]
         let order = ["scoring", "finishing", "handles", "playmaking", "defense", "rebounding", "iq"]
         return order.map { cat in
             let raw = result.categoryScores[cat] ?? 1.0
             let label = AssessmentResult.categoryDisplayNames[cat] ?? cat
             let icon = AssessmentResult.categoryIcons[cat] ?? "help-circle"
             let value = (raw - 1.0) / 9.0
-            return RadarSkill(label: label, icon: icon, raw: raw, value: value)
+            return RadarSkill(label: label, icon: icon, raw: raw, value: value, categoryColor: categoryColors[cat] ?? NETRTheme.neonGreen)
         }
     }
 }

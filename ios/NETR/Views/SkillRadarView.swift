@@ -6,14 +6,16 @@ nonisolated struct RadarSkill: Sendable {
     let isEmoji: Bool
     let raw: Double
     let value: Double
+    let categoryColor: Color
 
-    init(label: String, icon: String, raw: Double, value: Double) {
+    init(label: String, icon: String, raw: Double, value: Double, categoryColor: Color = Color(hex: "#39FF14")) {
         let emojiCheck = icon.unicodeScalars.contains { $0.properties.isEmoji && !$0.isASCII }
         self.label = label
         self.icon = icon
         self.isEmoji = emojiCheck
         self.raw = raw
         self.value = value
+        self.categoryColor = categoryColor
     }
 }
 
@@ -21,22 +23,28 @@ struct SkillRadarView: View {
     let skills: [RadarSkill]
     let animated: Bool
     let size: CGFloat
+    let tierColor: Color
 
-    init(skills: [RadarSkill], size: CGFloat = 260, animated: Bool = true) {
+    init(skills: [RadarSkill], size: CGFloat = 260, animated: Bool = true, tierColor: Color = Color(hex: "#39FF14")) {
         self.skills = skills
         self.size = size
         self.animated = animated
+        self.tierColor = tierColor
     }
 
     @State private var progress: Double = 0
     @State private var labelOpacity: Double = 0
 
     private let levels = 5
+    private let maxVal = 10.0
+    private let ringDim = Color(hex: "#1C1C2A")
+    private let ringOuter = Color(hex: "#2A2A3A")
+    private let darkBg = Color(hex: "#050507")
     private var n: Int { skills.count }
     private var cx: CGFloat { size / 2 }
     private var cy: CGFloat { size / 2 }
-    private var maxR: CGFloat { size / 2 * 0.62 }
-    private var labelR: CGFloat { size / 2 * 0.90 }
+    private var maxR: CGFloat { size / 2 - 52 }
+    private var labelR: CGFloat { size / 2 - 22 }
 
     var body: some View {
         VStack(spacing: 16) {
@@ -44,80 +52,87 @@ struct SkillRadarView: View {
                 Canvas { context, _ in
                     let center = CGPoint(x: cx, y: cy)
 
-                    for li in 0..<levels {
-                        let frac = CGFloat(li + 1) / CGFloat(levels)
-                        let isOuter = li == levels - 1
+                    // Grid rings — match SA style
+                    for li in 1...levels {
+                        let frac = CGFloat(li) / CGFloat(levels)
+                        let isOuter = li == levels
                         let ringPoints = polygonPoints(radius: maxR * frac)
                         var ringPath = Path()
                         ringPath.addLines(ringPoints)
                         ringPath.closeSubpath()
-
-                        if isOuter {
-                            context.fill(ringPath, with: .color(NETRTheme.neonGreen.opacity(0.07)))
-                            context.stroke(ringPath, with: .color(NETRTheme.neonGreen.opacity(0.19)), lineWidth: 1)
-                        } else {
-                            context.stroke(ringPath, with: .color(NETRTheme.muted.opacity(0.5)), lineWidth: 0.5)
-                        }
+                        context.stroke(ringPath, with: .color(isOuter ? ringOuter : ringDim), lineWidth: isOuter ? 1.2 : 0.7)
                     }
 
+                    // Spokes — match SA style
                     let outerPoints = polygonPoints(radius: maxR)
                     for pt in outerPoints {
                         var spoke = Path()
                         spoke.move(to: center)
                         spoke.addLine(to: pt)
-                        context.stroke(spoke, with: .color(NETRTheme.muted.opacity(0.5)), lineWidth: 0.5)
+                        context.stroke(spoke, with: .color(ringDim), lineWidth: 0.7)
                     }
 
-                    let visualFloor: CGFloat = 0.28
+                    // Ring value labels on top spoke
+                    for li in 1...levels {
+                        let frac = CGFloat(li) / CGFloat(levels)
+                        let pt = polygonPoint(index: 0, radius: maxR * frac)
+                        let text = Text("\(Int(Double(li) / Double(levels) * maxVal))")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundColor(Color(hex: "#2E2E42"))
+                        context.draw(context.resolve(text), at: CGPoint(x: pt.x, y: pt.y - 7))
+                    }
+
+                    // Data points
                     let skillPoints = skills.enumerated().map { i, s in
                         let raw = CGFloat(s.value) * CGFloat(progress)
-                        let mapped = visualFloor + (1.0 - visualFloor) * raw
-                        return polygonPoint(index: i, radius: maxR * mapped)
+                        return polygonPoint(index: i, radius: maxR * raw)
                     }
 
-                    var glowPath = Path()
-                    glowPath.addLines(skillPoints)
-                    glowPath.closeSubpath()
+                    // Data fill — tier color, very low opacity (matching SA 0.07)
+                    var fillPath = Path()
+                    fillPath.addLines(skillPoints)
+                    fillPath.closeSubpath()
+                    context.fill(fillPath, with: .color(tierColor.opacity(0.07)))
 
-                    context.fill(glowPath, with: .color(NETRTheme.neonGreen.opacity(0.15)))
-                    context.stroke(glowPath, with: .color(NETRTheme.neonGreen.opacity(0.4)), style: StrokeStyle(lineWidth: 6, lineJoin: .round))
+                    // Data stroke — tier color at 0.8 opacity, 1.8 lineWidth (matching SA)
+                    var strokePath = Path()
+                    strokePath.addLines(skillPoints)
+                    strokePath.closeSubpath()
+                    context.stroke(strokePath, with: .color(tierColor.opacity(0.8)), style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
 
-                    var crispPath = Path()
-                    crispPath.addLines(skillPoints)
-                    crispPath.closeSubpath()
-                    context.fill(crispPath, with: .color(NETRTheme.neonGreen.opacity(0.12)))
-                    context.stroke(crispPath, with: .color(NETRTheme.neonGreen), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+                    // Spoke lines from center to data point — faint tier color (matching SA 0.15)
+                    for pt in skillPoints {
+                        var spokeLine = Path()
+                        spokeLine.move(to: center)
+                        spokeLine.addLine(to: pt)
+                        context.stroke(spokeLine, with: .color(tierColor.opacity(0.15)), lineWidth: 1)
+                    }
 
-                    for (i, _) in skills.enumerated() {
-                        let raw = CGFloat(skills[i].value) * CGFloat(progress)
-                        let mapped = visualFloor + (1.0 - visualFloor) * raw
-                        let pt = polygonPoint(index: i, radius: maxR * mapped)
-                        let dotPath = Path(ellipseIn: CGRect(x: pt.x - 5, y: pt.y - 5, width: 10, height: 10))
-                        context.fill(dotPath, with: .color(NETRTheme.neonGreen.opacity(progress)))
-                        let innerDot = Path(ellipseIn: CGRect(x: pt.x - 2.5, y: pt.y - 2.5, width: 5, height: 5))
-                        context.fill(innerDot, with: .color(.white.opacity(progress * 0.9)))
+                    // Dots — 3-layer matching SA: glow halo, outer dot, inner dark fill
+                    for pt in skillPoints {
+                        // Glow halo — tier color
+                        let halo = Path(ellipseIn: CGRect(x: pt.x - 7, y: pt.y - 7, width: 14, height: 14))
+                        context.fill(halo, with: .color(tierColor.opacity(0.12 * progress)))
+                        // Outer dot — tier color solid
+                        let outer = Path(ellipseIn: CGRect(x: pt.x - 4.5, y: pt.y - 4.5, width: 9, height: 9))
+                        context.fill(outer, with: .color(tierColor.opacity(progress)))
+                        // Inner fill — dark background
+                        let inner = Path(ellipseIn: CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4))
+                        context.fill(inner, with: .color(darkBg.opacity(progress)))
                     }
                 }
                 .frame(width: size, height: size)
 
+                // Axis labels — per-category color (matching SA)
                 ForEach(Array(skills.enumerated()), id: \.offset) { i, skill in
                     let pt = polygonPoint(index: i, radius: labelR)
-                    let color = skillColor(skill.value)
                     VStack(spacing: 2) {
-                        if skill.isEmoji {
-                            Text(skill.icon)
-                                .font(.system(size: 13))
-                        } else {
-                            LucideIcon(skill.icon, size: 12)
-                                .foregroundStyle(color)
-                        }
-                        Text(skill.label.uppercased())
-                            .font(.system(size: 9, weight: .heavy, design: .default).width(.compressed))
-                            .tracking(0.8)
-                            .foregroundStyle(color)
+                        Text(skill.label)
+                            .font(.system(size: 9.5, weight: .bold))
+                            .foregroundStyle(skill.categoryColor)
                         Text(String(format: "%.1f", skill.raw))
-                            .font(.system(size: 11, weight: .bold, design: .default).width(.compressed))
-                            .foregroundStyle(color)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(skill.categoryColor)
                     }
                     .opacity(labelOpacity)
                     .position(x: pt.x, y: pt.y)
@@ -125,11 +140,9 @@ struct SkillRadarView: View {
             }
             .frame(width: size, height: size)
 
-            legendRow
+            legendGrid
 
             insightsSection
-
-            skillPills
         }
         .onAppear {
             if animated {
@@ -146,12 +159,21 @@ struct SkillRadarView: View {
         }
     }
 
-    private var legendRow: some View {
-        HStack(spacing: 12) {
-            LegendDot(color: NETRTheme.neonGreen, label: "Strong")
-            LegendDot(color: NETRTheme.blue, label: "Solid")
-            LegendDot(color: NETRTheme.gold, label: "Developing")
-            LegendDot(color: NETRTheme.red, label: "Focus area")
+    // Per-category colored legend matching SA style
+    private var legendGrid: some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+            ForEach(Array(skills.enumerated()), id: \.offset) { _, skill in
+                HStack(spacing: 7) {
+                    Circle().fill(skill.categoryColor).frame(width: 8, height: 8)
+                    Text(skill.label)
+                        .font(.system(size: 11))
+                        .foregroundStyle(Color(hex: "#BBBBBB"))
+                    Spacer()
+                    Text(String(format: "%.1f", skill.raw))
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(skill.categoryColor)
+                }
+            }
         }
     }
 
@@ -165,7 +187,7 @@ struct SkillRadarView: View {
                     if !strengths.isEmpty {
                         InsightRow(
                             icon: "zap",
-                            color: NETRTheme.neonGreen,
+                            color: tierColor,
                             label: "Strengths",
                             items: Array(strengths.prefix(2).map(\.label))
                         )
@@ -187,34 +209,6 @@ struct SkillRadarView: View {
         }
     }
 
-    private var skillPills: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: min(skills.count, 4))
-        return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(Array(skills.enumerated()), id: \.offset) { _, skill in
-                let color = skillColor(skill.value)
-                VStack(spacing: 2) {
-                    if skill.isEmoji {
-                        Text(skill.icon)
-                            .font(.system(size: 14))
-                    } else {
-                        LucideIcon(skill.icon, size: 14)
-                            .foregroundStyle(color)
-                    }
-                    Text(String(format: "%.1f", skill.raw))
-                        .font(.system(size: 16, weight: .black, design: .default).width(.compressed))
-                        .foregroundStyle(color)
-                    Text(skill.label.uppercased())
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(color.opacity(0.07), in: .rect(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(color.opacity(0.2), lineWidth: 1))
-            }
-        }
-    }
-
     private func polygonPoint(index: Int, radius: CGFloat) -> CGPoint {
         let angle = (2 * .pi * CGFloat(index) / CGFloat(n)) - (.pi / 2)
         return CGPoint(x: cx + radius * cos(angle), y: cy + radius * sin(angle))
@@ -222,13 +216,6 @@ struct SkillRadarView: View {
 
     private func polygonPoints(radius: CGFloat) -> [CGPoint] {
         (0..<n).map { polygonPoint(index: $0, radius: radius) }
-    }
-
-    private func skillColor(_ value: Double) -> Color {
-        if value >= 0.75 { return NETRTheme.neonGreen }
-        if value >= 0.50 { return NETRTheme.blue }
-        if value >= 0.30 { return NETRTheme.gold }
-        return NETRTheme.red
     }
 }
 
@@ -396,6 +383,17 @@ struct ScoreInfoSheet: View {
     }
 }
 
+// Per-category colors matching SASkillCategory.color exactly
+private let radarCategoryColors: [String: Color] = [
+    "Scoring":     Color(hex: "#39FF14"),
+    "Finishing":   Color(hex: "#FF7A00"),
+    "Handles":     Color(hex: "#FFC247"),
+    "Playmaking":  Color(hex: "#2ECC71"),
+    "Defense":     Color(hex: "#FF3B30"),
+    "Rebounding":  Color(hex: "#2DA8FF"),
+    "IQ":          Color(hex: "#9B8BFF"),
+]
+
 func buildRadarSkills(from skillRatings: SkillRatings) -> [RadarSkill] {
     let items: [(String, String, Double?)] = [
         ("Scoring", "crosshair", skillRatings.shooting),
@@ -409,7 +407,7 @@ func buildRadarSkills(from skillRatings: SkillRatings) -> [RadarSkill] {
     return items.map { label, icon, val in
         let raw = val ?? 2.5
         let value = (raw - 1.0) / 9.0
-        return RadarSkill(label: label, icon: icon, raw: raw, value: value)
+        return RadarSkill(label: label, icon: icon, raw: raw, value: value, categoryColor: radarCategoryColors[label] ?? NETRTheme.neonGreen)
     }
 }
 
@@ -426,6 +424,6 @@ func buildRadarSkills(from categoryScores: [String: Double]) -> [RadarSkill] {
     return order.map { item in
         let raw = categoryScores[item.key] ?? 2.5
         let value = (raw - 1.0) / 9.0
-        return RadarSkill(label: item.label, icon: item.icon, raw: raw, value: value)
+        return RadarSkill(label: item.label, icon: item.icon, raw: raw, value: value, categoryColor: radarCategoryColors[item.label] ?? NETRTheme.neonGreen)
     }
 }
