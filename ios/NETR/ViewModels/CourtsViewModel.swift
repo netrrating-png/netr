@@ -22,7 +22,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     private let client = SupabaseManager.shared.client
 
-    private let filters = ["All", "Live Now", "Full Court", "Lights", "Indoor", "Verified"]
+    private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
 
     var neighborhoods: [String] {
         let hoods = Set(courts.map { $0.neighborhood }).sorted()
@@ -53,7 +53,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
         switch selectedFilter {
         case "Live Now": results = results.filter { $0.verified }
-        case "Full Court": results = results.filter { $0.fullCourt }
+        case "Favorites": results = results.filter { favoriteCourtIds.contains($0.id) }
         case "Lights": results = results.filter { $0.lights }
         case "Indoor": results = results.filter { $0.indoor }
         case "Verified": results = results.filter { $0.verified }

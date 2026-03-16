@@ -15,7 +15,7 @@ struct CourtsView: View {
         )
     ))
 
-    private let filters = ["All", "Live Now", "Full Court", "Lights", "Indoor", "Verified"]
+    private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
 
     var body: some View {
         ZStack {
@@ -358,6 +358,18 @@ struct CourtsView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 .padding(.vertical, 40)
+            } else if viewModel.selectedFilter == "Favorites" && viewModel.filteredCourts.isEmpty {
+                VStack(spacing: 12) {
+                    LucideIcon("heart", size: 28)
+                        .foregroundStyle(NETRTheme.subtext)
+                    Text("No favorites yet")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Tap \u{2665} on any court to save it here")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+                .padding(.vertical, 40)
             } else if viewModel.filteredCourts.isEmpty {
                 VStack(spacing: 12) {
                     LucideIcon("map-pin-off", size: 28)
@@ -376,20 +388,18 @@ struct CourtsView: View {
                 .padding(.vertical, 40)
             } else {
                 ForEach(viewModel.filteredCourts) { court in
-                    Button {
-                        selectedCourt = court
-                    } label: {
-                        CourtCardView(
-                            court: court,
-                            distance: viewModel.distanceString(for: court),
-                            isFavorite: viewModel.isFavorite(court.id),
-                            isHomeCourt: viewModel.isHomeCourt(court.id),
-                            onFavoriteToggle: {
-                                Task { await viewModel.toggleFavorite(courtId: court.id) }
-                            }
-                        )
-                    }
-                    .buttonStyle(PressButtonStyle())
+                    CourtCardView(
+                        court: court,
+                        distance: viewModel.distanceString(for: court),
+                        isFavorite: viewModel.isFavorite(court.id),
+                        isHomeCourt: viewModel.isHomeCourt(court.id),
+                        onFavoriteToggle: {
+                            Task { await viewModel.toggleFavorite(courtId: court.id) }
+                        },
+                        onTap: {
+                            selectedCourt = court
+                        }
+                    )
                 }
             }
         }

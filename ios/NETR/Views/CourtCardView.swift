@@ -6,6 +6,7 @@ struct CourtCardView: View {
     let isFavorite: Bool
     let isHomeCourt: Bool
     let onFavoriteToggle: () -> Void
+    var onTap: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -28,10 +29,9 @@ struct CourtCardView: View {
                     LucideIcon(isFavorite ? "heart" : "heart", size: 16)
                         .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
                         .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .highPriorityGesture(TapGesture().onEnded { onFavoriteToggle() })
 
                 if court.verified {
                     LucideIcon("badge-check", size: 12)
@@ -70,13 +70,13 @@ struct CourtCardView: View {
             HStack(spacing: 8) {
                 CourtTagChip(text: court.surfaceType.rawValue)
                 if court.lights {
-                    CourtTagChip(text: "💡 Lights")
+                    CourtTagChip(text: "Lights", icon: "lightbulb")
                 }
                 if court.indoor {
-                    CourtTagChip(text: "🏠 Indoor")
+                    CourtTagChip(text: "Indoor", icon: "building-2")
                 }
                 if court.fullCourt {
-                    CourtTagChip(text: "🏀 Full")
+                    CourtTagChip(text: "Full Court", icon: "circle-dot")
                 }
 
                 Spacer()
@@ -88,18 +88,29 @@ struct CourtCardView: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
         )
+        .contentShape(.rect(cornerRadius: 14))
+        .onTapGesture {
+            onTap?()
+        }
     }
 }
 
 struct CourtTagChip: View {
     let text: String
+    var icon: String? = nil
 
     var body: some View {
-        Text(text)
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(NETRTheme.subtext)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(NETRTheme.surface, in: Capsule())
+        HStack(spacing: 4) {
+            if let icon {
+                LucideIcon(icon, size: 9)
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            Text(text)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(NETRTheme.subtext)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(NETRTheme.surface, in: Capsule())
     }
 }
