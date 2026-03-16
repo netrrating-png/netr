@@ -9,6 +9,48 @@ struct CourtCardView: View {
     var onTap: (() -> Void)? = nil
 
     var body: some View {
+        cardContent
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
+            )
+            .contentShape(.rect(cornerRadius: 14))
+            .onTapGesture { onTap?() }
+            // Heart button overlaid in a separate Z-layer so it NEVER
+            // competes with the card's onTapGesture for hit testing
+            .overlay(alignment: .topTrailing) {
+                HStack(spacing: 0) {
+                    Button {
+                        onFavoriteToggle()
+                    } label: {
+                        LucideIcon(isFavorite ? "heart" : "heart", size: 16)
+                            .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    // Invisible spacer matching the verified badge width
+                    // so the heart aligns with its placeholder in the layout
+                    Group {
+                        if court.verified {
+                            LucideIcon("badge-check", size: 12)
+                        } else {
+                            Text("PENDING")
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                        }
+                    }
+                    .hidden()
+                }
+                .padding(.top, 14)
+                .padding(.trailing, 14)
+            }
+    }
+
+    private var cardContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(court.name)
@@ -23,15 +65,11 @@ struct CourtCardView: View {
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 
-                Button {
-                    onFavoriteToggle()
-                } label: {
-                    LucideIcon(isFavorite ? "heart" : "heart", size: 16)
-                        .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
+                // Non-interactive placeholder — the real button is in the overlay
+                LucideIcon(isFavorite ? "heart" : "heart", size: 16)
+                    .foregroundStyle(isFavorite ? NETRTheme.red : NETRTheme.subtext)
+                    .frame(width: 44, height: 44)
+                    .opacity(0)
 
                 if court.verified {
                     LucideIcon("badge-check", size: 12)
@@ -83,15 +121,6 @@ struct CourtCardView: View {
             }
         }
         .padding(14)
-        .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(isHomeCourt ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border, lineWidth: 1)
-        )
-        .contentShape(.rect(cornerRadius: 14))
-        .onTapGesture {
-            onTap?()
-        }
     }
 }
 
