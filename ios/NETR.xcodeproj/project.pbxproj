@@ -57,7 +57,6 @@
 		ADB4D4032F64A815001D0E5F /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */; };
 		ADB4D4042F64A815001D0E5F /* AddCourtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */; };
 		ADB4D4052F64A815001D0E5F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C42F64A815001D0E5F /* RootView.swift */; };
-		ADB4D4062F64A815001D0E5F /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3D02F64A815001D0E5F /* Config.swift */; };
 		ADB4D4072F64A815001D0E5F /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */; };
 		ADB4D4082F64A815001D0E5F /* LoopingVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */; };
 		ADB4D4092F64A815001D0E5F /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */; };
@@ -146,7 +145,6 @@
 		ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeDecalView.swift; sourceTree = "<group>"; };
 		ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		ADB4D3D02F64A815001D0E5F /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		ADB4D3D12F64A815001D0E5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		ADB4D3D22F64A815001D0E5F /* NETRApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRApp.swift; sourceTree = "<group>"; };
 		ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentFlow.swift; sourceTree = "<group>"; };
@@ -325,7 +323,6 @@
 				ADB4D3B02F64A815001D0E5F /* ViewModels */,
 				ADB4D3CE2F64A815001D0E5F /* Views */,
 				ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */,
-				ADB4D3D02F64A815001D0E5F /* Config.swift */,
 				ADB4D3D12F64A815001D0E5F /* ContentView.swift */,
 				ADB4D3D22F64A815001D0E5F /* NETRApp.swift */,
 			);
@@ -532,7 +529,6 @@
 				ADB4D4032F64A815001D0E5F /* GameViewModel.swift in Sources */,
 				ADB4D4042F64A815001D0E5F /* AddCourtView.swift in Sources */,
 				ADB4D4052F64A815001D0E5F /* RootView.swift in Sources */,
-				ADB4D4062F64A815001D0E5F /* Config.swift in Sources */,
 				ADB4D4072F64A815001D0E5F /* ProfileViewModel.swift in Sources */,
 				ADB4D4082F64A815001D0E5F /* LoopingVideoView.swift in Sources */,
 				ADB4D4092F64A815001D0E5F /* OnboardingView.swift in Sources */,
