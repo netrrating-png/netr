@@ -3,8 +3,8 @@ import SwiftUI
 // ─────────────────────────────────────────────────────────────
 // MARK: — NETR Rating Scale
 // Scale: 2.0 – 9.9
-// Regular player ceiling: 9.4
-// 9.5–9.9 locked to verified pros only
+// Regular player ceiling: 9.5
+// Above 9.5 locked to verified pros only
 // Bayesian prior: 3.2 (real average pickup player)
 // ─────────────────────────────────────────────────────────────
 
@@ -161,7 +161,7 @@ struct NETRRating {
     /// Clamps a score to the valid range for a given player type
     static func clamp(_ raw: Double, isVerifiedPro: Bool = false) -> Double {
         let minimum = 2.0
-        let maximum = isVerifiedPro ? 9.9 : 9.4
+        let maximum = isVerifiedPro ? 9.9 : 9.5
         return max(minimum, min(raw, maximum))
     }
 
