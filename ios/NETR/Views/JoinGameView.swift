@@ -133,13 +133,18 @@ class JoinGameViewModel {
 
             let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
 
-            // Try with host join first; fall back to no host join if FK not yet set up
-            let fullSelect = """
+            let selects = [
+                // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
+                """
                 id, join_code, created_at, format, max_players, scheduled_at,
                 courts(name, neighborhood, lat, lng),
                 host:profiles!host_id(full_name, username)
-            """
-            let simpleSelect = "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)"
+                """,
+                // Level 2: courts only — needs games.court_id→courts FK
+                "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)",
+                // Level 3: bare — no FK joins needed at all
+                "id, join_code, created_at, format, max_players, scheduled_at",
+            ]
 
             func fetchGames(select: String) async throws -> (live: [NearbyGame], scheduled: [NearbyGame]) {
                 let live: [NearbyGame] = try await client
@@ -161,12 +166,17 @@ class JoinGameViewModel {
                 return (live, scheduled)
             }
 
-            let (live, scheduled): ([NearbyGame], [NearbyGame])
-            do {
-                (live, scheduled) = try await fetchGames(select: fullSelect)
-            } catch {
-                print("[JoinGame] host join failed, retrying without: \(error.localizedDescription)")
-                (live, scheduled) = try await fetchGames(select: simpleSelect)
+            var live: [NearbyGame] = []
+            var scheduled: [NearbyGame] = []
+            for (i, select) in selects.enumerated() {
+                do {
+                    (live, scheduled) = try await fetchGames(select: select)
+                    print("[JoinGame] level \(i+1) select succeeded: \(live.count) live, \(scheduled.count) scheduled")
+                    break
+                } catch {
+                    print("[JoinGame] level \(i+1) failed: \(error.localizedDescription)")
+                    if i == selects.count - 1 { throw error }
+                }
             }
 
             var filteredLive = live.map { game -> NearbyGame in

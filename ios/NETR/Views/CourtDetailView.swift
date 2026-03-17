@@ -475,37 +475,40 @@ struct CourtDetailView: View {
         let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
         let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
 
-        // Full select includes host join — requires FK games.host_id → profiles.id
-        let fullSelect = """
+        // Three-level fallback: each level strips more PostgREST joins,
+        // which require FK constraints to exist in the database.
+        let selects = [
+            // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
+            """
             id, join_code, created_at, format, max_players, scheduled_at,
             courts(name, neighborhood, lat, lng),
             host:profiles!host_id(full_name, username)
-        """
-        // Fallback: no host join — works even without the FK migration
-        let simpleSelect = "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)"
+            """,
+            // Level 2: courts only — needs games.court_id→courts FK
+            "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)",
+            // Level 3: bare — no FK joins needed at all
+            "id, join_code, created_at, format, max_players, scheduled_at",
+        ]
 
-        do {
-            let (live, scheduled) = try await fetchCourtGames(
-                client: client, select: fullSelect,
-                courtId: court.id, cutoff: cutoff, twoHoursAgo: twoHoursAgo
-            )
-            courtLiveGames = live
-            courtScheduledGames = scheduled
-            print("[CourtGames] loaded \(live.count) live, \(scheduled.count) scheduled (with host)")
-        } catch {
-            print("[CourtGames] host join failed (\(error.localizedDescription)), retrying without host")
+        var loadError: Error?
+        for (i, select) in selects.enumerated() {
             do {
                 let (live, scheduled) = try await fetchCourtGames(
-                    client: client, select: simpleSelect,
+                    client: client, select: select,
                     courtId: court.id, cutoff: cutoff, twoHoursAgo: twoHoursAgo
                 )
                 courtLiveGames = live
                 courtScheduledGames = scheduled
-                print("[CourtGames] fallback loaded \(live.count) live, \(scheduled.count) scheduled")
+                print("[CourtGames] level \(i+1) select: \(live.count) live, \(scheduled.count) scheduled")
+                loadError = nil
+                break
             } catch {
-                print("[CourtGames] fallback also failed: \(error)")
-                gamesLoadError = error.localizedDescription
+                print("[CourtGames] level \(i+1) failed: \(error.localizedDescription)")
+                loadError = error
             }
+        }
+        if let err = loadError {
+            gamesLoadError = err.localizedDescription
         }
 
         if let userId = SupabaseManager.shared.session?.user.id.uuidString {
