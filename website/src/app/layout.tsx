@@ -111,7 +111,7 @@ function Footer() {
     >
       <p>© {new Date().getFullYear()} NETR — NYC Pickup Basketball</p>
       <p style={{ marginTop: 4 }}>
-        Scale: 2.0–9.9 · Bayesian prior: 3.2 · Regular ceiling: 9.4
+        Scale: 2.0–9.9 · Bayesian prior: 3.2 · Regular ceiling: 9.5
       </p>
     </footer>
   )
