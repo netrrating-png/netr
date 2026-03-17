@@ -472,6 +472,7 @@ struct CourtDetailView: View {
                 .execute()
                 .value
 
+            let nowStr = fmt.string(from: Date())
             let scheduled: [NearbyGame] = try await client
                 .from("games")
                 .select("""
@@ -479,7 +480,8 @@ struct CourtDetailView: View {
                     courts(name, neighborhood, lat, lng),
                     host:profiles!games_host_id_fkey(full_name, username)
                 """)
-                .eq("status", value: "scheduled")
+                .gt("scheduled_at", value: nowStr)
+                .in("status", values: ["scheduled", "waiting", "active"])
                 .eq("court_id", value: court.id)
                 .order("scheduled_at", ascending: true)
                 .execute()

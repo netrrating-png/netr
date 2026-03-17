@@ -138,7 +138,8 @@ class JoinGameViewModel {
                 .execute()
                 .value
 
-            // Scheduled games (future)
+            // Scheduled games (future scheduled_at, any non-completed status)
+            let nowStr = fmt.string(from: Date())
             let scheduled: [NearbyGame] = try await client
                 .from("games")
                 .select("""
@@ -146,7 +147,8 @@ class JoinGameViewModel {
                     courts(name, neighborhood, lat, lng),
                     host:profiles!games_host_id_fkey(full_name, username)
                 """)
-                .eq("status", value: "scheduled")
+                .gt("scheduled_at", value: nowStr)
+                .in("status", values: ["scheduled", "waiting", "active"])
                 .order("scheduled_at", ascending: true)
                 .execute()
                 .value
