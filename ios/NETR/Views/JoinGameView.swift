@@ -25,6 +25,13 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         let username: String?
     }
 
+    // distanceMiles is computed client-side — exclude it from JSON decoding
+    // so the auto-synthesized Decodable doesn't look for a missing JSON key
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id, format, courts, host
+        case join_code, created_at, max_players, scheduled_at
+    }
+
     var courtName: String { courts?.name ?? "Unknown Court" }
     var neighborhood: String { courts?.neighborhood ?? "" }
     var hostName: String {
