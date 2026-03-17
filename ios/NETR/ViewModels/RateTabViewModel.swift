@@ -4,7 +4,7 @@ import Auth
 
 @Observable
 class RateTabViewModel {
-    var sessions: [RecentGameSession] = Self.demoSession
+    var sessions: [RecentGameSession] = RateTabViewModel.demoSession
     var ratingsReceivedToday: Int = 0
     var isLoading: Bool = false
     var isEmpty: Bool = false
