@@ -138,8 +138,8 @@ class JoinGameViewModel {
                 .execute()
                 .value
 
-            // Scheduled games (future scheduled_at, any non-completed status)
-            let nowStr = fmt.string(from: Date())
+            // Scheduled games: future OR started in the last 2 hours (game is still happening)
+            let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
             let scheduled: [NearbyGame] = try await client
                 .from("games")
                 .select("""
@@ -147,7 +147,7 @@ class JoinGameViewModel {
                     courts(name, neighborhood, lat, lng),
                     host:profiles!games_host_id_fkey(full_name, username)
                 """)
-                .gt("scheduled_at", value: nowStr)
+                .gt("scheduled_at", value: twoHoursAgo)
                 .in("status", values: ["scheduled", "waiting", "active"])
                 .order("scheduled_at", ascending: true)
                 .execute()

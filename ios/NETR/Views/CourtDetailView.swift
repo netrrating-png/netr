@@ -472,7 +472,8 @@ struct CourtDetailView: View {
                 .execute()
                 .value
 
-            let nowStr = fmt.string(from: Date())
+            // Scheduled: future OR started in the last 2 hours (still ongoing)
+            let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
             let scheduled: [NearbyGame] = try await client
                 .from("games")
                 .select("""
@@ -480,7 +481,7 @@ struct CourtDetailView: View {
                     courts(name, neighborhood, lat, lng),
                     host:profiles!games_host_id_fkey(full_name, username)
                 """)
-                .gt("scheduled_at", value: nowStr)
+                .gt("scheduled_at", value: twoHoursAgo)
                 .in("status", values: ["scheduled", "waiting", "active"])
                 .eq("court_id", value: court.id)
                 .order("scheduled_at", ascending: true)
