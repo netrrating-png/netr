@@ -59,7 +59,7 @@ class GameViewModel {
             joinCode: code,
             format: format,
             skillLevel: skillLevel,
-            status: "waiting",
+            status: scheduledAt != nil ? "scheduled" : "waiting",
             maxPlayers: maxPlayers,
             scheduledAt: scheduledAtStr
         )

@@ -14,6 +14,16 @@ struct CourtDetailView: View {
     @State private var isUploadingPhoto: Bool = false
     @State private var fullScreenPhotoUrl: String?
 
+    // Games at this court
+    @State private var courtLiveGames: [NearbyGame] = []
+    @State private var courtScheduledGames: [NearbyGame] = []
+    @State private var isLoadingGames: Bool = false
+    @State private var courtJoinedGameIds: Set<String> = []
+    @State private var courtLobbyVM = GameViewModel()
+    @State private var courtJoinVM = JoinGameViewModel()
+    @State private var showCourtLobby: Bool = false
+    @State private var showCreateGameFromCourt: Bool = false
+
     private var distance: String { viewModel.distanceString(for: court) }
     private var isFav: Bool { viewModel.isFavorite(court.id) }
     private var isHome: Bool { viewModel.isHomeCourt(court.id) }
@@ -43,6 +53,17 @@ struct CourtDetailView: View {
             .safeAreaInset(edge: .bottom) {
                 bottomCTA
             }
+        }
+        .sheet(isPresented: $showCourtLobby) {
+            GameLobbyView(viewModel: courtLobbyVM, onDismiss: { showCourtLobby = false })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showCreateGameFromCourt) {
+            CreateGameView(viewModel: viewModel, preselectedCourt: court)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.surface)
         }
     }
 
@@ -217,7 +238,7 @@ struct CourtDetailView: View {
 
     private var tabSelector: some View {
         HStack(spacing: 0) {
-            ForEach(Array(["INFO", "TAGS", "PHOTOS"].enumerated()), id: \.offset) { idx, title in
+            ForEach(Array(["GAMES", "INFO", "TAGS", "PHOTOS"].enumerated()), id: \.offset) { idx, title in
                 Button {
                     withAnimation(.snappy) { selectedTab = idx }
                 } label: {
@@ -242,11 +263,248 @@ struct CourtDetailView: View {
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
-        case 0: infoTab
-        case 1: tagsTab
-        case 2: photosTab
+        case 0: gamesTab
+        case 1: infoTab
+        case 2: tagsTab
+        case 3: photosTab
         default: EmptyView()
         }
+    }
+
+    private var gamesTab: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            if isLoadingGames {
+                HStack {
+                    Spacer()
+                    ProgressView().tint(NETRTheme.neonGreen)
+                    Spacer()
+                }
+                .padding(.vertical, 40)
+            } else if courtLiveGames.isEmpty && courtScheduledGames.isEmpty {
+                VStack(spacing: 12) {
+                    LucideIcon("circle-dot", size: 32)
+                        .foregroundStyle(NETRTheme.muted)
+                    Text("No games at this court")
+                        .font(.system(.subheadline, design: .default, weight: .bold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Be the first to start or schedule a game here.")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.muted)
+                        .multilineTextAlignment(.center)
+                    Button {
+                        showCreateGameFromCourt = true
+                    } label: {
+                        Text("Create a Game")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(NETRTheme.neonGreen)
+                    }
+                    .padding(.top, 4)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 30)
+            } else {
+                if !courtLiveGames.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(NETRTheme.neonGreen)
+                                .frame(width: 7, height: 7)
+                                .shadow(color: NETRTheme.neonGreen.opacity(0.7), radius: 4)
+                            Text("LIVE NOW")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(NETRTheme.subtext)
+                                .tracking(1.3)
+                        }
+                        ForEach(courtLiveGames) { game in
+                            courtGameCard(game)
+                        }
+                    }
+                }
+
+                if !courtScheduledGames.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(NETRTheme.gold)
+                            Text("UPCOMING")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(NETRTheme.subtext)
+                                .tracking(1.3)
+                        }
+                        ForEach(courtScheduledGames) { game in
+                            courtGameCard(game)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .task {
+            await loadCourtGames()
+        }
+    }
+
+    private func courtGameCard(_ game: NearbyGame) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(game.isScheduled ? NETRTheme.gold.opacity(0.12) : NETRTheme.neonGreen.opacity(0.12))
+                        .frame(width: 42, height: 42)
+                    if game.isScheduled {
+                        Image(systemName: "clock.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(NETRTheme.gold)
+                    } else {
+                        LucideIcon("circle-dot", size: 18)
+                            .foregroundStyle(NETRTheme.neonGreen)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        if let fmt = game.format {
+                            Text(fmt)
+                                .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
+                                .foregroundStyle(NETRTheme.text)
+                        }
+                        if game.isScheduled {
+                            Text("SCHEDULED")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(NETRTheme.gold)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(NETRTheme.gold.opacity(0.12), in: Capsule())
+                        } else {
+                            Text("LIVE")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(NETRTheme.neonGreen.opacity(0.12), in: Capsule())
+                        }
+                    }
+                    HStack(spacing: 4) {
+                        Text(game.startedAgo)
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                        Text("·")
+                            .foregroundStyle(NETRTheme.muted)
+                        Text("by \(game.hostName)")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+
+                Spacer()
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 12)
+
+            if courtJoinedGameIds.contains(game.id) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 15))
+                    Text("JOINED")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundStyle(NETRTheme.neonGreen)
+                .frame(maxWidth: .infinity)
+                .frame(height: 42)
+                .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
+            } else {
+                Button {
+                    Task {
+                        if let joined = await courtJoinVM.joinGameDirectly(game) {
+                            courtLobbyVM.game = joined
+                            await courtLobbyVM.loadPlayers(gameId: joined.id)
+                            await courtLobbyVM.subscribeToLobby(gameId: joined.id)
+                            courtJoinedGameIds.insert(game.id)
+                            showCourtLobby = true
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        LucideIcon("arrow-right-circle", size: 15)
+                        Text("Join This Run")
+                            .font(.system(size: 14, weight: .bold))
+                    }
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 10))
+                }
+                .buttonStyle(PressButtonStyle())
+                .padding(.horizontal, 14)
+                .padding(.bottom, 14)
+            }
+        }
+        .background(NETRTheme.card)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 14))
+    }
+
+    private func loadCourtGames() async {
+        isLoadingGames = true
+        let client = SupabaseManager.shared.client
+
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime]
+        let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
+
+        do {
+            let live: [NearbyGame] = try await client
+                .from("games")
+                .select("""
+                    id, join_code, created_at, format, max_players, scheduled_at,
+                    courts(name, neighborhood, lat, lng),
+                    host:profiles!games_host_id_fkey(full_name, username)
+                """)
+                .in("status", values: ["active", "waiting"])
+                .eq("court_id", value: court.id)
+                .gte("created_at", value: cutoff)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+
+            let scheduled: [NearbyGame] = try await client
+                .from("games")
+                .select("""
+                    id, join_code, created_at, format, max_players, scheduled_at,
+                    courts(name, neighborhood, lat, lng),
+                    host:profiles!games_host_id_fkey(full_name, username)
+                """)
+                .eq("status", value: "scheduled")
+                .eq("court_id", value: court.id)
+                .order("scheduled_at", ascending: true)
+                .execute()
+                .value
+
+            courtLiveGames = live
+            courtScheduledGames = scheduled
+
+            if let userId = SupabaseManager.shared.session?.user.id.uuidString {
+                nonisolated struct JoinedId: Decodable, Sendable {
+                    let gameId: String
+                    nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+                }
+                let rows: [JoinedId] = try await client
+                    .from("game_players")
+                    .select("game_id")
+                    .eq("user_id", value: userId)
+                    .execute()
+                    .value
+                courtJoinedGameIds = Set(rows.map { $0.gameId })
+            }
+        } catch {
+            print("Load court games error: \(error)")
+        }
+        isLoadingGames = false
     }
 
     private var infoTab: some View {
@@ -486,7 +744,7 @@ struct CourtDetailView: View {
     private var bottomCTA: some View {
         HStack(spacing: 12) {
             Button {
-                dismiss()
+                showCreateGameFromCourt = true
             } label: {
                 Text("START GAME HERE")
                     .font(.system(.headline, design: .default, weight: .black).width(.compressed))
