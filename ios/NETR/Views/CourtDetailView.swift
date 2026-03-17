@@ -65,6 +65,11 @@ struct CourtDetailView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
         }
+        .onChange(of: showCreateGameFromCourt) { _, isShowing in
+            if !isShowing {
+                Task { await loadCourtGames() }
+            }
+        }
     }
 
     private var courtHeader: some View {
