@@ -131,34 +131,43 @@ class JoinGameViewModel {
             fmt.formatOptions = [.withInternetDateTime]
             let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
 
-            // Live games (waiting status within last 4 hours)
-            let live: [NearbyGame] = try await client
-                .from("games")
-                .select("""
-                    id, join_code, created_at, format, max_players, scheduled_at,
-                    courts(name, neighborhood, lat, lng),
-                    host:profiles!games_host_id_fkey(full_name, username)
-                """)
-                .in("status", values: ["active", "waiting"])
-                .gte("created_at", value: cutoff)
-                .order("created_at", ascending: false)
-                .execute()
-                .value
-
-            // Scheduled games: future OR started in the last 2 hours (game is still happening)
             let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
-            let scheduled: [NearbyGame] = try await client
-                .from("games")
-                .select("""
-                    id, join_code, created_at, format, max_players, scheduled_at,
-                    courts(name, neighborhood, lat, lng),
-                    host:profiles!games_host_id_fkey(full_name, username)
-                """)
-                .gt("scheduled_at", value: twoHoursAgo)
-                .in("status", values: ["scheduled", "waiting", "active"])
-                .order("scheduled_at", ascending: true)
-                .execute()
-                .value
+
+            // Try with host join first; fall back to no host join if FK not yet set up
+            let fullSelect = """
+                id, join_code, created_at, format, max_players, scheduled_at,
+                courts(name, neighborhood, lat, lng),
+                host:profiles!host_id(full_name, username)
+            """
+            let simpleSelect = "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)"
+
+            func fetchGames(select: String) async throws -> (live: [NearbyGame], scheduled: [NearbyGame]) {
+                let live: [NearbyGame] = try await client
+                    .from("games")
+                    .select(select)
+                    .in("status", values: ["active", "waiting"])
+                    .gte("created_at", value: cutoff)
+                    .order("created_at", ascending: false)
+                    .execute()
+                    .value
+                let scheduled: [NearbyGame] = try await client
+                    .from("games")
+                    .select(select)
+                    .gt("scheduled_at", value: twoHoursAgo)
+                    .in("status", values: ["scheduled", "waiting", "active"])
+                    .order("scheduled_at", ascending: true)
+                    .execute()
+                    .value
+                return (live, scheduled)
+            }
+
+            let (live, scheduled): ([NearbyGame], [NearbyGame])
+            do {
+                (live, scheduled) = try await fetchGames(select: fullSelect)
+            } catch {
+                print("[JoinGame] host join failed, retrying without: \(error.localizedDescription)")
+                (live, scheduled) = try await fetchGames(select: simpleSelect)
+            }
 
             var filteredLive = live.map { game -> NearbyGame in
                 var g = game

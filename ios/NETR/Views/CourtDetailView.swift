@@ -473,42 +473,43 @@ struct CourtDetailView: View {
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime]
         let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
+        let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
+
+        // Full select includes host join — requires FK games.host_id → profiles.id
+        let fullSelect = """
+            id, join_code, created_at, format, max_players, scheduled_at,
+            courts(name, neighborhood, lat, lng),
+            host:profiles!host_id(full_name, username)
+        """
+        // Fallback: no host join — works even without the FK migration
+        let simpleSelect = "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)"
 
         do {
-            let live: [NearbyGame] = try await client
-                .from("games")
-                .select("""
-                    id, join_code, created_at, format, max_players, scheduled_at,
-                    courts(name, neighborhood, lat, lng),
-                    host:profiles!games_host_id_fkey(full_name, username)
-                """)
-                .in("status", values: ["active", "waiting"])
-                .eq("court_id", value: court.id)
-                .gte("created_at", value: cutoff)
-                .order("created_at", ascending: false)
-                .execute()
-                .value
-
-            // Scheduled: future OR started in the last 2 hours (still ongoing)
-            let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
-            let scheduled: [NearbyGame] = try await client
-                .from("games")
-                .select("""
-                    id, join_code, created_at, format, max_players, scheduled_at,
-                    courts(name, neighborhood, lat, lng),
-                    host:profiles!games_host_id_fkey(full_name, username)
-                """)
-                .gt("scheduled_at", value: twoHoursAgo)
-                .in("status", values: ["scheduled", "waiting", "active"])
-                .eq("court_id", value: court.id)
-                .order("scheduled_at", ascending: true)
-                .execute()
-                .value
-
+            let (live, scheduled) = try await fetchCourtGames(
+                client: client, select: fullSelect,
+                courtId: court.id, cutoff: cutoff, twoHoursAgo: twoHoursAgo
+            )
             courtLiveGames = live
             courtScheduledGames = scheduled
+            print("[CourtGames] loaded \(live.count) live, \(scheduled.count) scheduled (with host)")
+        } catch {
+            print("[CourtGames] host join failed (\(error.localizedDescription)), retrying without host")
+            do {
+                let (live, scheduled) = try await fetchCourtGames(
+                    client: client, select: simpleSelect,
+                    courtId: court.id, cutoff: cutoff, twoHoursAgo: twoHoursAgo
+                )
+                courtLiveGames = live
+                courtScheduledGames = scheduled
+                print("[CourtGames] fallback loaded \(live.count) live, \(scheduled.count) scheduled")
+            } catch {
+                print("[CourtGames] fallback also failed: \(error)")
+                gamesLoadError = error.localizedDescription
+            }
+        }
 
-            if let userId = SupabaseManager.shared.session?.user.id.uuidString {
+        if let userId = SupabaseManager.shared.session?.user.id.uuidString {
+            do {
                 nonisolated struct JoinedId: Decodable, Sendable {
                     let gameId: String
                     nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
@@ -520,12 +521,42 @@ struct CourtDetailView: View {
                     .execute()
                     .value
                 courtJoinedGameIds = Set(rows.map { $0.gameId })
+            } catch {
+                print("[CourtGames] joined IDs fetch failed: \(error)")
             }
-        } catch {
-            print("Load court games error: \(error)")
-            gamesLoadError = error.localizedDescription
         }
+
         isLoadingGames = false
+    }
+
+    private func fetchCourtGames(
+        client: SupabaseClient,
+        select: String,
+        courtId: String,
+        cutoff: String,
+        twoHoursAgo: String
+    ) async throws -> (live: [NearbyGame], scheduled: [NearbyGame]) {
+        let live: [NearbyGame] = try await client
+            .from("games")
+            .select(select)
+            .in("status", values: ["active", "waiting"])
+            .eq("court_id", value: courtId)
+            .gte("created_at", value: cutoff)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+
+        let scheduled: [NearbyGame] = try await client
+            .from("games")
+            .select(select)
+            .gt("scheduled_at", value: twoHoursAgo)
+            .in("status", values: ["scheduled", "waiting", "active"])
+            .eq("court_id", value: courtId)
+            .order("scheduled_at", ascending: true)
+            .execute()
+            .value
+
+        return (live, scheduled)
     }
 
     private var infoTab: some View {
