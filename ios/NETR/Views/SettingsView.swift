@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Auth
 
 struct SettingsView: View {
     let store: MockDataStore
