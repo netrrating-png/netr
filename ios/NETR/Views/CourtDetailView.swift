@@ -18,6 +18,7 @@ struct CourtDetailView: View {
     @State private var courtLiveGames: [NearbyGame] = []
     @State private var courtScheduledGames: [NearbyGame] = []
     @State private var isLoadingGames: Bool = false
+    @State private var gamesLoadError: String?
     @State private var courtJoinedGameIds: Set<String> = []
     @State private var courtLobbyVM = GameViewModel()
     @State private var courtJoinVM = JoinGameViewModel()
@@ -41,6 +42,9 @@ struct CourtDetailView: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .refreshable {
+                await loadCourtGames()
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -292,10 +296,17 @@ struct CourtDetailView: View {
                     Text("No games at this court")
                         .font(.system(.subheadline, design: .default, weight: .bold))
                         .foregroundStyle(NETRTheme.text)
-                    Text("Be the first to start or schedule a game here.")
-                        .font(.caption)
-                        .foregroundStyle(NETRTheme.muted)
-                        .multilineTextAlignment(.center)
+                    if let err = gamesLoadError {
+                        Text(err)
+                            .font(.caption2)
+                            .foregroundStyle(.red.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("Be the first to start or schedule a game here.")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.muted)
+                            .multilineTextAlignment(.center)
+                    }
                     Button {
                         showCreateGameFromCourt = true
                     } label: {
@@ -456,6 +467,7 @@ struct CourtDetailView: View {
 
     private func loadCourtGames() async {
         isLoadingGames = true
+        gamesLoadError = nil
         let client = SupabaseManager.shared.client
 
         let fmt = ISO8601DateFormatter()
@@ -511,6 +523,7 @@ struct CourtDetailView: View {
             }
         } catch {
             print("Load court games error: \(error)")
+            gamesLoadError = error.localizedDescription
         }
         isLoadingGames = false
     }
