@@ -338,14 +338,14 @@ class GameViewModel {
         do {
             try await client
                 .from("no_show_reports")
-                .insert(NoShowReportPayload(gameId: gameId, reporterId: userId, reportedId: playerId))
+                .insert(NoShowReportPayload(gameId: gameId, reportedByUserId: userId, reportedUserId: playerId))
                 .execute()
 
             let reports: [NoShowReport] = try await client
                 .from("no_show_reports")
-                .select("id, game_id, reporter_id, reported_id")
+                .select("id, game_id, reported_by_user_id, reported_user_id")
                 .eq("game_id", value: gameId)
-                .eq("reported_id", value: playerId)
+                .eq("reported_user_id", value: playerId)
                 .execute()
                 .value
 
@@ -363,7 +363,7 @@ class GameViewModel {
         do {
             noShowReports = try await client
                 .from("no_show_reports")
-                .select("id, game_id, reporter_id, reported_id")
+                .select("id, game_id, reported_by_user_id, reported_user_id")
                 .eq("game_id", value: gameId)
                 .execute()
                 .value
@@ -376,12 +376,12 @@ class GameViewModel {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
               let gameId = game?.id
         else { return false }
-        return noShowReports.contains { $0.gameId == gameId && $0.reporterId == userId && $0.reportedId == playerId }
+        return noShowReports.contains { $0.gameId == gameId && $0.reportedByUserId == userId && $0.reportedUserId == playerId }
     }
 
     func noShowReportCount(playerId: String) -> Int {
         guard let gameId = game?.id else { return 0 }
-        return noShowReports.filter { $0.gameId == gameId && $0.reportedId == playerId }.count
+        return noShowReports.filter { $0.gameId == gameId && $0.reportedUserId == playerId }.count
     }
 
     // MARK: - Realtime

@@ -475,6 +475,8 @@ struct CourtDetailView: View {
         let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
         let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
 
+        print("[CourtGames] court.id=\(court.id) cutoff=\(cutoff) twoHoursAgo=\(twoHoursAgo)")
+
         // Three-level fallback: each level strips more PostgREST joins,
         // which require FK constraints to exist in the database.
         let selects = [
