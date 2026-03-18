@@ -45,21 +45,44 @@ class MyGamesViewModel {
                 return
             }
 
-            let selectQuery = """
+            // Three-level fallback: strip FK joins if PostgREST schema cache is stale
+            // or FK constraints aren't set up yet.
+            let queryLevels = [
+                // Level 1: full joins (requires host_id→profiles FK + court_id→courts FK in PostgREST cache)
+                """
                 id, court_id, host_id, join_code, format, skill_level, status, max_players, created_at, scheduled_at,
-                courts(name, neighborhood),
+                courts(name),
                 host:profiles!games_host_id_fkey(full_name, username),
                 game_players(count)
-            """
+                """,
+                // Level 2: courts only (requires court_id→courts FK)
+                """
+                id, court_id, host_id, join_code, format, skill_level, status, max_players, created_at, scheduled_at,
+                courts(name),
+                game_players(count)
+                """,
+                // Level 3: bare — no FK joins at all
+                "id, court_id, host_id, join_code, format, skill_level, status, max_players, created_at, scheduled_at",
+            ]
 
-            let allGames: [DiscoverableGame] = try await client
-                .from("games")
-                .select(selectQuery)
-                .in("id", values: gameIds)
-                .in("status", values: ["live", "active", "waiting", "scheduled"])
-                .order("created_at", ascending: false)
-                .execute()
-                .value
+            var allGames: [DiscoverableGame] = []
+            for (i, selectQuery) in queryLevels.enumerated() {
+                do {
+                    allGames = try await client
+                        .from("games")
+                        .select(selectQuery)
+                        .in("id", values: gameIds)
+                        .in("status", values: ["live", "active", "waiting", "scheduled"])
+                        .order("created_at", ascending: false)
+                        .execute()
+                        .value
+                    print("[MyGames] level \(i+1) succeeded: \(allGames.count) games")
+                    break
+                } catch {
+                    print("[MyGames] level \(i+1) failed: \(error.localizedDescription)")
+                    if i == queryLevels.count - 1 { throw error }
+                }
+            }
 
             activeGames = allGames.filter { $0.status == "live" || $0.status == "active" || $0.status == "waiting" }
             upcomingGames = allGames.filter { $0.status == "scheduled" }

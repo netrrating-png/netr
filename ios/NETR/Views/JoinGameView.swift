@@ -10,6 +10,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let format: String?
     let max_players: Int?
     let scheduled_at: String?
+    let status: String?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -28,7 +29,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     // distanceMiles is computed client-side — exclude it from JSON decoding
     // so the auto-synthesized Decodable doesn't look for a missing JSON key
     nonisolated enum CodingKeys: String, CodingKey {
-        case id, format, courts, host
+        case id, format, courts, host, status
         case join_code, created_at, max_players, scheduled_at
     }
 
@@ -136,14 +137,14 @@ class JoinGameViewModel {
             let selects = [
                 // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
                 """
-                id, join_code, created_at, format, max_players, scheduled_at,
+                id, join_code, created_at, format, max_players, scheduled_at, status,
                 courts(name, neighborhood, lat, lng),
                 host:profiles!host_id(full_name, username)
                 """,
-                // Level 2: courts only — needs games.court_id→courts FK
-                "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)",
+                // Level 2: courts name only — needs games.court_id→courts FK, no extra court columns
+                "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name)",
                 // Level 3: bare — no FK joins needed at all
-                "id, join_code, created_at, format, max_players, scheduled_at",
+                "id, join_code, created_at, format, max_players, scheduled_at, status",
             ]
 
             func fetchGames(select: String) async throws -> (live: [NearbyGame], scheduled: [NearbyGame]) {

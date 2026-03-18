@@ -481,15 +481,17 @@ struct CourtDetailView: View {
         // which require FK constraints to exist in the database.
         let selects = [
             // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
+            // Also requires courts to have lat, lng, neighborhood columns (added by fix SQL)
             """
-            id, join_code, created_at, format, max_players, scheduled_at,
+            id, join_code, created_at, format, max_players, scheduled_at, status,
             courts(name, neighborhood, lat, lng),
             host:profiles!host_id(full_name, username)
             """,
-            // Level 2: courts only — needs games.court_id→courts FK
-            "id, join_code, created_at, format, max_players, scheduled_at, courts(name, neighborhood, lat, lng)",
+            // Level 2: courts name only — needs games.court_id→courts FK
+            // Safe fallback: only requests courts.name which always exists
+            "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name)",
             // Level 3: bare — no FK joins needed at all
-            "id, join_code, created_at, format, max_players, scheduled_at",
+            "id, join_code, created_at, format, max_players, scheduled_at, status",
         ]
 
         var loadError: Error?
