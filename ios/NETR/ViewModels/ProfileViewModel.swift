@@ -77,7 +77,7 @@ class ProfileViewModel {
         }
     }
 
-    private func loadHomeCourt(userId: String) async {
+    func loadHomeCourt(userId: String) async {
         nonisolated struct FavCourtId: Decodable, Sendable {
             let courtId: String
             nonisolated enum CodingKeys: String, CodingKey { case courtId = "court_id" }

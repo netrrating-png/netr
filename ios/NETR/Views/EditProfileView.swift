@@ -56,6 +56,12 @@ struct EditProfileView: View {
                 }
             }
             .onAppear { populateFields() }
+            .task {
+                if viewModel.homeCourt == nil,
+                   let userId = SupabaseManager.shared.session?.user.id.uuidString {
+                    await viewModel.loadHomeCourt(userId: userId)
+                }
+            }
             .onChange(of: bannerPhotoItem) { _, newValue in
                 guard let item = newValue else { return }
                 Task {
