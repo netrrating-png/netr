@@ -365,7 +365,7 @@ struct ProfileView: View {
                 }
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Text(user.username)
                     .font(.system(size: 13))
                     .foregroundStyle(NETRTheme.subtext)
@@ -381,6 +381,16 @@ struct ProfileView: View {
                 Text(user.city)
                     .font(.system(size: 12))
                     .foregroundStyle(NETRTheme.subtext)
+                if let court = viewModel.homeCourt {
+                    Text("·")
+                        .foregroundStyle(NETRTheme.muted)
+                    LucideIcon("home", size: 11)
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    Text(court.name)
+                        .font(.system(size: 12))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .lineLimit(1)
+                }
             }
         }
     }
