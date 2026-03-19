@@ -168,8 +168,6 @@ struct SettingsView: View {
                 }
 
                 Spacer()
-
-                NETRBadge(score: user.rating, size: .medium)
             }
         }
         .padding(16)
