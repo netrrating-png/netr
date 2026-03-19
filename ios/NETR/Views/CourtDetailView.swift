@@ -219,7 +219,7 @@ struct CourtDetailView: View {
                 HStack(spacing: 6) {
                     LucideIcon(isHome ? "home" : "home")
                         .foregroundStyle(isHome ? NETRTheme.neonGreen : NETRTheme.text)
-                    Text(isHome ? "Home Court" : "Set Home")
+                    Text(isHome ? "Home Court" : "Set Home Court")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(NETRTheme.text)
                 }

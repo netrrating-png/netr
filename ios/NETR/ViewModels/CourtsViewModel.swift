@@ -314,7 +314,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
             try await client
                 .from("court_favorites")
-                .upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true))
+                .upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true), onConflict: "user_id,court_id")
                 .execute()
         } catch {
             homeCourtId = previousHome
