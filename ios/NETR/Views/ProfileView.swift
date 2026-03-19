@@ -245,16 +245,20 @@ struct ProfileView: View {
                     avatarInitials(user: user, color: color)
                 }
 
-                if let vibeScore = viewModel.vibeScore, vibeScore > 0 {
-                    let vibeColor = VibeTier.from(score: vibeScore).map {
-                        Color(red: $0.color.red, green: $0.color.green, blue: $0.color.blue)
-                    } ?? NETRTheme.subtext
+                let vibeTier = VibeTier.display(score: viewModel.vibeScore)
+                let vibeColor = Color(red: vibeTier.color.red, green: vibeTier.color.green, blue: vibeTier.color.blue)
+                ZStack {
+                    Circle()
+                        .fill(vibeColor.opacity(0.35))
+                        .frame(width: 20, height: 20)
                     Circle()
                         .fill(vibeColor)
-                        .frame(width: 14, height: 14)
-                        .shadow(color: vibeColor.opacity(0.8), radius: 4)
-                        .offset(x: 28, y: 28)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().stroke(NETRTheme.background, lineWidth: 2))
+                        .shadow(color: vibeColor, radius: 6)
+                        .shadow(color: vibeColor.opacity(0.5), radius: 10)
                 }
+                .offset(x: 0, y: 34)
 
                 if viewModel.isCurrentUser {
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
