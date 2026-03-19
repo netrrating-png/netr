@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @State private var showMyGames: Bool = false
+    @State private var showEditProfile: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
     @State private var profileViewModel = ProfileViewModel()
@@ -42,6 +43,11 @@ struct SettingsView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .presentationBackground(NETRTheme.background)
+        }
+        .sheet(isPresented: $showEditProfile) {
+            EditProfileView(viewModel: profileViewModel, player: user)
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.background)
         }
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
@@ -303,7 +309,10 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
+                Button { showEditProfile = true } label: {
+                    SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
+                }
+                .buttonStyle(PressButtonStyle())
                 Divider().padding(.leading, 50)
                 SettingsRow(icon: "bell", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
                 Divider().padding(.leading, 50)
