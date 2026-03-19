@@ -117,11 +117,11 @@ class ProfileViewModel {
 
         do {
             try await client.from("court_favorites").update(HomeUpdate(isHomeCourt: false)).eq("user_id", value: userId).execute()
-            try await client.from("court_favorites").upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true)).execute()
-            await loadHomeCourt(userId: userId)
+            try await client.from("court_favorites").upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true), onConflict: "user_id,court_id").execute()
         } catch {
             print("Set home court error: \(error)")
         }
+        await loadHomeCourt(userId: userId)
     }
 
     private func loadSocialCounts(targetId: String) async {

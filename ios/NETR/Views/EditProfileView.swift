@@ -57,10 +57,12 @@ struct EditProfileView: View {
             }
             .onAppear { populateFields() }
             .task {
-                if viewModel.homeCourt == nil,
-                   let userId = SupabaseManager.shared.session?.user.id.uuidString {
+                if let userId = SupabaseManager.shared.session?.user.id.uuidString {
                     await viewModel.loadHomeCourt(userId: userId)
                 }
+            }
+            .sheet(isPresented: $showCourtPicker) {
+                courtPickerSheet
             }
             .onChange(of: bannerPhotoItem) { _, newValue in
                 guard let item = newValue else { return }
@@ -250,9 +252,6 @@ struct EditProfileView: View {
                     .clipShape(.rect(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
-            }
-            .sheet(isPresented: $showCourtPicker) {
-                courtPickerSheet
             }
 
             VStack(alignment: .leading, spacing: 6) {
