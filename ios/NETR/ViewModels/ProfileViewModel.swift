@@ -116,8 +116,14 @@ class ProfileViewModel {
         }
 
         do {
+            // Clear existing home court flag
             try await client.from("court_favorites").update(HomeUpdate(isHomeCourt: false)).eq("user_id", value: userId).execute()
-            try await client.from("court_favorites").upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true), onConflict: "user_id,court_id").execute()
+            // Try insert; if a row already exists for this court, fall back to update
+            do {
+                try await client.from("court_favorites").insert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true)).execute()
+            } catch {
+                try await client.from("court_favorites").update(HomeUpdate(isHomeCourt: true)).eq("user_id", value: userId).eq("court_id", value: courtId).execute()
+            }
         } catch {
             print("Set home court error: \(error)")
         }

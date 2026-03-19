@@ -284,6 +284,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
 
         let previousHome = homeCourtId
+        let wasAlreadyFavorite = favoriteCourtIds.contains(courtId)
         homeCourtId = courtId
         favoriteCourtIds.insert(courtId)
 
@@ -306,18 +307,31 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         do {
+            // Clear home court flag on all existing favorites
             try await client
                 .from("court_favorites")
                 .update(HomeUpdate(isHomeCourt: false))
                 .eq("user_id", value: userId)
                 .execute()
 
-            try await client
-                .from("court_favorites")
-                .upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true), onConflict: "user_id,court_id")
-                .execute()
+            if wasAlreadyFavorite {
+                // Row already exists — just flip is_home_court
+                try await client
+                    .from("court_favorites")
+                    .update(HomeUpdate(isHomeCourt: true))
+                    .eq("user_id", value: userId)
+                    .eq("court_id", value: courtId)
+                    .execute()
+            } else {
+                // No row yet — insert fresh
+                try await client
+                    .from("court_favorites")
+                    .insert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true))
+                    .execute()
+            }
         } catch {
             homeCourtId = previousHome
+            if !wasAlreadyFavorite { favoriteCourtIds.remove(courtId) }
             print("Set home court error: \(error)")
         }
     }
