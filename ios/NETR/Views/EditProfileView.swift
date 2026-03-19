@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Supabase
 
 struct EditProfileView: View {
     @Bindable var viewModel: ProfileViewModel
