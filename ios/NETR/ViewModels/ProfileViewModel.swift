@@ -24,6 +24,7 @@ class ProfileViewModel {
 
     var bio: String?
     var userPosts: [SupabaseFeedPost] = []
+    var homeCourt: Court?
 
     func loadProfile(userId: String? = nil) async {
         isLoading = true
@@ -60,6 +61,7 @@ class ProfileViewModel {
             isLoading = false
 
             await loadSocialCounts(targetId: targetId)
+            await loadHomeCourt(userId: targetId)
         } catch {
             if isCurrentUser {
                 let fallback = buildLocalOnlyPlayer()
@@ -72,6 +74,53 @@ class ProfileViewModel {
             self.error = "Failed to load profile"
             isLoading = false
             print("Profile load error: \(error)")
+        }
+    }
+
+    private func loadHomeCourt(userId: String) async {
+        nonisolated struct FavCourtId: Decodable, Sendable {
+            let courtId: String
+            nonisolated enum CodingKeys: String, CodingKey { case courtId = "court_id" }
+        }
+        guard let fav = (try? await client
+            .from("court_favorites")
+            .select("court_id")
+            .eq("user_id", value: userId)
+            .eq("is_home_court", value: true)
+            .execute()
+            .value as [FavCourtId])?.first else {
+            homeCourt = nil
+            return
+        }
+        homeCourt = try? await client
+            .from("courts")
+            .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
+            .eq("id", value: fav.courtId)
+            .single()
+            .execute()
+            .value
+    }
+
+    func setHomeCourt(courtId: String) async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+
+        nonisolated struct HomeUpdate: Encodable, Sendable {
+            let isHomeCourt: Bool
+            nonisolated enum CodingKeys: String, CodingKey { case isHomeCourt = "is_home_court" }
+        }
+        nonisolated struct FavPayload: Encodable, Sendable {
+            let userId: String; let courtId: String; let isHomeCourt: Bool
+            nonisolated enum CodingKeys: String, CodingKey {
+                case userId = "user_id"; case courtId = "court_id"; case isHomeCourt = "is_home_court"
+            }
+        }
+
+        do {
+            try await client.from("court_favorites").update(HomeUpdate(isHomeCourt: false)).eq("user_id", value: userId).execute()
+            try await client.from("court_favorites").upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true)).execute()
+            await loadHomeCourt(userId: userId)
+        } catch {
+            print("Set home court error: \(error)")
         }
     }
 

@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var showBioEdit: Bool = false
     @State private var showRatingScale: Bool = false
     @State private var showEditProfile: Bool = false
+    @State private var showCourtLeaderboard: Bool = false
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -89,13 +90,11 @@ struct ProfileView: View {
 
                             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
 
-                            if let vm = courtsViewModel {
-                                let favCourts = vm.courts.filter { vm.favoriteCourtIds.contains($0.id) }
-                                if !favCourts.isEmpty {
-                                    homeCourtsRow(courts: favCourts, accentColor: ratingColor(for: user))
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 40)
-                                }
+                            if let court = viewModel.homeCourt {
+                                homeCourtRow(court: court, accentColor: ratingColor(for: user))
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 40)
+                                    .onTapGesture { showCourtLeaderboard = true }
                             }
 
                             Spacer(minLength: 100)
@@ -151,6 +150,14 @@ struct ProfileView: View {
         .sheet(isPresented: $showEditProfile) {
             if let user = viewModel.player {
                 EditProfileView(viewModel: viewModel, player: user)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(NETRTheme.background)
+            }
+        }
+        .sheet(isPresented: $showCourtLeaderboard) {
+            if let court = viewModel.homeCourt {
+                CourtLeaderboardView(court: court)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.background)
@@ -694,39 +701,52 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Home Courts
+    // MARK: - Home Court
 
-    private func homeCourtsRow(courts: [Court], accentColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private func homeCourtRow(court: Court, accentColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("HOME COURTS")
+                Text("HOME COURT")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NETRTheme.subtext)
                     .tracking(1.5)
                 Spacer()
-                LucideIcon("map-pin", size: 14)
-                    .foregroundStyle(NETRTheme.muted)
-            }
-
-            ForEach(Array(courts.prefix(3))) { court in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(accentColor)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: accentColor.opacity(0.6), radius: 4)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(court.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(court.neighborhood)
-                            .font(.system(size: 11))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    Spacer()
-                    LucideIcon("chevron-right", size: 11)
-                        .foregroundStyle(NETRTheme.muted)
+                HStack(spacing: 4) {
+                    LucideIcon("trophy", size: 11)
+                        .foregroundStyle(NETRTheme.gold)
+                    Text("TOP 20")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(NETRTheme.gold)
+                        .tracking(0.8)
                 }
             }
+
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    LucideIcon("home", size: 15)
+                        .foregroundStyle(accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(court.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text(court.neighborhood)
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                LucideIcon("chevron-right", size: 11)
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            .padding(12)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(accentColor.opacity(0.25), lineWidth: 1))
         }
     }
 

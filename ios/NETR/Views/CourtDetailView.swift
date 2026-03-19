@@ -14,6 +14,10 @@ struct CourtDetailView: View {
     @State private var isUploadingPhoto: Bool = false
     @State private var fullScreenPhotoUrl: String?
 
+    // Leaderboard
+    @State private var leaderboardPlayers: [LeaderboardEntry] = []
+    @State private var isLoadingLeaderboard: Bool = false
+
     // Games at this court
     @State private var courtLiveGames: [NearbyGame] = []
     @State private var courtScheduledGames: [NearbyGame] = []
@@ -247,7 +251,7 @@ struct CourtDetailView: View {
 
     private var tabSelector: some View {
         HStack(spacing: 0) {
-            ForEach(Array(["GAMES", "INFO", "TAGS", "PHOTOS"].enumerated()), id: \.offset) { idx, title in
+            ForEach(Array(["GAMES", "INFO", "TAGS", "PHOTOS", "TOP 20"].enumerated()), id: \.offset) { idx, title in
                 Button {
                     withAnimation(.snappy) { selectedTab = idx }
                 } label: {
@@ -276,7 +280,57 @@ struct CourtDetailView: View {
         case 1: infoTab
         case 2: tagsTab
         case 3: photosTab
+        case 4: leaderboardTab
         default: EmptyView()
+        }
+    }
+
+    private var leaderboardTab: some View {
+        VStack(spacing: 0) {
+            if isLoadingLeaderboard {
+                HStack { Spacer(); ProgressView().tint(NETRTheme.neonGreen); Spacer() }
+                    .padding(.vertical, 40)
+            } else if leaderboardPlayers.isEmpty {
+                VStack(spacing: 12) {
+                    LucideIcon("trophy", size: 32)
+                        .foregroundStyle(NETRTheme.muted)
+                    Text("No players yet")
+                        .font(.system(.subheadline, design: .default, weight: .bold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Set this as your Home Court to appear here.")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+            } else {
+                if leaderboardPlayers.count >= 3 {
+                    HStack(alignment: .bottom, spacing: 8) {
+                        PodiumPlayerView(player: leaderboardPlayers[1], rank: 2, podiumHeight: 70)
+                        PodiumPlayerView(player: leaderboardPlayers[0], rank: 1, podiumHeight: 90)
+                        PodiumPlayerView(player: leaderboardPlayers[2], rank: 3, podiumHeight: 55)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
+                }
+
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(leaderboardPlayers.enumerated()), id: \.element.id) { idx, player in
+                        LeaderboardRowView(player: player, rank: idx + 1, showIfTopThree: leaderboardPlayers.count >= 3)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+            }
+        }
+        .padding(.bottom, 16)
+        .task {
+            guard leaderboardPlayers.isEmpty else { return }
+            isLoadingLeaderboard = true
+            leaderboardPlayers = await LeaderboardEntry.load(courtId: court.id)
+            isLoadingLeaderboard = false
         }
     }
 
