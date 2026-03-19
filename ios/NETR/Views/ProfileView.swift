@@ -17,6 +17,7 @@ struct ProfileView: View {
     @State private var showRatingScale: Bool = false
     @State private var showEditProfile: Bool = false
     @State private var showCourtLeaderboard: Bool = false
+    @State private var localCourtsVM = CourtsViewModel()
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -157,7 +158,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showCourtLeaderboard) {
             if let court = viewModel.homeCourt {
-                CourtLeaderboardView(court: court)
+                CourtDetailView(court: court, viewModel: courtsViewModel ?? localCourtsVM, initialTab: 4)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.background)
@@ -381,15 +382,20 @@ struct ProfileView: View {
                 Text(user.city)
                     .font(.system(size: 12))
                     .foregroundStyle(NETRTheme.subtext)
-                if let court = viewModel.homeCourt {
+                if let _ = viewModel.homeCourt {
                     Text("·")
                         .foregroundStyle(NETRTheme.muted)
-                    LucideIcon("home", size: 11)
-                        .foregroundStyle(NETRTheme.neonGreen)
-                    Text(court.name)
-                        .font(.system(size: 12))
-                        .foregroundStyle(NETRTheme.subtext)
-                        .lineLimit(1)
+                    Button { showCourtLeaderboard = true } label: {
+                        HStack(spacing: 3) {
+                            LucideIcon("home", size: 11)
+                                .foregroundStyle(NETRTheme.neonGreen)
+                            Text(viewModel.homeCourt!.name)
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                                .lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

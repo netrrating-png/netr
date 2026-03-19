@@ -5,8 +5,16 @@ import Supabase
 struct CourtDetailView: View {
     let court: Court
     @Bindable var viewModel: CourtsViewModel
+    var initialTab: Int = 0
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTab: Int = 0
+
+    init(court: Court, viewModel: CourtsViewModel, initialTab: Int = 0) {
+        self.court = court
+        self.viewModel = viewModel
+        self.initialTab = initialTab
+        self._selectedTab = State(initialValue: initialTab)
+    }
     @State private var weatherService = WeatherService.shared
     @State private var courtPhotos: [CourtPhoto] = []
     @State private var isLoadingPhotos: Bool = false
