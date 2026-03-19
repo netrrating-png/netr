@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS court_favorites (
     id          BIGSERIAL PRIMARY KEY,
     user_id     UUID    NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    court_id    TEXT    NOT NULL REFERENCES courts(id)     ON DELETE CASCADE,
+    court_id    UUID    NOT NULL REFERENCES courts(id)     ON DELETE CASCADE,
     is_home_court BOOLEAN NOT NULL DEFAULT false,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
 
