@@ -9,7 +9,6 @@ struct SettingsView: View {
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
-    @State private var showOwnProfile: Bool = false
     @State private var showMyGames: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
@@ -25,7 +24,6 @@ struct SettingsView: View {
                 VStack(spacing: 16) {
                     profileCard
                     myGamesButton
-                    visitProfileButton
                     appearanceSection
                     securitySection
                     accountSection
@@ -36,14 +34,6 @@ struct SettingsView: View {
                 .padding(.top, 8)
             }
             .scrollIndicators(.hidden)
-        }
-        .sheet(isPresented: $showOwnProfile) {
-            NavigationStack {
-                PublicPlayerProfileView(userId: supabase.session?.user.id.uuidString ?? "")
-            }
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
-            .presentationBackground(NETRTheme.background)
         }
         .sheet(isPresented: $showMyGames) {
             NavigationStack {
@@ -63,6 +53,28 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var ratingInlineBadge: some View {
+        let ratingColor = NETRRating.color(for: user.rating)
+        let ratingText = user.rating.map { String(format: "%.1f", $0) } ?? "--"
+        HStack(spacing: 3) {
+            Text(ratingText)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(user.isProvisional ? NETRTheme.subtext : ratingColor)
+            if user.isProvisional && !user.isProspect {
+                Image(systemName: "lock.fill")
+                    .font(.system(size: 9))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(
+            (user.isProvisional ? NETRTheme.subtext : ratingColor).opacity(0.12),
+            in: Capsule()
+        )
     }
 
     private var profileCard: some View {
@@ -137,6 +149,7 @@ struct SettingsView: View {
                             LucideIcon("badge-check", size: 12)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
+                        ratingInlineBadge
                     }
                     Text(user.username)
                         .font(.subheadline)
@@ -197,44 +210,6 @@ struct SettingsView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
                     .stroke(NETRTheme.gold.opacity(0.2), lineWidth: 1)
-            )
-        }
-        .buttonStyle(PressButtonStyle())
-        .padding(.horizontal, 16)
-    }
-
-    private var visitProfileButton: some View {
-        Button {
-            showOwnProfile = true
-        } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(NETRTheme.neonGreen.opacity(0.1))
-                        .frame(width: 40, height: 40)
-                    LucideIcon("user")
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Visit Your Profile")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NETRTheme.text)
-                    Text("See how others see your profile")
-                        .font(.caption)
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-
-                Spacer()
-
-                LucideIcon("chevron-right", size: 12)
-                    .foregroundStyle(NETRTheme.muted)
-            }
-            .padding(14)
-            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-            .overlay(
-                RoundedRectangle(cornerRadius: 14)
-                    .stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1)
             )
         }
         .buttonStyle(PressButtonStyle())
