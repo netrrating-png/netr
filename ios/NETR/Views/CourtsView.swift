@@ -40,6 +40,7 @@ struct CourtsView: View {
             viewModel.requestLocation()
             await viewModel.loadCourts()
             await viewModel.loadFavorites()
+            await viewModel.loadLiveCourts()
         }
         .onChange(of: viewModel.userLocation?.latitude) { _, _ in
             guard !hasSetInitialLocation, let loc = viewModel.userLocation else { return }

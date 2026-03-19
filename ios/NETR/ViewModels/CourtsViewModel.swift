@@ -16,6 +16,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     var searchText: String = ""
     var selectedFilter: String = "All"
     var selectedNeighborhood: String?
+    var liveCourtIds: Set<String> = []
 
     var userLocation: CLLocationCoordinate2D?
 
@@ -52,7 +53,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         switch selectedFilter {
-        case "Live Now": results = results.filter { $0.verified }
+        case "Live Now": results = results.filter { liveCourtIds.contains($0.id) }
         case "Favorites": results = results.filter { favoriteCourtIds.contains($0.id) }
         case "Lights": results = results.filter { $0.lights }
         case "Indoor": results = results.filter { $0.indoor }
@@ -199,6 +200,23 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             self.error = "Failed to load courts"
             isLoading = false
             print("Courts load error: \(error)")
+        }
+    }
+
+    func loadLiveCourts() async {
+        let cutoff = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-4 * 3600))
+        do {
+            struct GameCourtId: Decodable { let courtId: String; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
+            let games: [GameCourtId] = try await client
+                .from("games")
+                .select("court_id")
+                .in("status", values: ["active", "waiting"])
+                .gte("created_at", value: cutoff)
+                .execute()
+                .value
+            liveCourtIds = Set(games.map { $0.courtId })
+        } catch {
+            print("Live courts load error: \(error)")
         }
     }
 
