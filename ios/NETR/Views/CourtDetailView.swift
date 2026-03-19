@@ -53,8 +53,10 @@ struct CourtDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: {
-                        LucideIcon("x-circle")
-                            .foregroundStyle(NETRTheme.subtext)
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(NETRTheme.text)
                     }
                 }
             }
