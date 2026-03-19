@@ -523,18 +523,6 @@ struct ProfileView: View {
                         .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
                     }
                     .buttonStyle(PressButtonStyle())
-                } else if !isPeerRated {
-                    Button {
-                        showSelfAssessment = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text("Retake Self Assessment")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(NETRTheme.neonGreen)
-                    }
                 }
             }
 
