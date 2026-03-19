@@ -82,7 +82,7 @@ let skillCategories: [SkillCategory] = [
     SkillCategory(id: "dribbling",    label: "Handles",    icon: "dumbbell",        description: "Ball handling & shot creation",    colorHex: "#FFC247"),
     SkillCategory(id: "passing",      label: "Playmaking", icon: "route",           description: "Vision, passing & court reads",    colorHex: "#2ECC71"),
     SkillCategory(id: "defense",      label: "Defense",    icon: "shield",          description: "On-ball, help & intensity",        colorHex: "#FF3B30"),
-    SkillCategory(id: "rebounding",   label: "Rebounding", icon: "arrow-up-circle", description: "Boxing out & crashing the boards", colorHex: "#2DA8FF"),
+    SkillCategory(id: "rebounding",   label: "Rebounding", icon: "arrow-up-from-line", description: "Boxing out & crashing the boards", colorHex: "#2DA8FF"),
     SkillCategory(id: "basketballIQ", label: "IQ",         icon: "brain",           description: "Spacing, reads & decision-making", colorHex: "#9B8BFF"),
 ]
 
