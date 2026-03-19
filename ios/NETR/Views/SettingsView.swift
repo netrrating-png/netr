@@ -309,10 +309,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                Button { showEditProfile = true } label: {
-                    SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city")
-                }
-                .buttonStyle(PressButtonStyle())
+                SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city", action: { showEditProfile = true })
                 Divider().padding(.leading, 50)
                 SettingsRow(icon: "bell", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
                 Divider().padding(.leading, 50)
@@ -380,9 +377,10 @@ struct SettingsRow: View {
     let iconColor: Color
     let title: String
     let subtitle: String?
+    var action: (() -> Void)? = nil
 
     var body: some View {
-        Button {} label: {
+        Button { action?() } label: {
             HStack(spacing: 12) {
                 LucideIcon(icon)
                     .foregroundStyle(iconColor)
