@@ -455,6 +455,7 @@ struct ArchetypeResult {
     let name: String
     let color: Color
     let subtitle: String
+    let icon: String
 }
 
 func computeArchetype(from skills: [RadarSkill]) -> ArchetypeResult? {
@@ -469,17 +470,16 @@ func computeArchetype(from skills: [RadarSkill]) -> ArchetypeResult? {
         if secondRounded == topRounded {
             let pairKey = [top.label, second.label].sorted().joined(separator: "|")
             if let options = dualArchetypes[pairKey], !options.isEmpty {
-                // Deterministic pick seeded by raw values
                 let idx = abs(Int((top.raw + second.raw) * 50)) % options.count
                 let subtitle = "\(top.label) · \(second.label)"
-                return ArchetypeResult(name: options[idx], color: top.categoryColor, subtitle: subtitle)
+                return ArchetypeResult(name: options[idx], color: top.categoryColor, subtitle: subtitle, icon: top.icon)
             }
         }
     }
 
     if let options = singleArchetypes[top.label], !options.isEmpty {
         let idx = abs(Int(top.raw * 100)) % options.count
-        return ArchetypeResult(name: options[idx], color: top.categoryColor, subtitle: top.label)
+        return ArchetypeResult(name: options[idx], color: top.categoryColor, subtitle: top.label, icon: top.icon)
     }
 
     return nil
@@ -491,8 +491,16 @@ struct ArchetypeBadge: View {
     var body: some View {
         if let result = computeArchetype(from: skills) {
             HStack(spacing: 12) {
-                Text("🏀")
-                    .font(.system(size: 22))
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(result.color.opacity(0.12))
+                        .frame(width: 38, height: 38)
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(result.color.opacity(0.3), lineWidth: 1)
+                        .frame(width: 38, height: 38)
+                    LucideIcon(result.icon, size: 18)
+                        .foregroundStyle(result.color)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ARCHETYPE")
                         .font(.system(size: 9, weight: .bold))
