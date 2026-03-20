@@ -166,7 +166,10 @@ struct ProfileView: View {
                 )
             }
         }
-        .sheet(isPresented: $showBioEdit) { ProfileBioEditSheet() }
+        .sheet(isPresented: $showBioEdit) {
+            ProfileBioEditSheet()
+                .onDisappear { Task { await viewModel.loadProfile(userId: profileUserId) } }
+        }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
         .sheet(isPresented: $showEditProfile) {
             if let user = viewModel.player {
@@ -425,7 +428,27 @@ struct ProfileView: View {
 
     private func bioSection(user: Player) -> some View {
         Group {
-            if viewModel.isCurrentUser {
+            if let bio = viewModel.bio, !bio.isEmpty {
+                // Show bio text; current user can tap to edit
+                if viewModel.isCurrentUser {
+                    Button { showBioEdit = true } label: {
+                        Text(bio)
+                            .font(.system(size: 14))
+                            .foregroundStyle(NETRTheme.text)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.top, 10)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text(bio)
+                        .font(.system(size: 14))
+                        .foregroundStyle(NETRTheme.text)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 10)
+                }
+            } else if viewModel.isCurrentUser {
                 Button { showBioEdit = true } label: {
                     HStack(spacing: 8) {
                         LucideIcon("plus-circle", size: 13)
@@ -1118,7 +1141,9 @@ struct ProfileFollowListSheet: View {
 struct ProfileBioEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var bio: String = ""
+    @State private var isSaving = false
     private let maxChars = 160
+    private let client = SupabaseManager.shared.client
 
     var body: some View {
         NavigationStack {
@@ -1169,11 +1194,50 @@ struct ProfileBioEditSheet: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") { dismiss() }
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(NETRTheme.neonGreen)
+                    Button {
+                        Task { await saveBio() }
+                    } label: {
+                        if isSaving {
+                            ProgressView().tint(NETRTheme.neonGreen)
+                        } else {
+                            Text("Save")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                    }
+                    .disabled(isSaving)
                 }
             }
+            .task { await loadCurrentBio() }
         }
+    }
+
+    private func loadCurrentBio() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        nonisolated struct BioRow: Decodable, Sendable {
+            let bio: String?
+        }
+        if let row: BioRow = try? await client
+            .from("profiles")
+            .select("bio")
+            .eq("id", value: userId)
+            .single()
+            .execute()
+            .value {
+            bio = row.bio ?? ""
+        }
+    }
+
+    private func saveBio() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        isSaving = true
+        nonisolated struct BioUpdate: Encodable, Sendable { let bio: String }
+        try? await client
+            .from("profiles")
+            .update(BioUpdate(bio: bio))
+            .eq("id", value: userId)
+            .execute()
+        isSaving = false
+        dismiss()
     }
 }
