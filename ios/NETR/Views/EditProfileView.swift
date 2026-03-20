@@ -24,6 +24,9 @@ struct EditProfileView: View {
 
     @State private var isUploadingBanner: Bool = false
     @State private var isSaving: Bool = false
+    @State private var saveError: String?
+    @State private var showSaveError: Bool = false
+    @State private var showSaveSuccess: Bool = false
 
     private let maxBioChars = 150
 
@@ -81,6 +84,16 @@ struct EditProfileView: View {
                         avatarImage = image
                     }
                 }
+            }
+            .alert("Profile Saved", isPresented: $showSaveSuccess) {
+                Button("OK") { dismiss() }
+            } message: {
+                Text("Your profile has been updated.")
+            }
+            .alert("Save Failed", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(saveError ?? "Something went wrong. Please try again.")
             }
         }
     }
@@ -394,27 +407,33 @@ struct EditProfileView: View {
     private func save() {
         isSaving = true
         Task {
-            // Upload banner if changed
-            if let bannerImg = bannerImage {
-                _ = await viewModel.uploadBanner(bannerImg)
+            do {
+                // Upload banner if changed
+                if let bannerImg = bannerImage {
+                    _ = await viewModel.uploadBanner(bannerImg)
+                }
+
+                // Upload avatar if changed
+                if let avatarImg = avatarImage {
+                    await viewModel.uploadAvatar(avatarImg)
+                }
+
+                // Update profile fields — send bio even if empty to allow clearing it
+                try await viewModel.updateFullProfile(
+                    fullName: fullName,
+                    username: username,
+                    bio: bio,
+                    city: city.isEmpty ? nil : city,
+                    position: selectedPosition == .unknown ? nil : selectedPosition.rawValue
+                )
+
+                isSaving = false
+                showSaveSuccess = true
+            } catch {
+                isSaving = false
+                saveError = error.localizedDescription
+                showSaveError = true
             }
-
-            // Upload avatar if changed
-            if let avatarImg = avatarImage {
-                await viewModel.uploadAvatar(avatarImg)
-            }
-
-            // Update profile fields
-            try? await viewModel.updateFullProfile(
-                fullName: fullName,
-                username: username,
-                bio: bio.isEmpty ? nil : bio,
-                city: city.isEmpty ? nil : city,
-                position: selectedPosition == .unknown ? nil : selectedPosition.rawValue
-            )
-
-            isSaving = false
-            dismiss()
         }
     }
 }

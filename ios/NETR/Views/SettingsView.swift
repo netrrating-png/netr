@@ -49,6 +49,9 @@ struct SettingsView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .task {
+            await profileViewModel.loadProfile()
+        }
         .sheet(isPresented: $showMyGames) {
             NavigationStack {
                 MyGamesView()
