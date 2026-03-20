@@ -370,7 +370,7 @@ struct CreateGameView: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(format.rawValue)
+                                Text(format.displayName)
                                     .font(.system(.title3, design: .default, weight: .black).width(.compressed))
                                     .foregroundStyle(NETRTheme.text)
                                 Text("Max \(format.maxPlayers) players")
@@ -405,7 +405,7 @@ struct CreateGameView: View {
                         .foregroundStyle(NETRTheme.subtext)
                     Text("·")
                         .foregroundStyle(NETRTheme.muted)
-                    Text(selectedFormat.rawValue)
+                    Text(selectedFormat.displayName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(NETRTheme.subtext)
                 }
@@ -1161,7 +1161,7 @@ struct GamePlayersPreviewSheet: View {
         isLoading = true
         defer { isLoading = false }
 
-        // Fetch game info
+        // Step 1: game metadata
         game = try? await client
             .from("games")
             .select()
@@ -1170,47 +1170,66 @@ struct GamePlayersPreviewSheet: View {
             .execute()
             .value
 
-        // Fetch players with profiles join (same query as GameViewModel.loadPlayers)
-        do {
-            let result: [LobbyPlayer] = try await client
-                .from("game_players")
-                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
-                .eq("game_id", value: gameId)
-                .order("created_at", ascending: true)
-                .execute()
-                .value
-            players = result
-        } catch {
-            print("[GamePlayersPreview] profiles join failed: \(error) — trying fallback")
-            // Fallback: fetch player rows without profile join, build stub LobbyPlayers
-            nonisolated struct RawPlayer: Decodable, Sendable {
-                let id: String
-                let userId: String
-                let gameId: String
-                let checkedInAt: String?
-                let checkedOutAt: String?
-                let removed: Bool?
-                nonisolated enum CodingKeys: String, CodingKey {
-                    case id; case userId = "user_id"; case gameId = "game_id"
-                    case checkedInAt = "checked_in_at"; case checkedOutAt = "checked_out_at"; case removed
-                }
+        // Step 2: raw game_players rows — no FK join needed, always reliable
+        nonisolated struct RawPlayer: Decodable, Sendable {
+            let id: String
+            let userId: String
+            let gameId: String
+            let checkedInAt: String?
+            let checkedOutAt: String?
+            let removed: Bool?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case userId = "user_id"; case gameId = "game_id"
+                case checkedInAt = "checked_in_at"; case checkedOutAt = "checked_out_at"; case removed
             }
-            if let raw: [RawPlayer] = try? await client
-                .from("game_players")
-                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed")
-                .eq("game_id", value: gameId)
-                .order("created_at", ascending: true)
-                .execute()
-                .value {
-                players = raw.map { r in
-                    LobbyPlayer(
-                        id: r.id, userId: r.userId, gameId: r.gameId,
-                        checkedInAt: r.checkedInAt, checkedOutAt: r.checkedOutAt,
-                        removed: r.removed,
-                        profile: LobbyPlayerProfile(id: r.userId, fullName: nil, username: nil, position: nil, avatarUrl: nil, netrScore: nil, vibeScore: nil)
-                    )
-                }
+        }
+        guard let raw: [RawPlayer] = try? await client
+            .from("game_players")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed")
+            .eq("game_id", value: gameId)
+            .order("created_at", ascending: true)
+            .execute()
+            .value else { return }
+
+        let userIds = raw.map { $0.userId }
+        guard !userIds.isEmpty else { return }
+
+        // Step 3: fetch profiles for those user IDs separately
+        nonisolated struct SlimProfile: Decodable, Sendable {
+            let id: String
+            let fullName: String?
+            let username: String?
+            let position: String?
+            let avatarUrl: String?
+            let netrScore: Double?
+            let vibeScore: Double?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case fullName = "full_name"; case username; case position
+                case avatarUrl = "avatar_url"; case netrScore = "netr_score"; case vibeScore = "vibe_score"
             }
+        }
+        let profiles: [SlimProfile] = (try? await client
+            .from("profiles")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score")
+            .in("id", values: userIds)
+            .execute()
+            .value) ?? []
+
+        let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+
+        // Step 4: merge
+        players = raw.map { r in
+            let p = profileMap[r.userId]
+            return LobbyPlayer(
+                id: r.id, userId: r.userId, gameId: r.gameId,
+                checkedInAt: r.checkedInAt, checkedOutAt: r.checkedOutAt,
+                removed: r.removed,
+                profile: LobbyPlayerProfile(
+                    id: r.userId,
+                    fullName: p?.fullName, username: p?.username, position: p?.position,
+                    avatarUrl: p?.avatarUrl, netrScore: p?.netrScore, vibeScore: p?.vibeScore
+                )
+            )
         }
     }
 }

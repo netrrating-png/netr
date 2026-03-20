@@ -6,9 +6,17 @@ nonisolated enum GameFormat: String, CaseIterable, Sendable, Identifiable {
     case threeVThree = "3v3"
     case fourVFour = "4v4"
     case fiveVFive = "5v5"
-    case run = "Open Run"
+    case run = "Run"          // DB enum value must stay "Run"
 
     var id: String { rawValue }
+
+    /// Human-readable label shown in the UI
+    var displayName: String {
+        switch self {
+        case .run: return "Open Run"
+        default: return rawValue
+        }
+    }
 
     var maxPlayers: Int {
         switch self {
