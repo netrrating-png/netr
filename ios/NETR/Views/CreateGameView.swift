@@ -1092,7 +1092,7 @@ struct GamePlayersPreviewSheet: View {
                             if let g = game {
                                 HStack(spacing: 24) {
                                     VStack(spacing: 2) {
-                                        Text(g.format)
+                                        Text(GameFormat(rawValue: g.format)?.displayName ?? g.format)
                                             .font(.system(.headline, design: .default, weight: .black).width(.compressed))
                                             .foregroundStyle(NETRTheme.text)
                                         Text("Format").font(.caption2).foregroundStyle(NETRTheme.subtext)
@@ -1161,40 +1161,53 @@ struct GamePlayersPreviewSheet: View {
         isLoading = true
         defer { isLoading = false }
 
-        // Step 1: game metadata
-        game = try? await client
+        // Query games with embedded game_players(user_id) — same join the card count uses,
+        // so it works even if direct game_players queries are RLS-restricted.
+        nonisolated struct GameWithPlayers: Decodable, Sendable {
+            let id: String
+            let format: String
+            let skillLevel: String
+            let status: String
+            let maxPlayers: Int
+            let joinCode: String
+            let hostId: String
+            let createdAt: String?
+            let scheduledAt: String?
+            let courtId: String?
+            let gamePlayers: [EmbeddedPlayer]
+
+            nonisolated struct EmbeddedPlayer: Decodable, Sendable {
+                let userId: String
+                nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
+            }
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case format; case skillLevel = "skill_level"; case status
+                case maxPlayers = "max_players"; case joinCode = "join_code"
+                case hostId = "host_id"; case createdAt = "created_at"
+                case scheduledAt = "scheduled_at"; case courtId = "court_id"
+                case gamePlayers = "game_players"
+            }
+        }
+
+        guard let gwp: GameWithPlayers = try? await client
             .from("games")
-            .select()
+            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id, game_players(user_id)")
             .eq("id", value: gameId)
             .single()
             .execute()
-            .value
-
-        // Step 2: raw game_players rows — no FK join needed, always reliable
-        nonisolated struct RawPlayer: Decodable, Sendable {
-            let id: String
-            let userId: String
-            let gameId: String
-            let checkedInAt: String?
-            let checkedOutAt: String?
-            let removed: Bool?
-            nonisolated enum CodingKeys: String, CodingKey {
-                case id; case userId = "user_id"; case gameId = "game_id"
-                case checkedInAt = "checked_in_at"; case checkedOutAt = "checked_out_at"; case removed
-            }
-        }
-        guard let raw: [RawPlayer] = try? await client
-            .from("game_players")
-            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed")
-            .eq("game_id", value: gameId)
-            .order("created_at", ascending: true)
-            .execute()
             .value else { return }
 
-        let userIds = raw.map { $0.userId }
+        game = SupabaseGame(
+            id: gwp.id, courtId: gwp.courtId, hostId: gwp.hostId,
+            joinCode: gwp.joinCode, format: gwp.format, skillLevel: gwp.skillLevel,
+            status: gwp.status, maxPlayers: gwp.maxPlayers,
+            createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt
+        )
+
+        let userIds = gwp.gamePlayers.map { $0.userId }
         guard !userIds.isEmpty else { return }
 
-        // Step 3: fetch profiles for those user IDs separately
+        // Fetch profiles for all participants
         nonisolated struct SlimProfile: Decodable, Sendable {
             let id: String
             let fullName: String?
@@ -1217,15 +1230,13 @@ struct GamePlayersPreviewSheet: View {
 
         let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
 
-        // Step 4: merge
-        players = raw.map { r in
-            let p = profileMap[r.userId]
+        players = userIds.enumerated().map { idx, uid in
+            let p = profileMap[uid]
             return LobbyPlayer(
-                id: r.id, userId: r.userId, gameId: r.gameId,
-                checkedInAt: r.checkedInAt, checkedOutAt: r.checkedOutAt,
-                removed: r.removed,
+                id: "\(gameId)-\(idx)", userId: uid, gameId: gameId,
+                checkedInAt: nil, checkedOutAt: nil, removed: false,
                 profile: LobbyPlayerProfile(
-                    id: r.userId,
+                    id: uid,
                     fullName: p?.fullName, username: p?.username, position: p?.position,
                     avatarUrl: p?.avatarUrl, netrScore: p?.netrScore, vibeScore: p?.vibeScore
                 )
