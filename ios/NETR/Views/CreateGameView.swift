@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import Supabase
 
 struct CreateGameView: View {
     @Bindable var viewModel: CourtsViewModel
