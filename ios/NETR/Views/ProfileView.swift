@@ -19,6 +19,7 @@ struct ProfileView: View {
     @State private var showRatingScale: Bool = false
     @State private var showEditProfile: Bool = false
     @State private var showCourtLeaderboard: Bool = false
+    @State private var showInvite: Bool = false
     @State private var localCourtsVM = CourtsViewModel()
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
@@ -171,6 +172,7 @@ struct ProfileView: View {
                 .onDisappear { Task { await viewModel.loadProfile(userId: profileUserId) } }
         }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
+        .sheet(isPresented: $showInvite) { InviteView() }
         .sheet(isPresented: $showEditProfile) {
             if let user = viewModel.player {
                 EditProfileView(viewModel: viewModel, player: user)
@@ -478,6 +480,20 @@ struct ProfileView: View {
 
             socialCountCell(count: viewModel.followingCount, label: "Following") {
                 showFollowing = true
+            }
+
+            if profileUserId == nil {
+                Button { showInvite = true } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                        .padding(6)
+                        .background(NETRTheme.neonGreen.opacity(0.12))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 8)
             }
 
             Spacer()
