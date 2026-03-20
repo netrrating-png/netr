@@ -1219,124 +1219,26 @@ struct GamePlayersPreviewSheet: View {
         isLoading = true
         defer { isLoading = false }
 
-        // Query games with embedded game_players(user_id) — same join the card count uses,
-        // so it works even if direct game_players queries are RLS-restricted.
-        nonisolated struct GameWithPlayers: Decodable, Sendable {
-            let id: String
-            let format: String
-            let skillLevel: String
-            let status: String
-            let maxPlayers: Int
-            let joinCode: String
-            let hostId: String
-            let createdAt: String?
-            let scheduledAt: String?
-            let courtId: String?
-            let gamePlayers: [EmbeddedPlayer]
-
-            nonisolated struct EmbeddedPlayer: Decodable, Sendable {
-                let userId: String
-                nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
-            }
-            nonisolated enum CodingKeys: String, CodingKey {
-                case id; case format; case skillLevel = "skill_level"; case status
-                case maxPlayers = "max_players"; case joinCode = "join_code"
-                case hostId = "host_id"; case createdAt = "created_at"
-                case scheduledAt = "scheduled_at"; case courtId = "court_id"
-                case gamePlayers = "game_players"
-            }
-        }
-
-        guard let gwp: GameWithPlayers = try? await client
+        // Fetch game metadata
+        guard let fetchedGame: SupabaseGame = try? await client
             .from("games")
-            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id, game_players(user_id)")
+            .select("id, court_id, host_id, join_code, format, skill_level, status, max_players, created_at, scheduled_at")
             .eq("id", value: gameId)
             .single()
             .execute()
             .value else { return }
 
-        game = SupabaseGame(
-            id: gwp.id, courtId: gwp.courtId, hostId: gwp.hostId,
-            joinCode: gwp.joinCode, format: gwp.format, skillLevel: gwp.skillLevel,
-            status: gwp.status, maxPlayers: gwp.maxPlayers,
-            createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt
-        )
+        game = fetchedGame
 
-        let userIds = gwp.gamePlayers.map { $0.userId }
-        guard !userIds.isEmpty else { return }
-
-        // Fetch profiles — include skill columns so self-assessed score works for users without peer ratings
-        nonisolated struct SlimProfile: Decodable, Sendable {
-            let id: String
-            let fullName: String?
-            let username: String?
-            let position: String?
-            let avatarUrl: String?
-            let netrScore: Double?
-            let vibeScore: Double?
-            let catShooting: Double?
-            let catFinishing: Double?
-            let catDribbling: Double?
-            let catPassing: Double?
-            let catDefense: Double?
-            let catRebounding: Double?
-            let catBasketballIq: Double?
-            nonisolated enum CodingKeys: String, CodingKey {
-                case id; case fullName = "full_name"; case username; case position
-                case avatarUrl = "avatar_url"; case netrScore = "netr_score"; case vibeScore = "vibe_score"
-                case catShooting = "cat_shooting"; case catFinishing = "cat_finishing"
-                case catDribbling = "cat_dribbling"; case catPassing = "cat_passing"
-                case catDefense = "cat_defense"; case catRebounding = "cat_rebounding"
-                case catBasketballIq = "cat_basketball_iq"
-            }
-            // Effective score: peer rating if available, else average of skill assessments
-            var effectiveScore: Double? {
-                if let s = netrScore { return s }
-                let skills = [catShooting, catFinishing, catDribbling, catPassing,
-                              catDefense, catRebounding, catBasketballIq].compactMap { $0 }
-                guard !skills.isEmpty else { return nil }
-                return skills.reduce(0, +) / Double(skills.count)
-            }
-        }
-        // Core profile fetch — names/avatars/scores. Kept separate from totalRatings so a
-        // missing column never silently wipes out display names.
-        let profiles: [SlimProfile] = (try? await client
-            .from("profiles")
-            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
-            .in("id", values: userIds)
+        // Fetch players with embedded profiles — same query pattern as GameViewModel.loadPlayers.
+        let fetched: [LobbyPlayer] = (try? await client
+            .from("game_players")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
+            .eq("game_id", value: gameId)
+            .order("created_at", ascending: true)
             .execute()
             .value) ?? []
 
-        let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
-
-        // Secondary fetch for ratings count (best-effort — never blocks display names).
-        nonisolated struct RatingCount: Decodable, Sendable {
-            let id: String
-            let totalRatings: Int?
-            nonisolated enum CodingKeys: String, CodingKey {
-                case id; case totalRatings = "total_ratings"
-            }
-        }
-        let ratingsData: [RatingCount] = (try? await client
-            .from("profiles")
-            .select("id, total_ratings")
-            .in("id", values: userIds)
-            .execute()
-            .value) ?? []
-        let ratingsMap = Dictionary(uniqueKeysWithValues: ratingsData.map { ($0.id, $0.totalRatings ?? 0) })
-
-        players = userIds.enumerated().map { idx, uid in
-            let p = profileMap[uid]
-            return LobbyPlayer(
-                id: "\(gameId)-\(idx)", userId: uid, gameId: gameId,
-                checkedInAt: nil, checkedOutAt: nil, removed: false,
-                profile: LobbyPlayerProfile(
-                    id: uid,
-                    fullName: p?.fullName, username: p?.username, position: p?.position,
-                    avatarUrl: p?.avatarUrl, netrScore: p?.effectiveScore, vibeScore: p?.vibeScore,
-                    totalRatings: ratingsMap[uid]
-                )
-            )
-        }
+        players = fetched.filter { !$0.isRemoved }
     }
 }
