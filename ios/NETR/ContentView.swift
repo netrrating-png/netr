@@ -145,7 +145,7 @@ struct ContentView: View {
         }
     }
 
-    private let limeGreen = Color(hex: "#C8FF00")
+    private let limeGreen = NETRTheme.neonGreen
 
     private var customTabBar: some View {
         HStack(spacing: 0) {
