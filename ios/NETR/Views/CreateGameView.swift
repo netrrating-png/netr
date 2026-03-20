@@ -1078,8 +1078,10 @@ struct GamePlayersPreviewSheet: View {
     @State private var players: [LobbyPlayer] = []
     @State private var game: SupabaseGame?
     @State private var isLoading = true
+    @State private var selectedProfileId: String?
 
     private let client = SupabaseManager.shared.client
+    private var currentUserId: String? { SupabaseManager.shared.session?.user.id.uuidString }
 
     var body: some View {
         NavigationStack {
@@ -1132,7 +1134,10 @@ struct GamePlayersPreviewSheet: View {
                                         .tracking(1)
                                         .foregroundStyle(NETRTheme.subtext)
                                     ForEach(activePlayers) { player in
-                                        LobbyPlayerRow(player: player)
+                                        Button { selectedProfileId = player.userId } label: {
+                                            LobbyPlayerRow(player: player)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
                                 }
                             }
@@ -1153,6 +1158,13 @@ struct GamePlayersPreviewSheet: View {
             }
         }
         .task { await load() }
+        .fullScreenCover(item: $selectedProfileId) { uid in
+            if uid == currentUserId {
+                ProfileView()
+            } else {
+                PublicPlayerProfileView(userId: uid)
+            }
+        }
     }
 
     // Show all non-removed players (including checked-out so count matches the card)
@@ -1210,7 +1222,7 @@ struct GamePlayersPreviewSheet: View {
         let userIds = gwp.gamePlayers.map { $0.userId }
         guard !userIds.isEmpty else { return }
 
-        // Fetch profiles for all participants
+        // Fetch profiles — include skill columns so self-assessed score works for users without peer ratings
         nonisolated struct SlimProfile: Decodable, Sendable {
             let id: String
             let fullName: String?
@@ -1219,14 +1231,33 @@ struct GamePlayersPreviewSheet: View {
             let avatarUrl: String?
             let netrScore: Double?
             let vibeScore: Double?
+            let catShooting: Double?
+            let catFinishing: Double?
+            let catDribbling: Double?
+            let catPassing: Double?
+            let catDefense: Double?
+            let catRebounding: Double?
+            let catBasketballIq: Double?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id; case fullName = "full_name"; case username; case position
                 case avatarUrl = "avatar_url"; case netrScore = "netr_score"; case vibeScore = "vibe_score"
+                case catShooting = "cat_shooting"; case catFinishing = "cat_finishing"
+                case catDribbling = "cat_dribbling"; case catPassing = "cat_passing"
+                case catDefense = "cat_defense"; case catRebounding = "cat_rebounding"
+                case catBasketballIq = "cat_basketball_iq"
+            }
+            // Effective score: peer rating if available, else average of skill assessments
+            var effectiveScore: Double? {
+                if let s = netrScore { return s }
+                let skills = [catShooting, catFinishing, catDribbling, catPassing,
+                              catDefense, catRebounding, catBasketballIq].compactMap { $0 }
+                guard !skills.isEmpty else { return nil }
+                return skills.reduce(0, +) / Double(skills.count)
             }
         }
         let profiles: [SlimProfile] = (try? await client
             .from("profiles")
-            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
             .in("id", values: userIds)
             .execute()
             .value) ?? []
@@ -1241,7 +1272,7 @@ struct GamePlayersPreviewSheet: View {
                 profile: LobbyPlayerProfile(
                     id: uid,
                     fullName: p?.fullName, username: p?.username, position: p?.position,
-                    avatarUrl: p?.avatarUrl, netrScore: p?.netrScore, vibeScore: p?.vibeScore
+                    avatarUrl: p?.avatarUrl, netrScore: p?.effectiveScore, vibeScore: p?.vibeScore
                 )
             )
         }
