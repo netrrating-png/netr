@@ -281,7 +281,7 @@ struct ScoreInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private let sections: [(icon: String, title: String, description: String, highlight: Bool)] = [
-        ("🎯", "7 Core Skill Areas", "Your answers across Scoring, Finishing, Handles, Passing, Defense, Rebounding, and Basketball IQ are each weighted based on how much they reflect overall player value.", false),
+        ("🎯", "7 Core Skill Areas", "Your answers across Shooting, Finishing, Handles, Passing, Defense, Rebounding, and Basketball IQ are each weighted based on how much they reflect overall player value.", false),
         ("⚖️", "Weighted & Calibrated", "Not all categories count equally. Answers are run through a multi-factor model that accounts for level played, age, and consistency across your responses.", false),
         ("📉", "Self-Assessment Discount", "Research shows players consistently rate themselves higher than peers do. A built-in discount keeps your estimate realistic — it's not a penalty, it's calibration.", false),
         ("🏀", "This Is Just the Starting Line", "Your true NETR comes from the court. Every game you play, teammates and opponents rate you — those peer ratings are what move your score up or down over time.", true),
@@ -385,7 +385,7 @@ struct ScoreInfoSheet: View {
 
 // Per-category colors matching SASkillCategory.color exactly
 private let radarCategoryColors: [String: Color] = [
-    "Scoring":     Color(hex: "#39FF14"),
+    "Shooting":     Color(hex: "#39FF14"),
     "Finishing":   Color(hex: "#FF7A00"),
     "Handles":     Color(hex: "#FFC247"),
     "Playmaking":  Color(hex: "#2ECC71"),
@@ -396,7 +396,7 @@ private let radarCategoryColors: [String: Color] = [
 
 func buildRadarSkills(from skillRatings: SkillRatings) -> [RadarSkill] {
     let items: [(String, String, Double?)] = [
-        ("Scoring", "crosshair", skillRatings.shooting),
+        ("Shooting", "crosshair", skillRatings.shooting),
         ("Finishing", "flame", skillRatings.finishing),
         ("Handles", "hand", skillRatings.ballHandling),
         ("Playmaking", "zap", skillRatings.playmaking),
@@ -413,7 +413,7 @@ func buildRadarSkills(from skillRatings: SkillRatings) -> [RadarSkill] {
 
 func buildRadarSkills(from categoryScores: [String: Double]) -> [RadarSkill] {
     let order: [(key: String, label: String, icon: String)] = [
-        ("scoring", "Scoring", "crosshair"),
+        ("scoring", "Shooting", "crosshair"),
         ("finishing", "Finishing", "flame"),
         ("handles", "Handles", "hand"),
         ("playmaking", "Playmaking", "zap"),

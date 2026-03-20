@@ -392,10 +392,10 @@ nonisolated enum AssessmentQuestionBank: Sendable {
             id: "scoring_3", number: 3, category: "scoring",
             prompt: "How do the people you play with usually view you as a scorer?",
             options: [
-                AssessmentOption(id: 0, emoji: "👻", label: "Not really a scoring option", detail: "Nobody expects me to score — that's not my role", score: 0.05),
+                AssessmentOption(id: 0, emoji: "👻", label: "Not really a shooting option", detail: "Nobody expects me to score — that's not my role", score: 0.05),
                 AssessmentOption(id: 1, emoji: "🤝", label: "I score here and there", detail: "I contribute occasionally but I'm not someone they're looking to feed", score: 0.28),
-                AssessmentOption(id: 2, emoji: "✅", label: "I'm a reliable scoring option", detail: "Teammates trust me to score when I get the ball in good spots", score: 0.52),
-                AssessmentOption(id: 3, emoji: "⭐", label: "I'm one of the main scoring threats", detail: "I'm a consistent go-to — teams build looks for me", score: 0.75),
+                AssessmentOption(id: 2, emoji: "✅", label: "I'm a reliable shooting option", detail: "Teammates trust me to score when I get the ball in good spots", score: 0.52),
+                AssessmentOption(id: 3, emoji: "⭐", label: "I'm one of the main shooting threats", detail: "I'm a consistent go-to — teams build looks for me", score: 0.75),
                 AssessmentOption(id: 4, emoji: "🎯", label: "Defenses clearly key in on me", detail: "I'm the player they game-plan for — and I still score", score: 0.92),
             ]
         ),
@@ -789,7 +789,7 @@ nonisolated struct AssessmentResult: Sendable {
     var formattedScore: String { String(format: "%.1f", overallScore) }
 
     static let categoryDisplayNames: [String: String] = [
-        "scoring":    "Scoring",
+        "scoring":    "Shooting",
         "iq":         "IQ",
         "defense":    "Defense",
         "handles":    "Handles",
