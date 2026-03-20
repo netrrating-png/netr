@@ -1,6 +1,7 @@
 import SwiftUI
 import AuthenticationServices
 import CryptoKit
+import Auth
 
 struct WelcomeView: View {
     @Environment(SupabaseManager.self) private var supabase
