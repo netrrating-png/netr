@@ -6,7 +6,8 @@ struct PublicPlayerProfileView: View {
 
     @State private var viewModel = ProfileViewModel()
     @State private var ratingAnimated: Bool = false
-    @State private var showCommentsPost: SupabaseFeedPost? = nil
+    @State private var commentPost: SupabaseFeedPost?
+    @State private var showComments: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -62,11 +63,16 @@ struct PublicPlayerProfileView: View {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) { ratingAnimated = true }
             }
         }
-        .sheet(item: $showCommentsPost) { post in
-            CommentsView(post: post)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(NETRTheme.surface)
+        .onChange(of: commentPost) { _, newPost in
+            if newPost != nil { showComments = true }
+        }
+        .sheet(isPresented: $showComments, onDismiss: { commentPost = nil }) {
+            if let post = commentPost {
+                CommentsView(post: post)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(NETRTheme.surface)
+            }
         }
     }
 
@@ -393,7 +399,7 @@ struct PublicPlayerProfileView: View {
                         post: post,
                         isOwnPost: false,
                         onLike: {},
-                        onComment: { showCommentsPost = post },
+                        onComment: { commentPost = post },
                         onRepost: {},
                         onDelete: {},
                         onBlock: {}

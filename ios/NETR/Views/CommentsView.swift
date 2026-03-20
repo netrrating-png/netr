@@ -5,10 +5,13 @@ import PhotosUI
 
 struct CommentsView: View {
     let post: SupabaseFeedPost
+    var onCommentAdded: (() -> Void)? = nil
     @State private var comments: [PostComment] = []
     @State private var isLoading: Bool = true
     @State private var commentText: String = ""
     @State private var isSubmitting: Bool = false
+    @State private var submitError: String?
+    @State private var showSubmitError: Bool = false
 
     // Photo attachment
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -98,6 +101,11 @@ struct CommentsView: View {
                     .presentationDetents([.medium, .large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.background)
+            }
+            .alert("Error", isPresented: $showSubmitError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(submitError ?? "Something went wrong.")
             }
         }
     }
@@ -358,8 +366,11 @@ struct CommentsView: View {
             selectedImage = nil
             selectedCourt = nil
             isSubmitting = false
+            onCommentAdded?()
         } catch {
             isSubmitting = false
+            submitError = "Failed to post comment. Please try again."
+            showSubmitError = true
             print("Submit comment error: \(error)")
         }
     }

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct FeedView: View {
     @State private var viewModel = FeedViewModel()
+    @State private var commentPost: SupabaseFeedPost?
+    @State private var showComments: Bool = false
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -28,15 +30,29 @@ struct FeedView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
         }
-        .sheet(item: $viewModel.showCommentsPost) { post in
-            CommentsView(post: post)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationBackground(NETRTheme.surface)
-        }
         .fullScreenCover(item: $viewModel.selectedProfileUserId) { userId in
             PublicPlayerProfileView(userId: userId) {
                 Task { await viewModel.onFollowChanged() }
+            }
+        }
+        .onChange(of: commentPost) { _, newPost in
+            if newPost != nil {
+                showComments = true
+            }
+        }
+        .sheet(isPresented: $showComments, onDismiss: {
+            commentPost = nil
+        }) {
+            if let post = commentPost {
+                CommentsView(post: post, onCommentAdded: {
+                    // Increment local comment count so it updates immediately in the feed
+                    if let idx = viewModel.posts.firstIndex(where: { $0.id == post.id }) {
+                        viewModel.posts[idx].commentCount += 1
+                    }
+                })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.surface)
             }
         }
         .task {
@@ -296,7 +312,7 @@ struct FeedView: View {
                                         Task { await viewModel.toggleLike(post: post) }
                                     },
                                     onComment: {
-                                        viewModel.showCommentsPost = post
+                                        commentPost = post
                                     },
                                     onRepost: {
                                         Task { await viewModel.repost(post: post) }

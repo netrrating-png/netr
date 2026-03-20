@@ -13,7 +13,6 @@ class FeedViewModel {
     var hasLoadedOnce: Bool = false
 
     var showCompose: Bool = false
-    var showCommentsPost: SupabaseFeedPost? = nil
 
     var courtSearchText: String = ""
     var courtResults: [FeedCourtSearchResult] = []
