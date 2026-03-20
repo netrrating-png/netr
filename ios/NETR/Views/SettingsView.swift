@@ -9,11 +9,22 @@ struct SettingsView: View {
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
+    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
+    @AppStorage("postNotifications") private var postNotifications: Bool = true
+    @AppStorage("ratingNotifications") private var ratingNotifications: Bool = true
+    @AppStorage("profilePrivate") private var profilePrivate: Bool = false
     @State private var showMyGames: Bool = false
     @State private var showEditProfile: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
+    @State private var showDeleteConfirm: Bool = false
+    @State private var showNotifications: Bool = false
+    @State private var showPrivacy: Bool = false
+    @State private var showAbout: Bool = false
     @State private var profileViewModel = ProfileViewModel()
+    @State private var isUploadingAvatar: Bool = false
+    @State private var avatarUploadError: String?
+    @State private var showAvatarError: Bool = false
 
     private var user: Player { store.currentUser }
 
@@ -25,11 +36,13 @@ struct SettingsView: View {
                 VStack(spacing: 16) {
                     profileCard
                     myGamesButton
-                    appearanceSection
                     securitySection
                     accountSection
+                    notificationsSection
+                    privacySection
                     aboutSection
                     signOutSection
+                    deleteAccountSection
                     Spacer(minLength: 100)
                 }
                 .padding(.top, 8)
@@ -52,12 +65,25 @@ struct SettingsView: View {
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
             Task {
+                isUploadingAvatar = true
+                avatarUploadError = nil
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let image = UIImage(data: data) {
                     await profileViewModel.uploadAvatar(image)
                     store.currentUser.profileImageData = data
+                    isUploadingAvatar = false
+                } else {
+                    isUploadingAvatar = false
+                    avatarUploadError = "Failed to load the selected photo."
+                    showAvatarError = true
                 }
+                selectedPhotoItem = nil
             }
+        }
+        .alert("Upload Error", isPresented: $showAvatarError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(avatarUploadError ?? "An error occurred while uploading your photo.")
         }
     }
 
@@ -106,7 +132,12 @@ struct SettingsView: View {
                             .frame(width: 72, height: 72)
                             .neonGlow(NETRRating.color(for: user.rating), radius: 6)
 
-                        if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                        if isUploadingAvatar {
+                            ProgressView()
+                                .tint(NETRTheme.neonGreen)
+                                .frame(width: 64, height: 64)
+                                .background(NETRTheme.card, in: Circle())
+                        } else if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
                             AsyncImage(url: url) { phase in
                                 if let image = phase.image {
                                     image.resizable()
@@ -220,43 +251,6 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
     }
 
-    private var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("APPEARANCE")
-                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
-                .tracking(1)
-                .foregroundStyle(NETRTheme.subtext)
-                .padding(.horizontal, 16)
-
-            VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    LucideIcon(appearance.isDarkMode ? "moon" : "sun")
-                        .foregroundStyle(appearance.isDarkMode ? NETRTheme.purple : NETRTheme.gold)
-                        .frame(width: 24)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Dark Mode")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(appearance.isDarkMode ? "Midnight court vibes" : "Daylight game mode")
-                            .font(.caption)
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: $appearance.isDarkMode)
-                        .labelsHidden()
-                        .tint(NETRTheme.neonGreen)
-                }
-                .padding(14)
-            }
-            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
-            .padding(.horizontal, 16)
-        }
-    }
-
     private var securitySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("SECURITY")
@@ -309,11 +303,121 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city", action: { showEditProfile = true })
-                Divider().padding(.leading, 50)
-                SettingsRow(icon: "bell", iconColor: NETRTheme.gold, title: "Notifications", subtitle: "Manage alerts & sounds")
-                Divider().padding(.leading, 50)
-                SettingsRow(icon: "lock", iconColor: NETRTheme.red, title: "Privacy", subtitle: "Profile visibility & data")
+                SettingsRow(icon: "user", iconColor: NETRTheme.blue, title: "Edit Profile", subtitle: "Name, position, city, bio", action: { showEditProfile = true })
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var notificationsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("NOTIFICATIONS")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    LucideIcon("bell")
+                        .foregroundStyle(NETRTheme.gold)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Push Notifications")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(notificationsEnabled ? "Alerts & sounds enabled" : "All notifications off")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $notificationsEnabled)
+                        .labelsHidden()
+                        .tint(NETRTheme.neonGreen)
+                }
+                .padding(14)
+
+                if notificationsEnabled {
+                    Divider().background(NETRTheme.border).padding(.leading, 50)
+
+                    HStack(spacing: 12) {
+                        LucideIcon("message-circle", size: 16)
+                            .foregroundStyle(NETRTheme.subtext)
+                            .frame(width: 24)
+
+                        Text("Post & Comment Alerts")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.text)
+
+                        Spacer()
+
+                        Toggle("", isOn: $postNotifications)
+                            .labelsHidden()
+                            .tint(NETRTheme.neonGreen)
+                    }
+                    .padding(14)
+
+                    Divider().background(NETRTheme.border).padding(.leading, 50)
+
+                    HStack(spacing: 12) {
+                        LucideIcon("star", size: 16)
+                            .foregroundStyle(NETRTheme.subtext)
+                            .frame(width: 24)
+
+                        Text("Rating Updates")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.text)
+
+                        Spacer()
+
+                        Toggle("", isOn: $ratingNotifications)
+                            .labelsHidden()
+                            .tint(NETRTheme.neonGreen)
+                    }
+                    .padding(14)
+                }
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private var privacySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("PRIVACY")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    LucideIcon("lock")
+                        .foregroundStyle(NETRTheme.red)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Private Profile")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(profilePrivate ? "Only followers can see your stats" : "Profile visible to everyone")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $profilePrivate)
+                        .labelsHidden()
+                        .tint(NETRTheme.neonGreen)
+                }
+                .padding(14)
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
@@ -368,6 +472,41 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll need to sign in again to access your account.")
+        }
+    }
+
+    private var deleteAccountSection: some View {
+        Button {
+            showDeleteConfirm = true
+        } label: {
+            HStack(spacing: 12) {
+                LucideIcon("trash-2")
+                    .foregroundStyle(NETRTheme.red.opacity(0.7))
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Delete Account")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.red.opacity(0.7))
+                    Text("Permanently remove your data")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+                Spacer()
+            }
+            .padding(14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.red.opacity(0.2), lineWidth: 1))
+        }
+        .buttonStyle(PressButtonStyle())
+        .padding(.horizontal, 16)
+        .alert("Delete Account?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                // Account deletion requires server-side support.
+                // Show a warning only — actual deletion is handled via support.
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This action is permanent and cannot be undone. All your games, ratings, posts, and profile data will be permanently deleted. To proceed, contact support at support@netr.app.")
         }
     }
 }

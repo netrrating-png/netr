@@ -14,7 +14,7 @@ struct NETRApp: App {
                 .environment(biometrics)
                 .environment(appearance)
                 .environment(store)
-                .preferredColorScheme(appearance.colorScheme)
+                .preferredColorScheme(.dark)
         }
     }
 }
