@@ -86,19 +86,22 @@ class SupabaseManager {
         defer { isLoading = false }
         let session = try await client.auth.signIn(email: email, password: password)
         self.session = session
+        await loadProfile(userId: session.user.id.uuidString)
     }
 
     func signInWithApple(idToken: String, nonce: String) async throws {
         isLoading = true
         authError = nil
         defer { isLoading = false }
-        try await client.auth.signInWithIdToken(
+        let session = try await client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .apple,
                 idToken: idToken,
                 nonce: nonce
             )
         )
+        self.session = session
+        await loadProfile(userId: session.user.id.uuidString)
     }
 
     func signInWithGoogle() async throws {

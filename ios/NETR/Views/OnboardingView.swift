@@ -552,10 +552,13 @@ struct OnboardingView: View {
                     do {
                         try await supabase.signInWithEmail(email: email, password: password)
                     } catch {
-                        // Wait briefly for the auth state listener to deliver
-                        // the session (e.g. when autoconfirm is on but the
-                        // signUp response didn't include it synchronously).
-                        try? await Task.sleep(for: .milliseconds(500))
+                        // Explicit sign-in failed — wait for the auth state
+                        // listener to deliver the session (e.g. autoconfirm).
+                        // Poll up to 3 seconds instead of a single fixed sleep.
+                        for _ in 0..<6 {
+                            try? await Task.sleep(for: .milliseconds(500))
+                            if supabase.session != nil { break }
+                        }
                     }
                 }
 

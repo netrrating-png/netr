@@ -131,8 +131,14 @@ struct SignInView: View {
         do {
             try await supabase.signInWithEmail(email: email, password: password)
             dismiss()
+        } catch let authError as AuthError {
+            errorMessage = authError.localizedDescription
+        } catch let urlError as URLError {
+            errorMessage = "Network error. Check your connection and try again."
+            print("[NETR] Sign-in network error: \(urlError)")
         } catch {
             errorMessage = "Invalid email or password. Try again."
+            print("[NETR] Sign-in error: \(error)")
         }
         isLoading = false
     }
