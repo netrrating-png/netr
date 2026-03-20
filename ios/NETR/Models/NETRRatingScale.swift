@@ -198,16 +198,10 @@ struct NETRScoreText: View {
     var color: Color
 
     var body: some View {
-        if let parts = NETRRating.formattedParts(score) {
-            HStack(alignment: .bottom, spacing: 0) {
-                Text(parts.main)
-                    .font(.custom("BarlowCondensed-Black", size: fontSize))
-                    .foregroundColor(color)
-                Text(parts.cents)
-                    .font(.custom("BarlowCondensed-Black", size: fontSize * 0.52))
-                    .foregroundColor(color)
-                    .baselineOffset(fontSize * 0.36)
-            }
+        if let score {
+            Text(String(format: "%.2f", score))
+                .font(.custom("BarlowCondensed-Black", size: fontSize))
+                .foregroundColor(color)
         } else {
             Text("—")
                 .font(.custom("BarlowCondensed-Black", size: fontSize))
