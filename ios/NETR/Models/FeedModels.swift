@@ -200,6 +200,7 @@ extension FeedCourtSearchResult: Decodable {
 enum FeedTab: String, CaseIterable {
     case forYou = "For You"
     case live = "Live"
+    case dm = "DM"
 }
 
 nonisolated struct UserSearchResult: Identifiable, Sendable {
