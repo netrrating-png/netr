@@ -37,6 +37,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         case game_players
     }
 
+    // game_players rows don't carry removed status in the card select, so count is total active slots
     var joinedCount: Int { game_players?.count ?? 0 }
 
     var courtName: String { courts?.name ?? "Unknown Court" }

@@ -1152,15 +1152,17 @@ struct GamePlayersPreviewSheet: View {
         .task { await load() }
     }
 
+    // Show all non-removed players (including checked-out so count matches the card)
     private var activePlayers: [LobbyPlayer] {
-        players.filter { !$0.isRemoved && !$0.isCheckedOut }
+        players.filter { !$0.isRemoved }
     }
 
     private func load() async {
         isLoading = true
         defer { isLoading = false }
 
-        async let gameResult: SupabaseGame? = try? client
+        // Fetch game info
+        game = try? await client
             .from("games")
             .select()
             .eq("id", value: gameId)
@@ -1168,15 +1170,47 @@ struct GamePlayersPreviewSheet: View {
             .execute()
             .value
 
-        async let playersResult: [LobbyPlayer] = (try? client
-            .from("game_players")
-            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
-            .eq("game_id", value: gameId)
-            .order("created_at", ascending: true)
-            .execute()
-            .value) ?? []
-
-        game = await gameResult
-        players = await playersResult
+        // Fetch players with profiles join (same query as GameViewModel.loadPlayers)
+        do {
+            let result: [LobbyPlayer] = try await client
+                .from("game_players")
+                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
+                .eq("game_id", value: gameId)
+                .order("created_at", ascending: true)
+                .execute()
+                .value
+            players = result
+        } catch {
+            print("[GamePlayersPreview] profiles join failed: \(error) — trying fallback")
+            // Fallback: fetch player rows without profile join, build stub LobbyPlayers
+            nonisolated struct RawPlayer: Decodable, Sendable {
+                let id: String
+                let userId: String
+                let gameId: String
+                let checkedInAt: String?
+                let checkedOutAt: String?
+                let removed: Bool?
+                nonisolated enum CodingKeys: String, CodingKey {
+                    case id; case userId = "user_id"; case gameId = "game_id"
+                    case checkedInAt = "checked_in_at"; case checkedOutAt = "checked_out_at"; case removed
+                }
+            }
+            if let raw: [RawPlayer] = try? await client
+                .from("game_players")
+                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed")
+                .eq("game_id", value: gameId)
+                .order("created_at", ascending: true)
+                .execute()
+                .value {
+                players = raw.map { r in
+                    LobbyPlayer(
+                        id: r.id, userId: r.userId, gameId: r.gameId,
+                        checkedInAt: r.checkedInAt, checkedOutAt: r.checkedOutAt,
+                        removed: r.removed,
+                        profile: LobbyPlayerProfile(id: r.userId, fullName: nil, username: nil, position: nil, avatarUrl: nil, netrScore: nil, vibeScore: nil)
+                    )
+                }
+            }
+        }
     }
 }
