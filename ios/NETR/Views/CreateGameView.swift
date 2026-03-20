@@ -974,6 +974,45 @@ struct GameLobbyView: View {
 
 // MARK: - Lobby Player Row
 
+// MARK: - Rating Progress Circle (shown when peer score is locked)
+
+private struct RatingProgressCircle: View {
+    let totalRatings: Int   // how many peer ratings received so far
+    let needed: Int = 5
+
+    private var progress: Double { min(Double(totalRatings) / Double(needed), 1.0) }
+
+    var body: some View {
+        ZStack {
+            // Dark fill
+            Circle()
+                .fill(Color(hex: "#111111"))
+                .frame(width: 44, height: 44)
+
+            // Background track
+            Circle()
+                .stroke(NETRTheme.neonGreen.opacity(0.15), lineWidth: 2.5)
+                .frame(width: 44, height: 44)
+
+            // Progress arc
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    NETRTheme.neonGreen,
+                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                )
+                .frame(width: 44, height: 44)
+                .rotationEffect(.degrees(-90))
+                .shadow(color: NETRTheme.neonGreen.opacity(0.6), radius: 4)
+
+            // Lock icon
+            Image(systemName: "lock.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(NETRTheme.subtext)
+        }
+    }
+}
+
 struct LobbyPlayerRow: View {
     let player: LobbyPlayer
     var isHost: Bool = false
@@ -1062,8 +1101,12 @@ struct LobbyPlayerRow: View {
 
             Spacer()
 
-            // NETR rating circle
-            NETRBadge(score: player.profile.netrScore, size: .small)
+            // NETR rating circle — or progress circle if not yet unlocked
+            if (player.profile.totalRatings ?? 0) >= 5 {
+                NETRBadge(score: player.profile.netrScore, size: .small)
+            } else {
+                RatingProgressCircle(totalRatings: player.profile.totalRatings ?? 0)
+            }
         }
         .padding(10)
         .background(NETRTheme.surface, in: .rect(cornerRadius: 10))
@@ -1231,6 +1274,7 @@ struct GamePlayersPreviewSheet: View {
             let avatarUrl: String?
             let netrScore: Double?
             let vibeScore: Double?
+            let totalRatings: Int?
             let catShooting: Double?
             let catFinishing: Double?
             let catDribbling: Double?
@@ -1241,6 +1285,7 @@ struct GamePlayersPreviewSheet: View {
             nonisolated enum CodingKeys: String, CodingKey {
                 case id; case fullName = "full_name"; case username; case position
                 case avatarUrl = "avatar_url"; case netrScore = "netr_score"; case vibeScore = "vibe_score"
+                case totalRatings = "total_ratings"
                 case catShooting = "cat_shooting"; case catFinishing = "cat_finishing"
                 case catDribbling = "cat_dribbling"; case catPassing = "cat_passing"
                 case catDefense = "cat_defense"; case catRebounding = "cat_rebounding"
@@ -1257,7 +1302,7 @@ struct GamePlayersPreviewSheet: View {
         }
         let profiles: [SlimProfile] = (try? await client
             .from("profiles")
-            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
             .in("id", values: userIds)
             .execute()
             .value) ?? []
@@ -1272,7 +1317,8 @@ struct GamePlayersPreviewSheet: View {
                 profile: LobbyPlayerProfile(
                     id: uid,
                     fullName: p?.fullName, username: p?.username, position: p?.position,
-                    avatarUrl: p?.avatarUrl, netrScore: p?.effectiveScore, vibeScore: p?.vibeScore
+                    avatarUrl: p?.avatarUrl, netrScore: p?.effectiveScore, vibeScore: p?.vibeScore,
+                    totalRatings: p?.totalRatings
                 )
             )
         }
