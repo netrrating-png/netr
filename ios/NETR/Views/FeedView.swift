@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FeedView: View {
     @State private var viewModel = FeedViewModel()
+    @State private var dmViewModel = DMViewModel()
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
     @FocusState private var searchFocused: Bool
@@ -11,13 +12,22 @@ struct FeedView: View {
             NETRTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                feedHeader
-                searchBar
+                if viewModel.activeTab != .dm {
+                    feedHeader
+                }
                 tabBar
-                feedContent
+
+                if viewModel.activeTab == .dm {
+                    DMInboxView(viewModel: dmViewModel)
+                } else {
+                    searchBar
+                    feedContent
+                }
             }
 
-            composeButton
+            if viewModel.activeTab != .dm {
+                composeButton
+            }
         }
         .overlay {
             if viewModel.showSearchResults {
@@ -250,17 +260,29 @@ struct FeedView: View {
                     withAnimation(.spring(response: 0.3)) {
                         viewModel.activeTab = tab
                     }
-                    Task { await viewModel.fetchFeed(tab: tab) }
+                    if tab != .dm {
+                        Task { await viewModel.fetchFeed(tab: tab) }
+                    }
                 } label: {
                     VStack(spacing: 6) {
-                        Text(tab.rawValue.uppercased())
-                            .font(.system(size: 11, weight: .black))
-                            .tracking(1.2)
-                            .foregroundStyle(
-                                viewModel.activeTab == tab
-                                ? NETRTheme.neonGreen
-                                : NETRTheme.subtext
-                            )
+                        HStack(spacing: 4) {
+                            Text(tab.rawValue.uppercased())
+                                .font(.system(size: 11, weight: .black))
+                                .tracking(1.2)
+                                .foregroundStyle(
+                                    viewModel.activeTab == tab
+                                    ? NETRTheme.neonGreen
+                                    : NETRTheme.subtext
+                                )
+
+                            if tab == .dm && dmViewModel.totalUnread > 0 {
+                                Text("\(dmViewModel.totalUnread)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(NETRTheme.background)
+                                    .frame(minWidth: 16, minHeight: 16)
+                                    .background(NETRTheme.neonGreen, in: Circle())
+                            }
+                        }
                         Rectangle()
                             .fill(
                                 viewModel.activeTab == tab
