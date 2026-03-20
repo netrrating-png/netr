@@ -1274,7 +1274,6 @@ struct GamePlayersPreviewSheet: View {
             let avatarUrl: String?
             let netrScore: Double?
             let vibeScore: Double?
-            let totalRatings: Int?
             let catShooting: Double?
             let catFinishing: Double?
             let catDribbling: Double?
@@ -1285,7 +1284,6 @@ struct GamePlayersPreviewSheet: View {
             nonisolated enum CodingKeys: String, CodingKey {
                 case id; case fullName = "full_name"; case username; case position
                 case avatarUrl = "avatar_url"; case netrScore = "netr_score"; case vibeScore = "vibe_score"
-                case totalRatings = "total_ratings"
                 case catShooting = "cat_shooting"; case catFinishing = "cat_finishing"
                 case catDribbling = "cat_dribbling"; case catPassing = "cat_passing"
                 case catDefense = "cat_defense"; case catRebounding = "cat_rebounding"
@@ -1300,14 +1298,32 @@ struct GamePlayersPreviewSheet: View {
                 return skills.reduce(0, +) / Double(skills.count)
             }
         }
+        // Core profile fetch — names/avatars/scores. Kept separate from totalRatings so a
+        // missing column never silently wipes out display names.
         let profiles: [SlimProfile] = (try? await client
             .from("profiles")
-            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
             .in("id", values: userIds)
             .execute()
             .value) ?? []
 
         let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+
+        // Secondary fetch for ratings count (best-effort — never blocks display names).
+        nonisolated struct RatingCount: Decodable, Sendable {
+            let id: String
+            let totalRatings: Int?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case totalRatings = "total_ratings"
+            }
+        }
+        let ratingsData: [RatingCount] = (try? await client
+            .from("profiles")
+            .select("id, total_ratings")
+            .in("id", values: userIds)
+            .execute()
+            .value) ?? []
+        let ratingsMap = Dictionary(uniqueKeysWithValues: ratingsData.map { ($0.id, $0.totalRatings ?? 0) })
 
         players = userIds.enumerated().map { idx, uid in
             let p = profileMap[uid]
@@ -1318,7 +1334,7 @@ struct GamePlayersPreviewSheet: View {
                     id: uid,
                     fullName: p?.fullName, username: p?.username, position: p?.position,
                     avatarUrl: p?.avatarUrl, netrScore: p?.effectiveScore, vibeScore: p?.vibeScore,
-                    totalRatings: p?.totalRatings
+                    totalRatings: ratingsMap[uid]
                 )
             )
         }
