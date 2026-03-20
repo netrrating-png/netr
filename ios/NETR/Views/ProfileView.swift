@@ -144,8 +144,26 @@ struct ProfileView: View {
             }
         }
         .sheet(isPresented: $showScoreInfo) { ScoreInfoSheet() }
-        .sheet(isPresented: $showFollowers) { ProfileFollowListSheet(title: "Followers", count: viewModel.followerCount) }
-        .sheet(isPresented: $showFollowing) { ProfileFollowListSheet(title: "Following", count: viewModel.followingCount) }
+        .sheet(isPresented: $showFollowers) {
+            if let uid = profileUserId ?? SupabaseManager.shared.session?.user.id.uuidString {
+                ProfileFollowListSheet(
+                    title: "Followers",
+                    userId: uid,
+                    mode: .followers,
+                    currentUserId: SupabaseManager.shared.session?.user.id.uuidString
+                )
+            }
+        }
+        .sheet(isPresented: $showFollowing) {
+            if let uid = profileUserId ?? SupabaseManager.shared.session?.user.id.uuidString {
+                ProfileFollowListSheet(
+                    title: "Following",
+                    userId: uid,
+                    mode: .following,
+                    currentUserId: SupabaseManager.shared.session?.user.id.uuidString
+                )
+            }
+        }
         .sheet(isPresented: $showBioEdit) { ProfileBioEditSheet() }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
         .sheet(isPresented: $showEditProfile) {
@@ -783,51 +801,82 @@ struct ProfileView: View {
 
 // MARK: - Follow List Sheet
 
+// MARK: - Follow List User Row Model
+
+private struct FollowUser: Identifiable, Sendable {
+    let id: String          // user UUID
+    let fullName: String?
+    let username: String?
+    let avatarUrl: String?
+    var isFollowing: Bool   // current viewer follows this person?
+
+    var displayName: String { fullName ?? username ?? "Player" }
+    var displayHandle: String { username.map { "@\($0)" } ?? "" }
+    var initials: String {
+        let name = fullName ?? username ?? "?"
+        let parts = name.split(separator: " ")
+        if parts.count >= 2 {
+            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
+        }
+        return String(name.prefix(2)).uppercased()
+    }
+}
+
+// MARK: - Real Follow List Sheet
+
 struct ProfileFollowListSheet: View {
+    enum Mode { case followers, following }
+
     let title: String
-    let count: Int
+    let userId: String          // whose followers/following to show
+    let mode: Mode
+    let currentUserId: String?  // viewer — nil = not logged in
     @Environment(\.dismiss) private var dismiss
 
-    private let mockUsers = ["Marcus T.", "Dre Williams", "Sam Rivera", "K. Johnson"]
+    @State private var users: [FollowUser] = []
+    @State private var isLoading = true
+
+    private let client = SupabaseManager.shared.client
+
+    // Convenience init for call sites that used the old (title, count) signature
+    init(title: String, userId: String, mode: Mode, currentUserId: String?) {
+        self.title = title
+        self.userId = userId
+        self.mode = mode
+        self.currentUserId = currentUserId
+    }
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(mockUsers, id: \.self) { user in
-                    HStack(spacing: 14) {
-                        Circle()
-                            .fill(NETRTheme.muted)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Text(String(user.prefix(2)).uppercased())
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(NETRTheme.subtext)
-                            )
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(user)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(NETRTheme.text)
-                            Text("@\(user.lowercased().replacingOccurrences(of: " ", with: "_"))")
-                                .font(.system(size: 12))
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                        Spacer()
-                        Text("Follow")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(NETRTheme.background)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 6)
-                            .background(NETRTheme.neonGreen)
-                            .clipShape(Capsule())
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(NETRTheme.background)
+                } else if users.isEmpty {
+                    VStack(spacing: 8) {
+                        Text(mode == .followers ? "No followers yet" : "Not following anyone yet")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(mode == .followers ? "When someone follows this account they'll appear here." : "Follow players to see them here.")
+                            .font(.system(size: 13))
+                            .foregroundStyle(NETRTheme.subtext)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
                     }
-                    .listRowBackground(NETRTheme.background)
-                    .listRowSeparatorTint(NETRTheme.border)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(NETRTheme.background)
+                } else {
+                    List(users) { user in
+                        followRow(user)
+                            .listRowBackground(NETRTheme.background)
+                            .listRowSeparatorTint(NETRTheme.border)
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(NETRTheme.background.ignoresSafeArea())
                 }
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(NETRTheme.background.ignoresSafeArea())
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -837,6 +886,202 @@ struct ProfileFollowListSheet: View {
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
             }
+        }
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private func followRow(_ user: FollowUser) -> some View {
+        HStack(spacing: 14) {
+            // Avatar
+            Circle()
+                .fill(NETRTheme.muted)
+                .frame(width: 44, height: 44)
+                .overlay {
+                    if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            if let img = phase.image {
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            }
+                        }
+                        .clipShape(Circle())
+                    } else {
+                        Text(user.initials)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+
+            // Name + handle
+            VStack(alignment: .leading, spacing: 2) {
+                Text(user.displayName)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(NETRTheme.text)
+                if !user.displayHandle.isEmpty {
+                    Text(user.displayHandle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+            }
+            Spacer()
+
+            // Follow / Following button — only show if viewer is logged in and it's not themselves
+            if let currentId = currentUserId, currentId != user.id {
+                Button {
+                    Task { await toggleFollow(user) }
+                } label: {
+                    Text(user.isFollowing ? "Following" : "Follow")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(user.isFollowing ? NETRTheme.text : NETRTheme.background)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(user.isFollowing ? NETRTheme.muted : NETRTheme.neonGreen)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Data Loading
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        nonisolated struct FollowRow: Decodable, Sendable {
+            let followerId: String?
+            let followingId: String?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case followerId = "follower_id"
+                case followingId = "following_id"
+            }
+        }
+
+        // Step 1: get the IDs from the follows table
+        let targetIds: [String]
+        do {
+            if mode == .followers {
+                // people who follow `userId`
+                let rows: [FollowRow] = try await client
+                    .from("follows")
+                    .select("follower_id")
+                    .eq("following_id", value: userId)
+                    .execute()
+                    .value
+                targetIds = rows.compactMap { $0.followerId }
+            } else {
+                // people that `userId` follows
+                let rows: [FollowRow] = try await client
+                    .from("follows")
+                    .select("following_id")
+                    .eq("follower_id", value: userId)
+                    .execute()
+                    .value
+                targetIds = rows.compactMap { $0.followingId }
+            }
+        } catch {
+            print("FollowList fetch error: \(error)")
+            return
+        }
+
+        guard !targetIds.isEmpty else { return }
+
+        // Step 2: fetch profiles for those IDs
+        nonisolated struct SlimProfile: Decodable, Sendable {
+            let id: String
+            let fullName: String?
+            let username: String?
+            let avatarUrl: String?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id
+                case fullName = "full_name"
+                case username
+                case avatarUrl = "avatar_url"
+            }
+        }
+
+        let profiles: [SlimProfile]
+        do {
+            profiles = try await client
+                .from("profiles")
+                .select("id, full_name, username, avatar_url")
+                .in("id", values: targetIds)
+                .execute()
+                .value
+        } catch {
+            print("FollowList profiles fetch error: \(error)")
+            return
+        }
+
+        // Step 3: figure out which ones the current viewer already follows
+        var viewerFollowingSet: Set<String> = []
+        if let currentId = currentUserId, !profiles.isEmpty {
+            let profileIds = profiles.map { $0.id }
+            nonisolated struct FRow: Decodable, Sendable {
+                let followingId: String
+                nonisolated enum CodingKeys: String, CodingKey { case followingId = "following_id" }
+            }
+            if let rows: [FRow] = try? await client
+                .from("follows")
+                .select("following_id")
+                .eq("follower_id", value: currentId)
+                .in("following_id", values: profileIds)
+                .execute()
+                .value {
+                viewerFollowingSet = Set(rows.map { $0.followingId })
+            }
+        }
+
+        // Preserve the order from targetIds
+        let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+        users = targetIds.compactMap { id -> FollowUser? in
+            guard let p = profileMap[id] else { return nil }
+            return FollowUser(
+                id: p.id,
+                fullName: p.fullName,
+                username: p.username,
+                avatarUrl: p.avatarUrl,
+                isFollowing: viewerFollowingSet.contains(p.id)
+            )
+        }
+    }
+
+    // MARK: - Toggle Follow
+
+    private func toggleFollow(_ user: FollowUser) async {
+        guard let currentId = currentUserId, currentId != user.id else { return }
+
+        nonisolated struct FollowPayload: Encodable, Sendable {
+            let followerId: String
+            let followingId: String
+            nonisolated enum CodingKeys: String, CodingKey {
+                case followerId = "follower_id"
+                case followingId = "following_id"
+            }
+        }
+
+        guard let idx = users.firstIndex(where: { $0.id == user.id }) else { return }
+        let wasFollowing = users[idx].isFollowing
+        users[idx].isFollowing = !wasFollowing  // optimistic update
+
+        do {
+            if wasFollowing {
+                try await client
+                    .from("follows")
+                    .delete()
+                    .eq("follower_id", value: currentId)
+                    .eq("following_id", value: user.id)
+                    .execute()
+            } else {
+                try await client
+                    .from("follows")
+                    .insert(FollowPayload(followerId: currentId, followingId: user.id))
+                    .execute()
+            }
+        } catch {
+            users[idx].isFollowing = wasFollowing  // revert on failure
+            print("Follow toggle error: \(error)")
         }
     }
 }
