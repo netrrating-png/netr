@@ -36,6 +36,7 @@ struct CourtDetailView: View {
     @State private var courtJoinVM = JoinGameViewModel()
     @State private var showCourtLobby: Bool = false
     @State private var showCreateGameFromCourt: Bool = false
+    @State private var previewGameId: String? = nil
 
     private var distance: String { viewModel.distanceString(for: court) }
     private var isFav: Bool { viewModel.isFavorite(court.id) }
@@ -76,6 +77,12 @@ struct CourtDetailView: View {
             GameLobbyView(viewModel: courtLobbyVM, onDismiss: { showCourtLobby = false })
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $previewGameId) { gameId in
+            GamePlayersPreviewSheet(gameId: gameId)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.background)
         }
         .sheet(isPresented: $showCreateGameFromCourt) {
             CreateGameView(viewModel: viewModel, preselectedCourt: court)
@@ -427,61 +434,76 @@ struct CourtDetailView: View {
 
     private func courtGameCard(_ game: NearbyGame) -> some View {
         VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(game.isScheduled ? NETRTheme.gold.opacity(0.12) : NETRTheme.neonGreen.opacity(0.12))
-                        .frame(width: 42, height: 42)
-                    if game.isScheduled {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 16))
-                            .foregroundStyle(NETRTheme.gold)
-                    } else {
-                        LucideIcon("circle-dot", size: 18)
-                            .foregroundStyle(NETRTheme.neonGreen)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
-                        if let fmt = game.format {
-                            Text(fmt)
-                                .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
-                                .foregroundStyle(NETRTheme.text)
-                        }
+            Button { previewGameId = game.id } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(game.isScheduled ? NETRTheme.gold.opacity(0.12) : NETRTheme.neonGreen.opacity(0.12))
+                            .frame(width: 42, height: 42)
                         if game.isScheduled {
-                            Text("SCHEDULED")
-                                .font(.system(size: 9, weight: .bold))
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 16))
                                 .foregroundStyle(NETRTheme.gold)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(NETRTheme.gold.opacity(0.12), in: Capsule())
                         } else {
-                            Text("LIVE")
-                                .font(.system(size: 9, weight: .bold))
+                            LucideIcon("circle-dot", size: 18)
                                 .foregroundStyle(NETRTheme.neonGreen)
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 2)
-                                .background(NETRTheme.neonGreen.opacity(0.12), in: Capsule())
                         }
                     }
-                    HStack(spacing: 4) {
-                        Text(game.startedAgo)
-                            .font(.caption)
-                            .foregroundStyle(NETRTheme.subtext)
-                        Text("·")
-                            .foregroundStyle(NETRTheme.muted)
-                        Text("by \(game.hostName)")
-                            .font(.caption)
-                            .foregroundStyle(NETRTheme.subtext)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 8) {
+                            if let fmt = game.format {
+                                Text(fmt)
+                                    .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
+                                    .foregroundStyle(NETRTheme.text)
+                            }
+                            if game.isScheduled {
+                                Text("SCHEDULED")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(NETRTheme.gold)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(NETRTheme.gold.opacity(0.12), in: Capsule())
+                            } else {
+                                Text("LIVE")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(NETRTheme.neonGreen)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(NETRTheme.neonGreen.opacity(0.12), in: Capsule())
+                            }
+                        }
+                        HStack(spacing: 4) {
+                            Text(game.startedAgo)
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.subtext)
+                            Text("·")
+                                .foregroundStyle(NETRTheme.muted)
+                            Text("by \(game.hostName)")
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Player count
+                    if let max = game.max_players {
+                        VStack(spacing: 1) {
+                            Text("\(game.joinedCount)/\(max)")
+                                .font(.system(size: 14, weight: .black).width(.compressed))
+                                .foregroundStyle(game.joinedCount >= max ? NETRTheme.gold : NETRTheme.neonGreen)
+                            Text("players")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
                     }
                 }
-
-                Spacer()
+                .padding(.horizontal, 14)
+                .padding(.top, 14)
+                .padding(.bottom, 12)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-            .padding(.bottom, 12)
+            .buttonStyle(.plain)
 
             if courtJoinedGameIds.contains(game.id) {
                 HStack(spacing: 8) {
@@ -545,15 +567,14 @@ struct CourtDetailView: View {
         // which require FK constraints to exist in the database.
         let selects = [
             // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
-            // Also requires courts to have lat, lng, neighborhood columns (added by fix SQL)
             """
             id, join_code, created_at, format, max_players, scheduled_at, status,
             courts(name, neighborhood, lat, lng),
-            host:profiles!host_id(full_name, username)
+            host:profiles!host_id(full_name, username),
+            game_players(id)
             """,
-            // Level 2: courts name only — needs games.court_id→courts FK
-            // Safe fallback: only requests courts.name which always exists
-            "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name)",
+            // Level 2: courts name only
+            "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
             // Level 3: bare — no FK joins needed at all
             "id, join_code, created_at, format, max_players, scheduled_at, status",
         ]

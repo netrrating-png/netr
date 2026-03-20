@@ -14,6 +14,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
 
     let courts: CourtRef?
     let host: HostRef?
+    let game_players: [GamePlayerIdRow]?
 
     nonisolated struct CourtRef: Decodable, Sendable {
         let name: String
@@ -25,13 +26,18 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         let full_name: String?
         let username: String?
     }
+    nonisolated struct GamePlayerIdRow: Decodable, Sendable {
+        let id: String
+    }
 
     // distanceMiles is computed client-side — exclude it from JSON decoding
-    // so the auto-synthesized Decodable doesn't look for a missing JSON key
     nonisolated enum CodingKeys: String, CodingKey {
         case id, format, courts, host, status
         case join_code, created_at, max_players, scheduled_at
+        case game_players
     }
+
+    var joinedCount: Int { game_players?.count ?? 0 }
 
     var courtName: String { courts?.name ?? "Unknown Court" }
     var neighborhood: String { courts?.neighborhood ?? "" }
@@ -139,10 +145,11 @@ class JoinGameViewModel {
                 """
                 id, join_code, created_at, format, max_players, scheduled_at, status,
                 courts(name, neighborhood, lat, lng),
-                host:profiles!host_id(full_name, username)
+                host:profiles!host_id(full_name, username),
+                game_players(id)
                 """,
-                // Level 2: courts name only — needs games.court_id→courts FK, no extra court columns
-                "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name)",
+                // Level 2: courts name only
+                "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
                 // Level 3: bare — no FK joins needed at all
                 "id, join_code, created_at, format, max_players, scheduled_at, status",
             ]
@@ -536,75 +543,84 @@ private struct NearbyGameCard: View {
 
     @State private var appeared: Bool = false
     @State private var pulsing: Bool = false
+    @State private var showPlayerPreview: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(NETRTheme.neonGreen.opacity(0.15))
-                        .frame(width: 44, height: 44)
-                        .scaleEffect(pulsing ? 1.4 : 1.0)
-                        .opacity(pulsing ? 0 : 0.6)
-                        .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false), value: pulsing)
-                    Circle()
-                        .fill(NETRTheme.neonGreen.opacity(0.08))
-                        .frame(width: 44, height: 44)
-                    LucideIcon("circle-dot", size: 20)
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(game.courtName)
-                        .font(.system(.body, design: .default, weight: .black).width(.compressed))
-                        .foregroundStyle(NETRTheme.text)
-                    HStack(spacing: 4) {
-                        if !game.neighborhood.isEmpty {
-                            Text(game.neighborhood)
-                                .font(.system(size: 12))
-                                .foregroundStyle(NETRTheme.subtext)
-                            Text("·").foregroundStyle(NETRTheme.muted)
-                        }
-                        if game.distanceMiles > 0 {
-                            LucideIcon("map-pin", size: 10)
-                                .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
-                            Text(game.distanceMiles < 0.1 ? "< 0.1 mi" : String(format: "%.1f mi", game.distanceMiles))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(NETRTheme.neonGreen.opacity(0.8))
-                            Text("·").foregroundStyle(NETRTheme.muted)
-                        }
-                        Text(game.startedAgo)
-                            .font(.system(size: 12))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    HStack(spacing: 4) {
-                        LucideIcon("user", size: 10)
-                            .foregroundStyle(NETRTheme.muted)
-                        Text("Hosted by \(game.hostName)")
-                            .font(.system(size: 12))
-                            .foregroundStyle(NETRTheme.muted)
-                    }
-                    .padding(.top, 2)
-                }
-
-                Spacer()
-
-                VStack(spacing: 4) {
-                    if game.isScheduled {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 14))
-                            .foregroundStyle(NETRTheme.gold)
-                    }
-                    if let fmt = game.format {
-                        Text(fmt)
-                            .font(.system(.caption, design: .default, weight: .black).width(.compressed))
+            Button { showPlayerPreview = true } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(NETRTheme.neonGreen.opacity(0.15))
+                            .frame(width: 44, height: 44)
+                            .scaleEffect(pulsing ? 1.4 : 1.0)
+                            .opacity(pulsing ? 0 : 0.6)
+                            .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: false), value: pulsing)
+                        Circle()
+                            .fill(NETRTheme.neonGreen.opacity(0.08))
+                            .frame(width: 44, height: 44)
+                        LucideIcon("circle-dot", size: 20)
                             .foregroundStyle(NETRTheme.neonGreen)
                     }
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(game.courtName)
+                            .font(.system(.body, design: .default, weight: .black).width(.compressed))
+                            .foregroundStyle(NETRTheme.text)
+                        HStack(spacing: 4) {
+                            if !game.neighborhood.isEmpty {
+                                Text(game.neighborhood)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(NETRTheme.subtext)
+                                Text("·").foregroundStyle(NETRTheme.muted)
+                            }
+                            if game.distanceMiles > 0 {
+                                LucideIcon("map-pin", size: 10)
+                                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
+                                Text(game.distanceMiles < 0.1 ? "< 0.1 mi" : String(format: "%.1f mi", game.distanceMiles))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.8))
+                                Text("·").foregroundStyle(NETRTheme.muted)
+                            }
+                            Text(game.startedAgo)
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                        HStack(spacing: 4) {
+                            LucideIcon("user", size: 10)
+                                .foregroundStyle(NETRTheme.muted)
+                            Text("Hosted by \(game.hostName)")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.muted)
+                        }
+                        .padding(.top, 2)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        if game.isScheduled {
+                            Image(systemName: "clock.fill")
+                                .font(.system(size: 14))
+                                .foregroundStyle(NETRTheme.gold)
+                        }
+                        if let fmt = game.format {
+                            Text(fmt)
+                                .font(.system(.caption, design: .default, weight: .black).width(.compressed))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                        if let max = game.max_players {
+                            Text("\(game.joinedCount)/\(max)")
+                                .font(.system(size: 13, weight: .black).width(.compressed))
+                                .foregroundStyle(game.joinedCount >= max ? NETRTheme.gold : NETRTheme.text)
+                        }
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 14)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 16)
-            .padding(.bottom, 14)
+            .buttonStyle(.plain)
 
             if isJoined {
                 HStack(spacing: 8) {
@@ -650,6 +666,12 @@ private struct NearbyGameCard: View {
         .onAppear {
             appeared = true
             pulsing = true
+        }
+        .sheet(isPresented: $showPlayerPreview) {
+            GamePlayersPreviewSheet(gameId: game.id)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.background)
         }
     }
 }

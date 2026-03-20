@@ -1065,3 +1065,117 @@ struct LobbyPlayerRow: View {
         .background(NETRTheme.surface, in: .rect(cornerRadius: 10))
     }
 }
+
+// MARK: - Game Players Preview Sheet
+
+struct GamePlayersPreviewSheet: View {
+    let gameId: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var players: [LobbyPlayer] = []
+    @State private var game: SupabaseGame?
+    @State private var isLoading = true
+
+    private let client = SupabaseManager.shared.client
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .tint(NETRTheme.neonGreen)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            // Header stats
+                            if let g = game {
+                                HStack(spacing: 24) {
+                                    VStack(spacing: 2) {
+                                        Text(g.format)
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .foregroundStyle(NETRTheme.text)
+                                        Text("Format").font(.caption2).foregroundStyle(NETRTheme.subtext)
+                                    }
+                                    Divider().frame(height: 28).background(NETRTheme.border)
+                                    VStack(spacing: 2) {
+                                        Text("\(activePlayers.count)/\(g.maxPlayers)")
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .foregroundStyle(activePlayers.count >= g.maxPlayers ? NETRTheme.gold : NETRTheme.neonGreen)
+                                        Text("Players").font(.caption2).foregroundStyle(NETRTheme.subtext)
+                                    }
+                                    Divider().frame(height: 28).background(NETRTheme.border)
+                                    VStack(spacing: 2) {
+                                        Text("\(g.maxPlayers - activePlayers.count)")
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .foregroundStyle(NETRTheme.text)
+                                        Text("Open spots").font(.caption2).foregroundStyle(NETRTheme.subtext)
+                                    }
+                                }
+                                .padding(14)
+                                .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+                            }
+
+                            if activePlayers.isEmpty {
+                                Text("No players have joined yet.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                    .padding(.top, 20)
+                            } else {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("WHO'S IN")
+                                        .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                                        .tracking(1)
+                                        .foregroundStyle(NETRTheme.subtext)
+                                    ForEach(activePlayers) { player in
+                                        LobbyPlayerRow(player: player)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .background(NETRTheme.background.ignoresSafeArea())
+            .navigationTitle("Players")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                }
+            }
+        }
+        .task { await load() }
+    }
+
+    private var activePlayers: [LobbyPlayer] {
+        players.filter { !$0.isRemoved && !$0.isCheckedOut }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        async let gameResult: SupabaseGame? = try? client
+            .from("games")
+            .select()
+            .eq("id", value: gameId)
+            .single()
+            .execute()
+            .value
+
+        async let playersResult: [LobbyPlayer] = (try? client
+            .from("game_players")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
+            .eq("game_id", value: gameId)
+            .order("created_at", ascending: true)
+            .execute()
+            .value) ?? []
+
+        game = await gameResult
+        players = await playersResult
+    }
+}
