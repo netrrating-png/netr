@@ -66,6 +66,7 @@
 		ADB4D40D2F64A815001D0E5F /* RateTabViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */; };
 		ADB4D4112F64ADFD001D0E5F /* SelfAssessmentFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */; };
 		CL00D41A2F77B001001FEED1 /* PublicPlayerProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */; };
+		CL00D41C2F77B001001FEED1 /* InviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CL00D41B2F77B001001FEED1 /* InviteView.swift */; };
 		XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = XX1C9FF110ABBCE8BF456CXX /* Supabase */; };
 		XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */ = {isa = PBXBuildFile; productRef = XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */; };
 /* End PBXBuildFile section */
@@ -135,6 +136,7 @@
 		ADB4D3C12F64A815001D0E5F /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardView.swift; sourceTree = "<group>"; };
 		ADB4D3C22F64A815001D0E5F /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicPlayerProfileView.swift; sourceTree = "<group>"; };
+		CL00D41B2F77B001001FEED1 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 		ADB4D3C32F64A815001D0E5F /* RateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateView.swift; sourceTree = "<group>"; };
 		ADB4D3C42F64A815001D0E5F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentDisclaimerView.swift; sourceTree = "<group>"; };
@@ -301,6 +303,7 @@
 				ADB4D3C12F64A815001D0E5F /* PostCardView.swift */,
 				ADB4D3C22F64A815001D0E5F /* ProfileView.swift */,
 				CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */,
+				CL00D41B2F77B001001FEED1 /* InviteView.swift */,
 				ADB4D3C32F64A815001D0E5F /* RateView.swift */,
 				ADB4D3C42F64A815001D0E5F /* RootView.swift */,
 				ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */,
@@ -494,6 +497,7 @@
 				ADB4D3DD2F64A815001D0E5F /* ComposePostView.swift in Sources */,
 				ADB4D3DE2F64A815001D0E5F /* ProfileView.swift in Sources */,
 				CL00D41A2F77B001001FEED1 /* PublicPlayerProfileView.swift in Sources */,
+				CL00D41C2F77B001001FEED1 /* InviteView.swift in Sources */,
 				ADB4D3DF2F64A815001D0E5F /* PostCardView.swift in Sources */,
 				ADB4D3E02F64A815001D0E5F /* NETRComponents.swift in Sources */,
 				ADB4D3E12F64A815001D0E5F /* FeedView.swift in Sources */,
