@@ -33,6 +33,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
+            Color.black.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 if isUnrated && !dismissedAssessmentBanner {
                     assessmentBanner
@@ -143,11 +145,14 @@ struct ContentView: View {
         }
     }
 
+    private let limeGreen = Color(hex: "#C8FF00")
+
     private var customTabBar: some View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases, id: \.rawValue) { tab in
+                let isSelected = selectedTab == tab
                 Button {
-                    if selectedTab != tab {
+                    if !isSelected {
                         let impact = UIImpactFeedbackGenerator(style: .light)
                         impact.impactOccurred()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
@@ -157,46 +162,70 @@ struct ContentView: View {
                 } label: {
                     VStack(spacing: 4) {
                         ZStack {
-                            if selectedTab == tab {
-                                Capsule()
-                                    .fill(Color(hex: "#39FF14").opacity(0.10))
-                                    .frame(width: 40, height: 28)
+                            if isSelected {
+                                Circle()
+                                    .fill(limeGreen.opacity(0.15))
+                                    .frame(width: 32, height: 32)
+                                    .blur(radius: 8)
                             }
 
-                            LucideIcon(tab.icon, size: 18)
+                            LucideIcon(tab.icon, size: isSelected ? 20 : 18)
                                 .foregroundStyle(
-                                    selectedTab == tab
-                                        ? Color(hex: "#39FF14")
-                                        : Color(hex: "#6A6A82")
+                                    isSelected
+                                        ? limeGreen
+                                        : Color.white.opacity(0.45)
                                 )
                         }
+                        .frame(height: 28)
 
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(
-                                selectedTab == tab
-                                    ? Color(hex: "#39FF14")
-                                    : Color(hex: "#6A6A82")
+                                isSelected
+                                    ? limeGreen
+                                    : Color.white.opacity(0.45)
                             )
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 10)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 8)
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 16)
+        .padding(.horizontal, 12)
         .background(
-            Rectangle()
-                .fill(Color(hex: "#040406"))
-                .overlay(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
+            ZStack {
+                // Frosted glass base
+                RoundedRectangle(cornerRadius: 28)
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+
+                // Dark tint over the blur
+                RoundedRectangle(cornerRadius: 28)
+                    .fill(Color.black.opacity(0.55))
+
+                // Inner glow on top edge
+                RoundedRectangle(cornerRadius: 28)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+
+                // Subtle top-edge highlight
+                VStack {
+                    RoundedRectangle(cornerRadius: 28)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.07), Color.clear],
+                                startPoint: .top,
+                                endPoint: .center
+                            )
+                        )
+                        .frame(height: 24)
+                    Spacer()
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 28))
+            }
         )
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color.white.opacity(0.08))
-                .frame(height: 0.5)
-        }
+        .shadow(color: Color.black.opacity(0.4), radius: 12, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
     }
 }
