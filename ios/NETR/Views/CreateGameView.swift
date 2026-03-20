@@ -992,33 +992,43 @@ struct LobbyPlayerRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            if let avatarUrl = player.profile.avatarUrl, let url = URL(string: avatarUrl) {
-                NETRTheme.card
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
+            // Avatar with vibe dot overlay
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let avatarUrl = player.profile.avatarUrl, let url = URL(string: avatarUrl) {
+                        NETRTheme.card
+                            .frame(width: 44, height: 44)
+                            .overlay {
+                                AsyncImage(url: url) { phase in
+                                    if let image = phase.image {
+                                        image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
+                                    }
+                                }
                             }
-                        }
+                            .clipShape(Circle())
+                    } else {
+                        Text(initials)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(player.isCheckedOut ? NETRTheme.muted : NETRTheme.neonGreen)
+                            .frame(width: 44, height: 44)
+                            .background(NETRTheme.card, in: Circle())
                     }
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(
-                        player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
-                        lineWidth: 1.5
-                    ))
-                    .opacity(player.isCheckedOut ? 0.5 : 1)
-            } else {
-                Text(initials)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(player.isCheckedOut ? NETRTheme.muted : NETRTheme.neonGreen)
-                    .frame(width: 40, height: 40)
-                    .background(NETRTheme.card, in: Circle())
-                    .overlay(Circle().stroke(
-                        player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
-                        lineWidth: 1.5
-                    ))
-                    .opacity(player.isCheckedOut ? 0.5 : 1)
+                }
+                .overlay(Circle().stroke(
+                    player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
+                    lineWidth: 1.5
+                ))
+                .opacity(player.isCheckedOut ? 0.5 : 1)
+
+                // Vibe dot — bottom-right of avatar
+                if player.profile.vibeScore != nil {
+                    VibeDecalView(vibe: player.profile.vibeScore, size: .small)
+                        .frame(width: 12, height: 12)
+                        .background(NETRTheme.surface, in: Circle())
+                        .padding(1)
+                        .background(NETRTheme.surface, in: Circle())
+                        .offset(x: 2, y: 2)
+                }
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -1043,24 +1053,17 @@ struct LobbyPlayerRow: View {
                             .background(NETRTheme.muted.opacity(0.12), in: .capsule)
                     }
                 }
-                Text(player.profile.position ?? "PG")
-                    .font(.caption)
-                    .foregroundStyle(NETRTheme.subtext)
+                if let pos = player.profile.position, !pos.isEmpty {
+                    Text(pos)
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
             }
 
             Spacer()
 
-            HStack(spacing: 8) {
-                if let vibe = player.profile.vibeScore {
-                    VibeDecalView(vibe: vibe, size: .small)
-                }
-
-                if let r = player.profile.netrScore {
-                    Text(String(format: "%.1f", r))
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(NETRRating.color(for: r))
-                }
-            }
+            // NETR rating circle
+            NETRBadge(score: player.profile.netrScore, size: .small)
         }
         .padding(10)
         .background(NETRTheme.surface, in: .rect(cornerRadius: 10))
