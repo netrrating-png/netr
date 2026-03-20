@@ -1,6 +1,7 @@
 import SwiftUI
 import Contacts
 import ContactsUI
+import MessageUI
 
 // MARK: — Model
 
@@ -8,6 +9,35 @@ private struct ContactEntry: Identifiable {
     let id: String
     let name: String
     let phone: String
+}
+
+// MARK: — MessageCompose wrapper
+
+private struct MessageComposer: UIViewControllerRepresentable {
+    let recipients: [String]
+    let body: String
+    @Binding var isPresented: Bool
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIViewController(context: Context) -> MFMessageComposeViewController {
+        let vc = MFMessageComposeViewController()
+        vc.recipients = recipients
+        vc.body = body
+        vc.messageComposeDelegate = context.coordinator
+        return vc
+    }
+
+    func updateUIViewController(_ uiViewController: MFMessageComposeViewController, context: Context) {}
+
+    class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+        let parent: MessageComposer
+        init(_ parent: MessageComposer) { self.parent = parent }
+        func messageComposeViewController(_ controller: MFMessageComposeViewController,
+                                          didFinishWith result: MessageComposeResult) {
+            parent.isPresented = false
+        }
+    }
 }
 
 // MARK: — View
@@ -20,7 +50,11 @@ struct InviteView: View {
     @State private var contacts: [ContactEntry] = []
     @State private var searchText = ""
     @State private var accessDenied = false
-    @State private var copiedPhone: String? = nil
+
+    @State private var messageRecipient: String? = nil
+    @State private var messageBody: String = ""
+    @State private var showMessageComposer = false
+    @State private var copiedLink = false
 
     private var filtered: [ContactEntry] {
         searchText.isEmpty ? contacts : contacts.filter {
@@ -95,8 +129,16 @@ struct InviteView: View {
                                     ContactRow(
                                         contact: contact,
                                         appStoreURL: appStoreURL,
-                                        isCopied: copiedPhone == contact.phone,
-                                        onCopied: { copiedPhone = contact.phone }
+                                        onInvite: { phone, body in
+                                            if MFMessageComposeViewController.canSendText() {
+                                                messageRecipient = phone
+                                                messageBody = body
+                                                showMessageComposer = true
+                                            } else {
+                                                // Fallback: copy to clipboard
+                                                UIPasteboard.general.string = body
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -108,6 +150,16 @@ struct InviteView: View {
             }
         }
         .onAppear(perform: loadContacts)
+        .sheet(isPresented: $showMessageComposer) {
+            if let phone = messageRecipient {
+                MessageComposer(
+                    recipients: [phone],
+                    body: messageBody,
+                    isPresented: $showMessageComposer
+                )
+                .ignoresSafeArea()
+            }
+        }
     }
 
     // MARK: — Sub-views
@@ -131,7 +183,7 @@ struct InviteView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 Spacer()
-                Text(copiedPhone == "link" ? "Copied!" : "Copy")
+                Text(copiedLink ? "Copied!" : "Copy")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(NETRTheme.neonGreen)
                     .padding(.horizontal, 12)
@@ -190,9 +242,9 @@ struct InviteView: View {
     private func copyLink() {
         let message = "Join me on NETR — the app for tracking your basketball rating. Download it here: \(appStoreURL)"
         UIPasteboard.general.string = message
-        withAnimation { copiedPhone = "link" }
+        withAnimation { copiedLink = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation { if copiedPhone == "link" { copiedPhone = nil } }
+            withAnimation { copiedLink = false }
         }
     }
 
@@ -221,8 +273,7 @@ struct InviteView: View {
 private struct ContactRow: View {
     let contact: ContactEntry
     let appStoreURL: String
-    let isCopied: Bool
-    let onCopied: () -> Void
+    let onInvite: (String, String) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -249,24 +300,19 @@ private struct ContactRow: View {
 
             Spacer()
 
-            Button(action: copyInvite) {
-                Text(isCopied ? "Copied!" : "Invite")
+            Button {
+                let firstName = contact.name.split(separator: " ").first.map(String.init) ?? contact.name
+                let message = "Hey \(firstName)! Join me on NETR — the app where we track our basketball rating. Download it here: \(appStoreURL)"
+                onInvite(contact.phone, message)
+            } label: {
+                Text("Invite")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(isCopied ? NETRTheme.subtext : NETRTheme.neonGreen)
+                    .foregroundStyle(NETRTheme.neonGreen)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 7)
-                    .background(
-                        isCopied
-                        ? NETRTheme.muted.opacity(0.4)
-                        : NETRTheme.neonGreen.opacity(0.12)
-                    )
+                    .background(NETRTheme.neonGreen.opacity(0.12))
                     .clipShape(Capsule())
-                    .overlay(
-                        Capsule().stroke(
-                            isCopied ? Color.clear : NETRTheme.neonGreen.opacity(0.3),
-                            lineWidth: 1
-                        )
-                    )
+                    .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
             }
             .buttonStyle(.plain)
         }
@@ -279,11 +325,5 @@ private struct ContactRow: View {
 
     private var initials: String {
         contact.name.split(separator: " ").prefix(2).compactMap { $0.first.map(String.init) }.joined()
-    }
-
-    private func copyInvite() {
-        let message = "Hey \(contact.name.split(separator: " ").first.map(String.init) ?? contact.name)! Join me on NETR — the app where we track our basketball rating. Download it here: \(appStoreURL)"
-        UIPasteboard.general.string = message
-        onCopied()
     }
 }
