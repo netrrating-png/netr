@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import Supabase
 
 struct EditProfileView: View {
     @Bindable var viewModel: ProfileViewModel
@@ -11,6 +12,10 @@ struct EditProfileView: View {
     @State private var bio: String = ""
     @State private var city: String = ""
     @State private var selectedPosition: Position = .unknown
+
+    @State private var showCourtPicker: Bool = false
+    @State private var allCourts: [Court] = []
+    @State private var courtSearch: String = ""
 
     @State private var bannerPhotoItem: PhotosPickerItem?
     @State private var bannerImage: UIImage?
@@ -51,6 +56,14 @@ struct EditProfileView: View {
                 }
             }
             .onAppear { populateFields() }
+            .task {
+                if let userId = SupabaseManager.shared.session?.user.id.uuidString {
+                    await viewModel.loadHomeCourt(userId: userId)
+                }
+            }
+            .sheet(isPresented: $showCourtPicker) {
+                courtPickerSheet
+            }
             .onChange(of: bannerPhotoItem) { _, newValue in
                 guard let item = newValue else { return }
                 Task {
@@ -213,6 +226,34 @@ struct EditProfileView: View {
 
             editField(label: "City", text: $city)
 
+            // Home Court picker
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Home Court")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+
+                Button { showCourtPicker = true } label: {
+                    HStack(spacing: 10) {
+                        LucideIcon("home", size: 14)
+                            .foregroundStyle(viewModel.homeCourt != nil ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        Text(viewModel.homeCourt?.name ?? "Select Home Court")
+                            .font(.system(size: 14))
+                            .foregroundStyle(viewModel.homeCourt != nil ? NETRTheme.text : NETRTheme.subtext)
+                        Spacer()
+                        LucideIcon("chevron-right", size: 12)
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    .padding(12)
+                    .background(NETRTheme.card)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(
+                        viewModel.homeCourt != nil ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border,
+                        lineWidth: 1
+                    ))
+                    .clipShape(.rect(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+            }
+
             VStack(alignment: .leading, spacing: 6) {
                 Text("Position")
                     .font(.system(size: 12, weight: .semibold))
@@ -248,6 +289,79 @@ struct EditProfileView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
+    }
+
+    private var courtPickerSheet: some View {
+        NavigationStack {
+            ZStack {
+                NETRTheme.background.ignoresSafeArea()
+
+                let filtered = courtSearch.isEmpty ? allCourts : allCourts.filter {
+                    $0.name.localizedCaseInsensitiveContains(courtSearch) ||
+                    $0.neighborhood.localizedCaseInsensitiveContains(courtSearch)
+                }
+
+                if allCourts.isEmpty {
+                    ProgressView().tint(NETRTheme.neonGreen)
+                } else {
+                    List(filtered) { court in
+                        Button {
+                            Task {
+                                await viewModel.setHomeCourt(courtId: court.id)
+                                showCourtPicker = false
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    HStack(spacing: 6) {
+                                        Text(court.name)
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundStyle(NETRTheme.text)
+                                        if court.verified {
+                                            LucideIcon("badge-check", size: 11)
+                                                .foregroundStyle(NETRTheme.blue)
+                                        }
+                                    }
+                                    Text(court.neighborhood)
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(NETRTheme.subtext)
+                                }
+                                Spacer()
+                                if viewModel.homeCourt?.id == court.id {
+                                    LucideIcon("check", size: 14)
+                                        .foregroundStyle(NETRTheme.neonGreen)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(NETRTheme.card)
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .searchable(text: $courtSearch, prompt: "Search courts")
+                }
+            }
+            .navigationTitle("Choose Home Court")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showCourtPicker = false }
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+            }
+            .task {
+                guard allCourts.isEmpty else { return }
+                allCourts = (try? await SupabaseManager.shared.client
+                    .from("courts")
+                    .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
+                    .order("name", ascending: true)
+                    .execute()
+                    .value) ?? []
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(NETRTheme.background)
     }
 
     private func editField(label: String, text: Binding<String>) -> some View {

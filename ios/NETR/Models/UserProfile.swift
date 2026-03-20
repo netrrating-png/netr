@@ -28,6 +28,7 @@ nonisolated struct UserProfile: Codable, Sendable {
     var vibeAttitude: Double?
     var vibeInclusion: Double?
     var isVerifiedPro: Bool?
+    var proVerificationPending: Bool?
     var createdAt: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
@@ -58,6 +59,7 @@ nonisolated struct UserProfile: Codable, Sendable {
         case vibeAttitude = "vibe_attitude"
         case vibeInclusion = "vibe_inclusion"
         case isVerifiedPro = "is_verified_pro"
+        case proVerificationPending = "pro_verification_pending"
         case createdAt = "created_at"
     }
 }

@@ -3,8 +3,8 @@ import SwiftUI
 // ─────────────────────────────────────────────────────────────
 // MARK: — NETR Rating Scale
 // Scale: 2.0 – 9.9
-// Regular player ceiling: 9.4
-// 9.5–9.9 locked to verified pros only
+// Regular player ceiling: 9.5
+// Above 9.5 locked to verified pros only
 // Bayesian prior: 3.2 (real average pickup player)
 // ─────────────────────────────────────────────────────────────
 
@@ -161,14 +161,21 @@ struct NETRRating {
     /// Clamps a score to the valid range for a given player type
     static func clamp(_ raw: Double, isVerifiedPro: Bool = false) -> Double {
         let minimum = 2.0
-        let maximum = isVerifiedPro ? 9.9 : 9.4
+        let maximum = isVerifiedPro ? 9.9 : 9.5
         return max(minimum, min(raw, maximum))
     }
 
-    /// Formats a score for display (e.g. "7.2" or "—")
+    /// Formats a score for display (e.g. "7.23" or "—")
     static func formatted(_ score: Double?) -> String {
         guard let score else { return "—" }
-        return String(format: "%.1f", score)
+        return String(format: "%.2f", score)
+    }
+
+    /// Splits a score into main part ("7.2") and cents digit ("3") for gas-station display
+    static func formattedParts(_ score: Double?) -> (main: String, cents: String)? {
+        guard let score else { return nil }
+        let full = String(format: "%.2f", score)
+        return (main: String(full.dropLast()), cents: String(full.last!))
     }
 
     /// Bayesian prior — the assumed mean before peer reviews come in
@@ -179,6 +186,33 @@ struct NETRRating {
     /// Returns true if a score is in the NBA-locked tier
     static func isLockedTier(_ score: Double) -> Bool {
         return score >= 9.5
+    }
+}
+
+// MARK: — Gas-Station Score Text
+
+/// Renders a score like "4.3⁹" — first decimal full-size, second decimal smaller and raised.
+struct NETRScoreText: View {
+    let score: Double?
+    var fontSize: CGFloat
+    var color: Color
+
+    var body: some View {
+        if let parts = NETRRating.formattedParts(score) {
+            HStack(alignment: .bottom, spacing: 0) {
+                Text(parts.main)
+                    .font(.custom("BarlowCondensed-Black", size: fontSize))
+                    .foregroundColor(color)
+                Text(parts.cents)
+                    .font(.custom("BarlowCondensed-Black", size: fontSize * 0.52))
+                    .foregroundColor(color)
+                    .baselineOffset(fontSize * 0.36)
+            }
+        } else {
+            Text("—")
+                .font(.custom("BarlowCondensed-Black", size: fontSize))
+                .foregroundColor(color)
+        }
     }
 }
 
@@ -219,9 +253,7 @@ struct NETRBadge: View {
                 .stroke(score != nil ? color : Color(hex: "#444444"), lineWidth: size.borderWidth)
 
             VStack(spacing: 2) {
-                Text(NETRRating.formatted(score))
-                    .font(.custom("BarlowCondensed-Black", size: size.fontSize))
-                    .foregroundColor(score != nil ? color : Color(hex: "#444444"))
+                NETRScoreText(score: score, fontSize: size.fontSize, color: score != nil ? color : Color(hex: "#444444"))
                     .lineLimit(1)
 
                 if size.showLabel {
@@ -302,9 +334,7 @@ struct NETRScoreRing: View {
 
             // Center content
             VStack(spacing: 4) {
-                Text(NETRRating.formatted(score))
-                    .font(.custom("BarlowCondensed-Black", size: diameter * 0.28))
-                    .foregroundColor(color)
+                NETRScoreText(score: score, fontSize: diameter * 0.28, color: color)
 
                 Text(NETRRating.tierName(for: score))
                     .font(.system(size: diameter * 0.07, weight: .semibold))

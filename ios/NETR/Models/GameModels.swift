@@ -206,26 +206,26 @@ nonisolated struct DiscoverableGamePlayerCount: Decodable, Sendable {
 
 nonisolated struct NoShowReportPayload: Encodable, Sendable {
     let gameId: String
-    let reporterId: String
-    let reportedId: String
+    let reportedByUserId: String
+    let reportedUserId: String
 
     nonisolated enum CodingKeys: String, CodingKey {
         case gameId = "game_id"
-        case reporterId = "reporter_id"
-        case reportedId = "reported_id"
+        case reportedByUserId = "reported_by_user_id"
+        case reportedUserId = "reported_user_id"
     }
 }
 
 nonisolated struct NoShowReport: Decodable, Sendable {
     let id: String
     let gameId: String
-    let reporterId: String
-    let reportedId: String
+    let reportedByUserId: String
+    let reportedUserId: String
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id
         case gameId = "game_id"
-        case reporterId = "reporter_id"
-        case reportedId = "reported_id"
+        case reportedByUserId = "reported_by_user_id"
+        case reportedUserId = "reported_user_id"
     }
 }

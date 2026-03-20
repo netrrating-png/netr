@@ -86,19 +86,22 @@ class SupabaseManager {
         defer { isLoading = false }
         let session = try await client.auth.signIn(email: email, password: password)
         self.session = session
+        await loadProfile(userId: session.user.id.uuidString)
     }
 
     func signInWithApple(idToken: String, nonce: String) async throws {
         isLoading = true
         authError = nil
         defer { isLoading = false }
-        try await client.auth.signInWithIdToken(
+        let session = try await client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .apple,
                 idToken: idToken,
                 nonce: nonce
             )
         )
+        self.session = session
+        await loadProfile(userId: session.user.id.uuidString)
     }
 
     func signInWithGoogle() async throws {
@@ -216,5 +219,19 @@ class SupabaseManager {
         }
 
         await loadProfile(userId: userId)
+    }
+
+    func flagProVerificationPending() async throws {
+        guard let userId = session?.user.id.uuidString else { return }
+        do {
+            try await client
+                .from("profiles")
+                .update(["pro_verification_pending": AnyJSON.bool(true)])
+                .eq("id", value: userId)
+                .execute()
+            await loadProfile(userId: userId)
+        } catch {
+            print("[NETR] flagProVerificationPending failed: \(error)")
+        }
     }
 }

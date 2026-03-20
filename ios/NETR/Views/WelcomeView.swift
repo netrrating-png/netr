@@ -166,7 +166,18 @@ struct WelcomeView: View {
                     email: supabase.pendingEmail,
                     password: supabase.pendingPassword
                 )
+                // Sign-in succeeded — session is set, user proceeds to main app
+            } catch let authError as AuthError {
+                // Invalid credentials means user doesn't exist yet — continue to onboarding
+                print("[NETR] Existing user check failed (auth): \(authError.localizedDescription)")
+                onContinue()
+            } catch let urlError as URLError {
+                // Network error — show message instead of silently continuing
+                errorMessage = "Network error. Check your connection and try again."
+                print("[NETR] Existing user check network error: \(urlError)")
             } catch {
+                // Other errors — continue to onboarding (user likely doesn't exist)
+                print("[NETR] Existing user check failed: \(error)")
                 onContinue()
             }
             isCheckingExisting = false

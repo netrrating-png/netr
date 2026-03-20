@@ -97,6 +97,22 @@ enum PlayLevel: String, CaseIterable, Identifiable {
         }
     }
 
+    // Internal floor — guarantees a minimum score for the playing level
+    // regardless of how conservatively someone answers. After the 28%
+    // self-assessment discount the achievable ceiling is floor+(ceiling-floor)*0.72.
+    var baseFloor: Double {
+        switch self {
+        case .nba:       return 8.5
+        case .d1:        return 6.2
+        case .d2d3:      return 5.7
+        case .hsVarsity: return 5.3
+        case .hsJV:      return 4.7
+        case .aau:       return 5.0
+        case .rec:       return 3.5
+        case .pickup:    return 2.5
+        }
+    }
+
     // Per-level age decay — internal, never shown to users.
     //
     // Decay is years-past the typical exit age for each level.
@@ -257,6 +273,19 @@ enum SASkillCategory: String, CaseIterable {
         case .passing:    return Color(hex: "#2ECC71")
         case .iq:         return Color(hex: "#9B8BFF")
         case .defense:    return Color(hex: "#FF3B30")
+        }
+    }
+
+    // Maps to the storage key used by SelfAssessmentStore and SupabaseManager
+    var storageKey: String {
+        switch self {
+        case .shooting:   return "scoring"
+        case .finishing:  return "finishing"
+        case .rebounding: return "rebounding"
+        case .handles:    return "handles"
+        case .passing:    return "playmaking"
+        case .iq:         return "iq"
+        case .defense:    return "defense"
         }
     }
 
@@ -428,8 +457,21 @@ struct PlayerProfile {
         let decay      = PlayLevel.ageDecay(level: level, age: age, isCurrent: levelIsCurrent)
         let base       = level.baseCeiling
         let afterDecay = levelIsCurrent ? base : base * decay
-        let afterFreq  = (level == .nba) ? afterDecay : afterDecay * freq.modifier
-        return min(7.0, max(2.0, afterFreq))
+        // Don't apply frequency penalty for active players — they're still competing at this level
+        let afterFreq  = levelIsCurrent ? afterDecay : afterDecay * freq.modifier
+        return max(2.0, afterFreq)
+    }
+
+    // Internal effective floor — never displayed
+    // Decays in proportion to the ceiling so the spread stays consistent.
+    var effectiveFloor: Double {
+        guard let level = highestLevel, let freq = frequency, let age else { return 2.0 }
+        let decay      = PlayLevel.ageDecay(level: level, age: age, isCurrent: levelIsCurrent)
+        let base       = level.baseFloor
+        let afterDecay = levelIsCurrent ? base : base * decay
+        // Don't apply frequency penalty for active players — their floor reflects current skill
+        let afterFreq  = levelIsCurrent ? afterDecay : afterDecay * freq.modifier
+        return max(2.0, min(afterFreq, effectiveCeiling - 0.5))
     }
 }
 
@@ -483,28 +525,34 @@ class SelfAssessmentViewModel: ObservableObject {
         withAnimation(.easeInOut(duration: 0.22)) { questionIndex -= 1 }
     }
 
-    // 7-step scoring algorithm — all internal
     private func calculateFinalScore() -> (Double, [SASkillCategory: Double]) {
         guard let position = profile.position else { return (3.2, [:]) }
-        var catNorm: [SASkillCategory: Double] = [:]
+        var catRatios: [SASkillCategory: Double] = [:]
         var ws = 0.0, wt = 0.0
 
         for cat in SASkillCategory.allCases {
             let vals = questions.filter { $0.category == cat }.compactMap { answers[$0.id] }
             guard !vals.isEmpty else { continue }
-            let avg  = Double(vals.reduce(0, +)) / Double(vals.count)   // step 1
-            let norm = 2.0 + (avg - 1.0) * (7.4 / 3.0)                  // step 2
-            catNorm[cat] = norm
-            let w = cat.weight(for: position)                            // step 3
-            ws += norm * w; wt += w
+            let avg   = Double(vals.reduce(0, +)) / Double(vals.count)
+            let ratio = (avg - 1.0) / 3.0   // 0.0–1.0 answer quality
+            catRatios[cat] = ratio
+            let w = cat.weight(for: position)
+            ws += ratio * w; wt += w
         }
 
         guard wt > 0 else { return (3.2, [:]) }
-        let discounted = (ws / wt) * 0.72                                // step 4
-        let n = Double(answers.count)
-        let bayesian = (n * discounted + 8.0 * 3.2) / (n + 8.0)         // step 5
-        let capped   = min(bayesian, profile.effectiveCeiling)           // step 6
-        return (max(2.0, min(7.0, capped)), catNorm)                     // step 7
+        let ceiling         = profile.effectiveCeiling
+        let floor           = profile.effectiveFloor
+        let avgRatio        = ws / wt
+        let discountedRatio = avgRatio * 0.72   // 28% self-assessment discount
+        let overall         = max(floor, min(ceiling, floor + discountedRatio * (ceiling - floor)))
+
+        // Map each category into the same [floor, ceiling] range for the breakdown
+        let catScores = catRatios.mapValues { ratio in
+            let dr = ratio * 0.72
+            return max(floor, min(ceiling, floor + dr * (ceiling - floor)))
+        }
+        return (overall, catScores)
     }
 }
 
@@ -513,7 +561,7 @@ class SelfAssessmentViewModel: ObservableObject {
 // ─────────────────────────────────────────────────────────────
 
 struct SelfAssessmentFlowView: View {
-    var onComplete: ((Double, PlayerProfile) -> Void)? = nil
+    var onComplete: ((Double, PlayerProfile, [String: Double]) -> Void)? = nil
     @StateObject private var vm = SelfAssessmentViewModel()
 
     var body: some View {
@@ -524,7 +572,10 @@ struct SelfAssessmentFlowView: View {
                     score: vm.finalScore,
                     categoryScores: vm.categoryScores,
                     profile: vm.profile,
-                    onDone: { onComplete?(vm.finalScore, vm.profile) }
+                    onDone: {
+                        let mapped = Dictionary(uniqueKeysWithValues: vm.categoryScores.map { ($0.key.storageKey, $0.value) })
+                        onComplete?(vm.finalScore, vm.profile, mapped)
+                    }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if vm.onboardingComplete {

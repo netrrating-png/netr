@@ -10,6 +10,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let format: String?
     let max_players: Int?
     let scheduled_at: String?
+    let status: String?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -23,6 +24,13 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     nonisolated struct HostRef: Decodable, Sendable {
         let full_name: String?
         let username: String?
+    }
+
+    // distanceMiles is computed client-side — exclude it from JSON decoding
+    // so the auto-synthesized Decodable doesn't look for a missing JSON key
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id, format, courts, host, status
+        case join_code, created_at, max_players, scheduled_at
     }
 
     var courtName: String { courts?.name ?? "Unknown Court" }
@@ -124,32 +132,53 @@ class JoinGameViewModel {
             fmt.formatOptions = [.withInternetDateTime]
             let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
 
-            // Live games (waiting status within last 4 hours)
-            let live: [NearbyGame] = try await client
-                .from("games")
-                .select("""
-                    id, join_code, created_at, format, max_players, scheduled_at,
-                    courts(name, neighborhood, lat, lng),
-                    host:profiles!games_host_id_fkey(full_name, username)
-                """)
-                .in("status", values: ["active", "waiting"])
-                .gte("created_at", value: cutoff)
-                .order("created_at", ascending: false)
-                .execute()
-                .value
+            let twoHoursAgo = fmt.string(from: Date().addingTimeInterval(-2 * 3600))
 
-            // Scheduled games (future)
-            let scheduled: [NearbyGame] = try await client
-                .from("games")
-                .select("""
-                    id, join_code, created_at, format, max_players, scheduled_at,
-                    courts(name, neighborhood, lat, lng),
-                    host:profiles!games_host_id_fkey(full_name, username)
-                """)
-                .eq("status", value: "scheduled")
-                .order("scheduled_at", ascending: true)
-                .execute()
-                .value
+            let selects = [
+                // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
+                """
+                id, join_code, created_at, format, max_players, scheduled_at, status,
+                courts(name, neighborhood, lat, lng),
+                host:profiles!host_id(full_name, username)
+                """,
+                // Level 2: courts name only — needs games.court_id→courts FK, no extra court columns
+                "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name)",
+                // Level 3: bare — no FK joins needed at all
+                "id, join_code, created_at, format, max_players, scheduled_at, status",
+            ]
+
+            func fetchGames(select: String) async throws -> (live: [NearbyGame], scheduled: [NearbyGame]) {
+                let live: [NearbyGame] = try await client
+                    .from("games")
+                    .select(select)
+                    .in("status", values: ["active", "waiting"])
+                    .gte("created_at", value: cutoff)
+                    .order("created_at", ascending: false)
+                    .execute()
+                    .value
+                let scheduled: [NearbyGame] = try await client
+                    .from("games")
+                    .select(select)
+                    .gt("scheduled_at", value: twoHoursAgo)
+                    .in("status", values: ["scheduled", "waiting", "active"])
+                    .order("scheduled_at", ascending: true)
+                    .execute()
+                    .value
+                return (live, scheduled)
+            }
+
+            var live: [NearbyGame] = []
+            var scheduled: [NearbyGame] = []
+            for (i, select) in selects.enumerated() {
+                do {
+                    (live, scheduled) = try await fetchGames(select: select)
+                    print("[JoinGame] level \(i+1) select succeeded: \(live.count) live, \(scheduled.count) scheduled")
+                    break
+                } catch {
+                    print("[JoinGame] level \(i+1) failed: \(error.localizedDescription)")
+                    if i == selects.count - 1 { throw error }
+                }
+            }
 
             var filteredLive = live.map { game -> NearbyGame in
                 var g = game

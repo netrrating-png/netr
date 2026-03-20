@@ -5,6 +5,7 @@ import Supabase
 import Auth
 
 @Observable
+@MainActor
 class CourtsViewModel: NSObject, CLLocationManagerDelegate {
 
     var courts: [Court] = []
@@ -16,6 +17,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     var searchText: String = ""
     var selectedFilter: String = "All"
     var selectedNeighborhood: String?
+    var liveCourtIds: Set<String> = []
 
     var userLocation: CLLocationCoordinate2D?
 
@@ -52,7 +54,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         switch selectedFilter {
-        case "Live Now": results = results.filter { $0.verified }
+        case "Live Now": results = results.filter { liveCourtIds.contains($0.id) }
         case "Favorites": results = results.filter { favoriteCourtIds.contains($0.id) }
         case "Lights": results = results.filter { $0.lights }
         case "Indoor": results = results.filter { $0.indoor }
@@ -202,6 +204,23 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
     }
 
+    func loadLiveCourts() async {
+        let cutoff = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-4 * 3600))
+        do {
+            struct GameCourtId: Decodable { let courtId: String; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
+            let games: [GameCourtId] = try await client
+                .from("games")
+                .select("court_id")
+                .in("status", values: ["active", "waiting"])
+                .gte("created_at", value: cutoff)
+                .execute()
+                .value
+            liveCourtIds = Set(games.map { $0.courtId })
+        } catch {
+            print("Live courts load error: \(error)")
+        }
+    }
+
     func loadFavorites() async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         do {
@@ -265,6 +284,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
 
         let previousHome = homeCourtId
+        let wasAlreadyFavorite = favoriteCourtIds.contains(courtId)
         homeCourtId = courtId
         favoriteCourtIds.insert(courtId)
 
@@ -287,18 +307,31 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         do {
+            // Clear home court flag on all existing favorites
             try await client
                 .from("court_favorites")
                 .update(HomeUpdate(isHomeCourt: false))
                 .eq("user_id", value: userId)
                 .execute()
 
-            try await client
-                .from("court_favorites")
-                .upsert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true))
-                .execute()
+            if wasAlreadyFavorite {
+                // Row already exists — just flip is_home_court
+                try await client
+                    .from("court_favorites")
+                    .update(HomeUpdate(isHomeCourt: true))
+                    .eq("user_id", value: userId)
+                    .eq("court_id", value: courtId)
+                    .execute()
+            } else {
+                // No row yet — insert fresh
+                try await client
+                    .from("court_favorites")
+                    .insert(FavPayload(userId: userId, courtId: courtId, isHomeCourt: true))
+                    .execute()
+            }
         } catch {
             homeCourtId = previousHome
+            if !wasAlreadyFavorite { favoriteCourtIds.remove(courtId) }
             print("Set home court error: \(error)")
         }
     }

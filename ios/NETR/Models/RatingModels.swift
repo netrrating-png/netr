@@ -82,7 +82,7 @@ let skillCategories: [SkillCategory] = [
     SkillCategory(id: "dribbling",    label: "Handles",    icon: "dumbbell",        description: "Ball handling & shot creation",    colorHex: "#FFC247"),
     SkillCategory(id: "passing",      label: "Playmaking", icon: "route",           description: "Vision, passing & court reads",    colorHex: "#2ECC71"),
     SkillCategory(id: "defense",      label: "Defense",    icon: "shield",          description: "On-ball, help & intensity",        colorHex: "#FF3B30"),
-    SkillCategory(id: "rebounding",   label: "Rebounding", icon: "arrow-up-circle", description: "Boxing out & crashing the boards", colorHex: "#2DA8FF"),
+    SkillCategory(id: "rebounding",   label: "Rebounding", icon: "arrow-up-from-line", description: "Boxing out & crashing the boards", colorHex: "#2DA8FF"),
     SkillCategory(id: "basketballIQ", label: "IQ",         icon: "brain",           description: "Spacing, reads & decision-making", colorHex: "#9B8BFF"),
 ]
 
@@ -146,11 +146,16 @@ nonisolated struct VibeTier: Sendable {
     static func from(score: Double?) -> VibeTier? {
         guard let score else { return nil }
         switch score {
-        case 4.5...: return VibeTier(label: "Great Vibe", emoji: "🟢", color: .great)
-        case 3.5..<4.5: return VibeTier(label: "Solid",   emoji: "🟡", color: .solid)
-        case 2.5..<3.5: return VibeTier(label: "Mixed",   emoji: "🟠", color: .mixed)
-        default:        return VibeTier(label: "Bad Vibe", emoji: "🔴", color: .bad)
+        case 3.5...:      return VibeTier(label: "Great Vibe", emoji: "🟢", color: .great)
+        case 2.5..<3.5:   return VibeTier(label: "Solid",      emoji: "🟡", color: .solid)
+        case 1.75..<2.5:  return VibeTier(label: "Mixed",      emoji: "🟠", color: .mixed)
+        default:          return VibeTier(label: "Bad Vibe",   emoji: "🔴", color: .bad)
         }
+    }
+
+    /// Returns a tier for display purposes — defaults to Great Vibe (green) for new users with no score yet.
+    static func display(score: Double?) -> VibeTier {
+        from(score: score) ?? VibeTier(label: "Great Vibe", emoji: "🟢", color: .great)
     }
 
     static var none: VibeTier {

@@ -18,12 +18,17 @@ struct CreateGameView: View {
 
     // Scheduling
     @State private var scheduleForLater: Bool = false
-    @State private var scheduledDate: Date = {
+    @State private var scheduledDate: Date
+
+    init(viewModel: CourtsViewModel, preselectedCourt: Court? = nil) {
+        _viewModel = Bindable(wrappedValue: viewModel)
         let cal = Calendar.current
         let now = Date()
         let rounded = cal.date(bySetting: .minute, value: (cal.component(.minute, from: now) / 15 + 1) * 15, of: now) ?? now.addingTimeInterval(900)
-        return rounded
-    }()
+        _scheduledDate = State(initialValue: rounded)
+        _step = State(initialValue: preselectedCourt != nil ? 1 : 0)
+        _selectedCourt = State(initialValue: preselectedCourt)
+    }
 
     var body: some View {
         NavigationStack {
@@ -59,7 +64,7 @@ struct CreateGameView: View {
     private var stepIndicator: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                ForEach(0..<3, id: \.self) { idx in
+                ForEach(0..<4, id: \.self) { idx in
                     Capsule()
                         .fill(idx == step ? NETRTheme.neonGreen : NETRTheme.muted)
                         .frame(width: idx == step ? 24 : 6, height: 4)
@@ -80,7 +85,8 @@ struct CreateGameView: View {
         switch step {
         case 0: return "SELECT COURT"
         case 1: return "SELECT FORMAT"
-        case 2: return "SKILL LEVEL"
+        case 2: return "NOW OR LATER?"
+        case 3: return "SKILL LEVEL"
         default: return ""
         }
     }
@@ -90,7 +96,8 @@ struct CreateGameView: View {
         switch step {
         case 0: courtSelection
         case 1: formatSelection
-        case 2: skillSelection
+        case 2: timingSelection
+        case 3: skillSelection
         default: EmptyView()
         }
     }
@@ -386,6 +393,148 @@ struct CreateGameView: View {
         }
     }
 
+    private var timingSelection: some View {
+        VStack(spacing: 20) {
+            if let court = selectedCourt {
+                HStack(spacing: 6) {
+                    LucideIcon("map-pin", size: 11)
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    Text(court.name)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NETRTheme.subtext)
+                    Text("·")
+                        .foregroundStyle(NETRTheme.muted)
+                    Text(selectedFormat.rawValue)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+            }
+
+            VStack(spacing: 12) {
+                // Now button
+                Button {
+                    withAnimation(.snappy) {
+                        scheduleForLater = false
+                        step = 3
+                    }
+                } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.background.opacity(0.2))
+                                .frame(width: 44, height: 44)
+                            Image(systemName: "bolt.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(NETRTheme.background)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("I'M AT THE COURT NOW")
+                                .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                .tracking(0.5)
+                                .foregroundStyle(NETRTheme.background)
+                            Text("Start a live game right now")
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.background.opacity(0.7))
+                        }
+                        Spacer()
+                        LucideIcon("arrow-right", size: 16)
+                            .foregroundStyle(NETRTheme.background.opacity(0.8))
+                    }
+                    .padding(18)
+                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 16))
+                    .shadow(color: NETRTheme.neonGreen.opacity(0.3), radius: 10, y: 4)
+                }
+                .buttonStyle(PressButtonStyle())
+
+                // Schedule button
+                VStack(spacing: 0) {
+                    Button {
+                        withAnimation(.spring(response: 0.35)) {
+                            scheduleForLater = true
+                        }
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(scheduleForLater ? NETRTheme.gold.opacity(0.15) : NETRTheme.muted.opacity(0.1))
+                                    .frame(width: 44, height: 44)
+                                Image(systemName: "clock.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(scheduleForLater ? NETRTheme.gold : NETRTheme.subtext)
+                            }
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("SCHEDULE FOR LATER")
+                                    .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                    .tracking(0.5)
+                                    .foregroundStyle(scheduleForLater ? NETRTheme.gold : NETRTheme.text)
+                                Text("Pick a future date and time")
+                                    .font(.caption)
+                                    .foregroundStyle(NETRTheme.subtext)
+                            }
+                            Spacer()
+                            LucideIcon(scheduleForLater ? "chevron-down" : "chevron-right", size: 14)
+                                .foregroundStyle(scheduleForLater ? NETRTheme.gold : NETRTheme.muted)
+                        }
+                        .padding(18)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(PressButtonStyle())
+
+                    if scheduleForLater {
+                        VStack(spacing: 14) {
+                            Divider()
+                                .background(NETRTheme.gold.opacity(0.2))
+                                .padding(.horizontal, 18)
+
+                            DatePicker(
+                                "Start time",
+                                selection: $scheduledDate,
+                                in: Date()...,
+                                displayedComponents: [.date, .hourAndMinute]
+                            )
+                            .datePickerStyle(.compact)
+                            .tint(NETRTheme.gold)
+                            .colorScheme(.dark)
+                            .padding(.horizontal, 18)
+
+                            Button {
+                                withAnimation(.snappy) { step = 3 }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "clock.fill")
+                                        .font(.system(size: 13))
+                                    Text("CONFIRM TIME & CONTINUE")
+                                        .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
+                                        .tracking(0.5)
+                                }
+                                .foregroundStyle(NETRTheme.background)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(NETRTheme.gold, in: .rect(cornerRadius: 12))
+                            }
+                            .buttonStyle(PressButtonStyle())
+                            .padding(.horizontal, 18)
+                            .padding(.bottom, 18)
+                        }
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                    }
+                }
+                .background(
+                    scheduleForLater ? NETRTheme.gold.opacity(0.06) : NETRTheme.card,
+                    in: .rect(cornerRadius: 16)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(scheduleForLater ? NETRTheme.gold.opacity(0.4) : NETRTheme.border, lineWidth: 1)
+                )
+                .animation(.spring(response: 0.35), value: scheduleForLater)
+            }
+            .padding(.horizontal, 16)
+
+            Spacer()
+        }
+    }
+
     private var skillSelection: some View {
         VStack(spacing: 24) {
             Text("Filter who can join")
@@ -422,39 +571,27 @@ struct CreateGameView: View {
             }
             .padding(.horizontal, 16)
 
-            // Scheduling toggle
-            VStack(spacing: 12) {
-                HStack {
+            if scheduleForLater {
+                HStack(spacing: 8) {
                     Image(systemName: "clock.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(scheduleForLater ? NETRTheme.neonGreen : NETRTheme.muted)
-                    Text("Schedule for later")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(NETRTheme.text)
-                    Spacer()
-                    Toggle("", isOn: $scheduleForLater)
-                        .tint(NETRTheme.neonGreen)
-                        .labelsHidden()
+                        .font(.system(size: 13))
+                        .foregroundStyle(NETRTheme.gold)
+                    Text(scheduledDate, style: .date)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NETRTheme.gold)
+                    Text("at")
+                        .font(.system(size: 13))
+                        .foregroundStyle(NETRTheme.subtext)
+                    Text(scheduledDate, style: .time)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NETRTheme.gold)
                 }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(NETRTheme.gold.opacity(0.08), in: .rect(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.gold.opacity(0.3), lineWidth: 1))
                 .padding(.horizontal, 16)
-
-                if scheduleForLater {
-                    DatePicker(
-                        "Start time",
-                        selection: $scheduledDate,
-                        in: Date()...,
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                    .datePickerStyle(.compact)
-                    .tint(NETRTheme.neonGreen)
-                    .colorScheme(.dark)
-                    .padding(.horizontal, 16)
-                }
             }
-            .padding(.vertical, 12)
-            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
-            .padding(.horizontal, 16)
 
             Spacer()
 

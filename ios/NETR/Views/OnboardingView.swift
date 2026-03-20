@@ -12,6 +12,8 @@ struct OnboardingView: View {
     @State private var username: String = ""
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
     @State private var selfAssessmentScore: Double? = nil
+    @State private var selfAssessmentCategoryScores: [String: Double] = [:]
+    @State private var selfAssessmentIsProClaim: Bool = false
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -356,9 +358,11 @@ struct OnboardingView: View {
     }
 
     private var selfAssessmentStep: some View {
-        SelfAssessmentFlowView { score, _ in
+        SelfAssessmentFlowView { score, profile, catScores in
             selfAssessmentScore = score
-            SelfAssessmentStore.save(score: score, categoryScores: nil)
+            selfAssessmentCategoryScores = catScores
+            selfAssessmentIsProClaim = (profile.highestLevel == .nba)
+            SelfAssessmentStore.save(score: score, categoryScores: catScores)
             withAnimation { currentStep = 6 }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
@@ -548,18 +552,24 @@ struct OnboardingView: View {
                     do {
                         try await supabase.signInWithEmail(email: email, password: password)
                     } catch {
-                        // Wait briefly for the auth state listener to deliver
-                        // the session (e.g. when autoconfirm is on but the
-                        // signUp response didn't include it synchronously).
-                        try? await Task.sleep(for: .milliseconds(500))
+                        // Explicit sign-in failed — wait for the auth state
+                        // listener to deliver the session (e.g. autoconfirm).
+                        // Poll up to 3 seconds instead of a single fixed sleep.
+                        for _ in 0..<6 {
+                            try? await Task.sleep(for: .milliseconds(500))
+                            if supabase.session != nil { break }
+                        }
                     }
                 }
 
                 if let score, supabase.session != nil {
                     try await supabase.saveSelfAssessmentScore(
                         score: score,
-                        categoryScores: nil
+                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
                     )
+                    if selfAssessmentIsProClaim {
+                        try? await supabase.flagProVerificationPending()
+                    }
                 }
 
                 biometrics.isUnlocked = true

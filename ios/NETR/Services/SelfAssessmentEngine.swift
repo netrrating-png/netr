@@ -16,103 +16,135 @@ nonisolated struct AssessmentQuestion: Identifiable, Sendable {
     let options: [AssessmentOption]
 }
 
+// ─────────────────────────────────────────────────────────────
+// MARK: — Playing Level
+// "What is the highest level of play you played at?"
+// Age + frequency handle all decay — no "ex-" / "current" split.
+// ─────────────────────────────────────────────────────────────
+
 nonisolated enum PlayingLevel: String, CaseIterable, Identifiable, Sendable {
-    case brandNew = "brandNew"
-    case casual = "casual"
-    case parkRegular = "parkRegular"
-    case exMiddleSchool = "exMiddleSchool"
-    case exHighSchool = "exHighSchool"
-    case exJuniorVarsity = "exJuniorVarsity"
-    case exJucoOrD3 = "exJucoOrD3"
-    case exD1D2 = "exD1D2"
-    case currentLeague = "currentLeague"
-    case currentSemiPro = "currentSemiPro"
+    case neverPlayed       = "neverPlayed"
+    case parkRegular       = "parkRegular"
+    case middleSchool      = "middleSchool"
+    case recLeague         = "recLeague"
+    case highSchoolJV      = "highSchoolJV"
+    case highSchoolVarsity = "highSchoolVarsity"
+    case jucoOrD3          = "jucoOrD3"
+    case semiPro           = "semiPro"
+    case divisionII        = "divisionII"
+    case divisionI         = "divisionI"
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .brandNew:        return "Brand new to basketball"
-        case .casual:          return "Casual / pick-up only"
-        case .parkRegular:     return "Park regular — run every week"
-        case .exMiddleSchool:  return "Played middle school ball"
-        case .exJuniorVarsity: return "Played JV (limited varsity PT)"
-        case .exHighSchool:    return "Ex-high school player (varsity)"
-        case .exJucoOrD3:      return "Ex-collegiate — JUCO or D3"
-        case .exD1D2:          return "Ex-collegiate — D1 or D2"
-        case .currentLeague:   return "Playing in a rec / adult league"
-        case .currentSemiPro:  return "Currently semi-pro or high amateur"
+        case .neverPlayed:       return "Never played organized ball"
+        case .parkRegular:       return "Pickup / park regular"
+        case .middleSchool:      return "Middle school"
+        case .recLeague:         return "Rec / adult league"
+        case .highSchoolJV:      return "High school JV"
+        case .highSchoolVarsity: return "High school varsity"
+        case .jucoOrD3:          return "JUCO / Division III"
+        case .semiPro:           return "Semi-pro / Pro-Am"
+        case .divisionII:        return "NCAA Division II"
+        case .divisionI:         return "NCAA Division I"
         }
     }
 
     var sublabel: String {
         switch self {
-        case .brandNew:        return "Just learning the game"
-        case .casual:          return "No organized ball, just for fun"
-        case .parkRegular:     return "Consistent pick-up, know the game"
-        case .exMiddleSchool:  return "Some organized experience"
-        case .exJuniorVarsity: return "Played organized HS ball"
-        case .exHighSchool:    return "Started or had meaningful minutes"
-        case .exJucoOrD3:      return "Competed at college level"
-        case .exD1D2:          return "High-level college competition"
-        case .currentLeague:   return "Organized games regularly"
-        case .currentSemiPro:  return "High level — compensated or near pro"
+        case .neverPlayed:       return "Pickup, casual, or brand new to the game"
+        case .parkRegular:       return "Consistent pickup — no organized school ball"
+        case .middleSchool:      return "Played organized school ball at middle school level"
+        case .recLeague:         return "Adult or recreational league — open enrollment"
+        case .highSchoolJV:      return "Made a HS team — JV or limited varsity minutes"
+        case .highSchoolVarsity: return "Meaningful varsity minutes — started or key role"
+        case .jucoOrD3:          return "Competed at the collegiate level (JUCO or NCAA D3)"
+        case .semiPro:           return "Pro-Am, semi-pro, or elite amateur circuits"
+        case .divisionII:        return "NCAA Division II — scholarship-level competition"
+        case .divisionI:         return "NCAA Division I — highest amateur level"
         }
     }
 
     var icon: String {
         switch self {
-        case .brandNew:        return "footprints"
-        case .casual:          return "dumbbell"
-        case .parkRegular:     return "circle-dot"
-        case .exMiddleSchool:  return "graduation-cap"
-        case .exJuniorVarsity: return "graduation-cap"
-        case .exHighSchool:    return "trophy"
-        case .exJucoOrD3:      return "trophy"
-        case .exD1D2:          return "star"
-        case .currentLeague:   return "layout-grid"
-        case .currentSemiPro:  return "zap"
+        case .neverPlayed:       return "footprints"
+        case .parkRegular:       return "circle-dot"
+        case .middleSchool:      return "graduation-cap"
+        case .recLeague:         return "layout-grid"
+        case .highSchoolJV:      return "award"
+        case .highSchoolVarsity: return "trophy"
+        case .jucoOrD3:          return "medal"
+        case .semiPro:           return "zap"
+        case .divisionII:        return "star"
+        case .divisionI:         return "crown"
         }
     }
 
+    // ── Score band ─────────────────────────────────────────────
+    // floor: minimum score at this level (with heavy age/freq decay)
+    // scoreCeiling: maximum reachable at this level (young, active, peak)
+
     var baseScore: Double {
         switch self {
-        case .brandNew:        return 2.0
-        case .casual:          return 2.5
-        case .parkRegular:     return 3.5
-        case .exMiddleSchool:  return 3.2
-        case .exJuniorVarsity: return 3.8
-        case .exHighSchool:    return 4.5
-        case .exJucoOrD3:      return 5.5
-        case .exD1D2:          return 6.5
-        case .currentLeague:   return 4.5
-        case .currentSemiPro:  return 7.0
+        case .neverPlayed:       return 2.0
+        case .parkRegular:       return 2.5
+        case .middleSchool:      return 2.6
+        case .recLeague:         return 2.8
+        case .highSchoolJV:      return 3.0
+        case .highSchoolVarsity: return 3.5
+        case .jucoOrD3:          return 4.0
+        case .semiPro:           return 4.5
+        case .divisionII:        return 5.0
+        case .divisionI:         return 5.5
         }
     }
 
     var scoreCeiling: Double {
         switch self {
-        case .brandNew:        return 3.0
-        case .casual:          return 4.0
-        case .parkRegular:     return 5.5
-        case .exMiddleSchool:  return 4.8
-        case .exJuniorVarsity: return 5.5
-        case .exHighSchool:    return 6.5
-        case .exJucoOrD3:      return 7.5
-        case .exD1D2:          return 8.5
-        case .currentLeague:   return 7.0
-        case .currentSemiPro:  return 9.4
+        case .neverPlayed:       return 3.0
+        case .parkRegular:       return 4.5
+        case .middleSchool:      return 4.8
+        case .recLeague:         return 5.0
+        case .highSchoolJV:      return 5.6
+        case .highSchoolVarsity: return 6.8
+        case .jucoOrD3:          return 7.6
+        case .semiPro:           return 8.2
+        case .divisionII:        return 8.8
+        case .divisionI:         return 9.5
+        }
+    }
+
+    // Frequency sensitivity — higher levels decay faster when inactive
+    var frequencySensitivity: Double {
+        switch self {
+        case .neverPlayed:       return 0.30
+        case .parkRegular:       return 0.40
+        case .middleSchool:      return 0.45
+        case .recLeague:         return 0.50
+        case .highSchoolJV:      return 0.60
+        case .highSchoolVarsity: return 0.75
+        case .jucoOrD3:          return 0.90
+        case .semiPro:           return 1.00
+        case .divisionII:        return 1.10
+        case .divisionI:         return 1.20
         }
     }
 }
 
+// ─────────────────────────────────────────────────────────────
+// MARK: — Age Group
+// athleticModifier kept for UI display only ("age-adjusted" note).
+// The real age impact is applied via ageLevelDecay() in the engine.
+// ─────────────────────────────────────────────────────────────
+
 nonisolated enum AgeGroup: String, CaseIterable, Identifiable, Sendable {
-    case youth = "youth"
+    case youth      = "youth"
     case youngAdult = "youngAdult"
-    case adult = "adult"
-    case lateAdult = "lateAdult"
-    case masters = "masters"
-    case senior = "senior"
+    case adult      = "adult"
+    case lateAdult  = "lateAdult"
+    case masters    = "masters"
+    case senior     = "senior"
 
     var id: String { rawValue }
 
@@ -132,15 +164,16 @@ nonisolated enum AgeGroup: String, CaseIterable, Identifiable, Sendable {
         case .youth:      return "Still developing athletically"
         case .youngAdult: return "Physical prime"
         case .adult:      return "Prime or near-prime"
-        case .lateAdult:  return "Experience starts compensating"
-        case .masters:    return "Vet game, some athletic decline"
+        case .lateAdult:  return "Experience compensates for some decline"
+        case .masters:    return "Vet game, noticeable athletic decline"
         case .senior:     return "Pure IQ and experience"
         }
     }
 
+    // UI-only: used to show "age-adjusted" note on the result screen
     var athleticModifier: Double {
         switch self {
-        case .youth:      return 0.97
+        case .youth:      return 1.00
         case .youngAdult: return 1.00
         case .adult:      return 0.97
         case .lateAdult:  return 0.91
@@ -150,13 +183,17 @@ nonisolated enum AgeGroup: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+// ─────────────────────────────────────────────────────────────
+// MARK: — Play Frequency
+// ─────────────────────────────────────────────────────────────
+
 nonisolated enum PlayFrequency: String, CaseIterable, Identifiable, Sendable {
-    case almostNever = "almostNever"
+    case almostNever  = "almostNever"
     case fewTimesYear = "fewTimesYear"
-    case monthly = "monthly"
-    case weekly = "weekly"
-    case multiWeekly = "multiWeekly"
-    case daily = "daily"
+    case monthly      = "monthly"
+    case weekly       = "weekly"
+    case multiWeekly  = "multiWeekly"
+    case daily        = "daily"
 
     var id: String { rawValue }
 
@@ -182,28 +219,22 @@ nonisolated enum PlayFrequency: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var frequencyModifier: Double {
+    // Base decay factor before level sensitivity is applied
+    var baseFactor: Double {
         switch self {
-        case .almostNever:  return 0.78
-        case .fewTimesYear: return 0.86
-        case .monthly:      return 0.92
-        case .weekly:       return 0.97
-        case .multiWeekly:  return 1.00
-        case .daily:        return 1.00
-        }
-    }
-
-    var floorModifier: Double {
-        switch self {
-        case .almostNever:  return 0.82
-        case .fewTimesYear: return 0.88
-        case .monthly:      return 0.94
-        case .weekly:       return 0.98
-        case .multiWeekly:  return 1.00
+        case .almostNever:  return 0.72
+        case .fewTimesYear: return 0.81
+        case .monthly:      return 0.88
+        case .weekly:       return 0.94
+        case .multiWeekly:  return 0.98
         case .daily:        return 1.00
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// MARK: — Player Position
+// ─────────────────────────────────────────────────────────────
 
 nonisolated enum PlayerPosition: String, CaseIterable, Identifiable, Sendable {
     case pg = "pg"
@@ -254,61 +285,71 @@ nonisolated enum PlayerPosition: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    // ── Position weights ────────────────────────────────────────
+    // Higher = this category matters more for the position.
+    // Low weights on irrelevant categories ensure they barely move the score.
+    // Keys match question categories: scoring, iq, defense, handles,
+    //                                 playmaking, finishing, rebounding
+
     var categoryWeightOverrides: [String: Double] {
         switch self {
         case .pg:
             return [
-                "scoring":    0.85,
+                "scoring":    0.80,   // important but not primary
+                "finishing":  0.65,   // less critical
+                "handles":    1.50,   // most important — PG lives and dies by this
+                "playmaking": 1.40,   // second most important
+                "defense":    0.85,
+                "rebounding": 0.20,   // nearly irrelevant — a PG missing boards is fine
                 "iq":         1.35,
-                "defense":    0.90,
-                "handles":    1.35,
-                "playmaking": 1.35,
-                "finishing":  0.75,
-                "rebounding": 0.45,
             ]
         case .sg:
             return [
-                "scoring":    1.25,
-                "iq":         1.00,
-                "defense":    0.95,
-                "handles":    1.05,
-                "playmaking": 0.85,
+                "scoring":    1.35,   // primary role
                 "finishing":  1.10,
-                "rebounding": 0.65,
+                "handles":    1.15,
+                "playmaking": 0.90,
+                "defense":    1.00,
+                "rebounding": 0.50,   // not expected
+                "iq":         1.00,
             ]
         case .sf:
             return [
-                "scoring":    1.05,
-                "iq":         1.05,
-                "defense":    1.10,
-                "handles":    0.90,
-                "playmaking": 0.95,
+                "scoring":    1.10,
                 "finishing":  1.05,
-                "rebounding": 0.90,
+                "handles":    0.85,
+                "playmaking": 1.00,
+                "defense":    1.15,
+                "rebounding": 0.85,
+                "iq":         1.05,
             ]
         case .pf:
             return [
-                "scoring":    0.90,
+                "scoring":    0.85,
+                "finishing":  1.20,
+                "handles":    0.50,   // not expected
+                "playmaking": 0.70,
+                "defense":    1.20,
+                "rebounding": 1.40,
                 "iq":         1.00,
-                "defense":    1.15,
-                "handles":    0.65,
-                "playmaking": 0.75,
-                "finishing":  1.15,
-                "rebounding": 1.35,
             ]
         case .c:
             return [
-                "scoring":    0.70,
-                "iq":         0.95,
-                "defense":    1.20,
-                "handles":    0.40,
-                "playmaking": 0.65,
-                "finishing":  1.20,
-                "rebounding": 1.55,
+                "scoring":    0.30,   // barely matters for a C
+                "finishing":  1.30,
+                "handles":    0.20,   // nearly irrelevant
+                "playmaking": 0.55,
+                "defense":    1.25,
+                "rebounding": 1.65,   // single most important category
+                "iq":         0.90,
             ]
         }
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// MARK: — Assessment Context
+// ─────────────────────────────────────────────────────────────
 
 nonisolated struct AssessmentContext: Sendable {
     let ageGroup: AgeGroup
@@ -316,6 +357,10 @@ nonisolated struct AssessmentContext: Sendable {
     let playFrequency: PlayFrequency
     let position: PlayerPosition
 }
+
+// ─────────────────────────────────────────────────────────────
+// MARK: — Question Bank
+// ─────────────────────────────────────────────────────────────
 
 nonisolated enum AssessmentQuestionBank: Sendable {
     static let all: [AssessmentQuestion] = [
@@ -501,33 +546,162 @@ nonisolated enum AssessmentQuestionBank: Sendable {
     ]
 }
 
-nonisolated enum AssessmentScoringEngine: Sendable {
-    static let selfAssessmentDiscount: Double = 0.72
-    static let absoluteCeiling: Double = 9.4
-    static let absoluteFloor: Double = 2.0
+// ─────────────────────────────────────────────────────────────
+// MARK: — Scoring Engine
+// ─────────────────────────────────────────────────────────────
 
+nonisolated enum AssessmentScoringEngine: Sendable {
+
+    static let selfAssessmentDiscount: Double = 0.85  // discount self-reported answers
+    static let absoluteCeiling: Double = 9.5           // regular player max (pros are 9.5+)
+    static let absoluteFloor: Double   = 2.0
+
+    // Global category weights (position weights multiply on top of these)
     static let categoryWeights: [String: Double] = [
-        "scoring": 1.0,
-        "iq": 1.15,
-        "defense": 1.0,
-        "handles": 0.9,
-        "playmaking": 1.0,
-        "finishing": 0.9,
+        "scoring":    1.00,
+        "iq":         1.10,
+        "defense":    1.00,
+        "handles":    0.90,
+        "playmaking": 1.00,
+        "finishing":  0.90,
         "rebounding": 0.85,
     ]
+
+    // ── Age × Level decay ───────────────────────────────────────
+    // How much of the level band can you still reach given your age?
+    // Higher levels decay faster with age since you've been away from
+    // a higher competition environment for longer.
+    // Returns a multiplier (0–1) applied to the (ceiling - floor) band.
+
+    static func ageLevelDecay(level: PlayingLevel, age: AgeGroup) -> Double {
+        switch age {
+
+        case .youth: // 13–18 — at or near peak for their level
+            switch level {
+            case .neverPlayed, .parkRegular, .middleSchool,
+                 .recLeague, .highSchoolJV, .highSchoolVarsity:
+                return 1.00
+            case .jucoOrD3, .semiPro, .divisionII, .divisionI:
+                return 0.95 // rare at this age — early college
+            }
+
+        case .youngAdult: // 19–25 — physical prime, minimal decay
+            switch level {
+            case .neverPlayed, .parkRegular, .middleSchool, .recLeague:
+                return 1.00
+            case .highSchoolJV:
+                return 0.97 // recently finished JV
+            case .highSchoolVarsity:
+                return 0.97 // recently finished varsity
+            case .jucoOrD3, .semiPro, .divisionII, .divisionI:
+                return 1.00 // likely currently at this level
+            }
+
+        case .adult: // 26–32 — modest decay begins
+            switch level {
+            case .neverPlayed, .parkRegular, .middleSchool, .recLeague:
+                return 0.98
+            case .highSchoolJV:
+                return 0.93
+            case .highSchoolVarsity:
+                return 0.91
+            case .jucoOrD3:
+                return 0.90
+            case .semiPro:
+                return 0.89
+            case .divisionII:
+                return 0.88
+            case .divisionI:
+                return 0.87
+            }
+
+        case .lateAdult: // 33–40 — meaningful decay for high levels
+            switch level {
+            case .neverPlayed, .parkRegular, .middleSchool, .recLeague:
+                return 0.95
+            case .highSchoolJV:
+                return 0.86
+            case .highSchoolVarsity:
+                return 0.83
+            case .jucoOrD3:
+                return 0.80
+            case .semiPro:
+                return 0.79
+            case .divisionII:
+                return 0.78
+            case .divisionI:
+                return 0.77
+            }
+
+        case .masters: // 41–50 — significant decay
+            switch level {
+            case .neverPlayed, .parkRegular, .middleSchool, .recLeague:
+                return 0.91
+            case .highSchoolJV:
+                return 0.79
+            case .highSchoolVarsity:
+                return 0.75
+            case .jucoOrD3:
+                return 0.72
+            case .semiPro:
+                return 0.71
+            case .divisionII:
+                return 0.70
+            case .divisionI:
+                return 0.69
+            }
+
+        case .senior: // 51+ — heavy decay, IQ carries the load
+            switch level {
+            case .neverPlayed, .parkRegular, .middleSchool, .recLeague:
+                return 0.87
+            case .highSchoolJV:
+                return 0.73
+            case .highSchoolVarsity:
+                return 0.69
+            case .jucoOrD3:
+                return 0.65
+            case .semiPro:
+                return 0.64
+            case .divisionII:
+                return 0.63
+            case .divisionI:
+                return 0.62
+            }
+        }
+    }
+
+    // ── Frequency decay ─────────────────────────────────────────
+    // How much does inactivity hurt you at your level?
+    // High-level players who rarely play decay much faster than
+    // a park regular who plays rarely — they have more to lose.
+    // Formula: baseFactor ^ levelSensitivity
+
+    static func frequencyDecay(level: PlayingLevel, freq: PlayFrequency) -> Double {
+        pow(freq.baseFactor, level.frequencySensitivity)
+    }
+
+    // ── Main calculation ────────────────────────────────────────
 
     static func calculate(
         answers: [String: Int],
         context: AssessmentContext
     ) -> AssessmentResult {
-        let questions = AssessmentQuestionBank.all
-        let ageMod = context.ageGroup.athleticModifier
-        let freqMod = context.playFrequency.frequencyModifier
-        let floorMod = context.playFrequency.floorModifier
+        let questions   = AssessmentQuestionBank.all
+        let floor       = context.playingLevel.baseScore
+        let ceiling     = min(context.playingLevel.scoreCeiling, absoluteCeiling)
+        let band        = ceiling - floor
 
-        let base = context.playingLevel.baseScore * floorMod
-        let ceiling = min(context.playingLevel.scoreCeiling, absoluteCeiling)
+        // 1. Combined decay from age × level interaction and frequency
+        let ageFactor   = ageLevelDecay(level: context.playingLevel, age: context.ageGroup)
+        let freqFactor  = frequencyDecay(level: context.playingLevel, freq: context.playFrequency)
+        let combined    = ageFactor * freqFactor
 
+        // 2. Effective ceiling: how high can this player actually reach?
+        //    Floor stays fixed — the level guarantees a minimum.
+        let effectiveCeiling = min(floor + band * combined, ceiling)
+
+        // 3. Score answers per category (0 → floor, 1 → effectiveCeiling)
         let posOverrides = context.position.categoryWeightOverrides
 
         var rawByCategory: [String: [Double]] = [:]
@@ -538,57 +712,55 @@ nonisolated enum AssessmentScoringEngine: Sendable {
             rawByCategory[q.category, default: []].append(option.score)
         }
 
+        // 4. Average answers per category and apply self-assessment discount
         var categoryAvg: [String: Double] = [:]
         for (cat, scores) in rawByCategory {
-            categoryAvg[cat] = scores.reduce(0, +) / Double(scores.count)
+            let avg = scores.reduce(0, +) / Double(scores.count)
+            categoryAvg[cat] = avg * selfAssessmentDiscount
         }
 
-        var discounted: [String: Double] = [:]
-        for (cat, avg) in categoryAvg {
-            discounted[cat] = avg * selfAssessmentDiscount
-        }
-
+        // 5. Map discounted score (0–1) into [floor, effectiveCeiling]
         var netrByCategory: [String: Double] = [:]
-        for (cat, d) in discounted {
-            let mapped = base + d * (ceiling - base)
-            let afterAge = mapped * ageMod
-            let afterFreq = afterAge * freqMod
-            netrByCategory[cat] = min(max(afterFreq, absoluteFloor), ceiling)
+        for (cat, d) in categoryAvg {
+            let mapped = floor + d * (effectiveCeiling - floor)
+            netrByCategory[cat] = mapped.clamped(to: absoluteFloor...effectiveCeiling)
         }
 
+        // 6. Fill any unanswered categories with the floor
         let allCategories = ["scoring", "iq", "defense", "handles", "playmaking", "finishing", "rebounding"]
         for cat in allCategories where netrByCategory[cat] == nil {
-            let fallback = base * ageMod * freqMod
-            netrByCategory[cat] = min(max(fallback, absoluteFloor), ceiling)
+            netrByCategory[cat] = floor
         }
 
+        // 7. Weighted composite: global weight × position weight
         var wSum = 0.0, wTotal = 0.0
-        for (cat, netr) in netrByCategory {
-            let baseW = categoryWeights[cat] ?? 1.0
-            let posW = posOverrides[cat] ?? 1.0
-            let w = baseW * posW
-            wSum += netr * w
+        for (cat, score) in netrByCategory {
+            let globalW = categoryWeights[cat] ?? 1.0
+            let posW    = posOverrides[cat]    ?? 1.0
+            let w       = globalW * posW
+            wSum   += score * w
             wTotal += w
         }
-        let composite = wTotal > 0 ? wSum / wTotal : base
-        let overall = NETRRating.clamp(min(max(composite, absoluteFloor), ceiling))
+        let composite = wTotal > 0 ? wSum / wTotal : floor
+        let overall   = composite.clamped(to: absoluteFloor...effectiveCeiling)
 
+        // 8. Strengths / focus areas weighted by position relevance
         let sorted = netrByCategory.sorted { a, b in
             let wa = (posOverrides[a.key] ?? 1.0) * a.value
             let wb = (posOverrides[b.key] ?? 1.0) * b.value
             return wa > wb
         }
-        let strengths = Array(sorted.prefix(2).map { $0.key })
-        let focusAreas = Array(sorted.suffix(2).map { $0.key })
+        let strengths   = Array(sorted.prefix(2).map { $0.key })
+        let focusAreas  = Array(sorted.suffix(2).map { $0.key })
 
         return AssessmentResult(
-            overallScore: overall,
+            overallScore:   overall,
             categoryScores: netrByCategory,
-            strengths: strengths,
-            focusAreas: focusAreas,
-            context: context,
-            tierLabel: tierLabel(overall),
-            tierColorHex: tierColorHex(overall)
+            strengths:      strengths,
+            focusAreas:     focusAreas,
+            context:        context,
+            tierLabel:      tierLabel(overall),
+            tierColorHex:   tierColorHex(overall)
         )
     }
 
@@ -600,6 +772,10 @@ nonisolated enum AssessmentScoringEngine: Sendable {
         NETRRating.tier(for: r)?.hexColor ?? "#444444"
     }
 }
+
+// ─────────────────────────────────────────────────────────────
+// MARK: — Assessment Result
+// ─────────────────────────────────────────────────────────────
 
 nonisolated struct AssessmentResult: Sendable {
     let overallScore: Double
@@ -613,22 +789,22 @@ nonisolated struct AssessmentResult: Sendable {
     var formattedScore: String { String(format: "%.1f", overallScore) }
 
     static let categoryDisplayNames: [String: String] = [
-        "scoring": "Scoring",
-        "iq": "IQ",
-        "defense": "Defense",
-        "handles": "Handles",
+        "scoring":    "Scoring",
+        "iq":         "IQ",
+        "defense":    "Defense",
+        "handles":    "Handles",
         "playmaking": "Playmaking",
-        "finishing": "Finishing",
+        "finishing":  "Finishing",
         "rebounding": "Rebounding",
     ]
 
     static let categoryIcons: [String: String] = [
-        "scoring": "crosshair",
-        "iq": "brain",
-        "defense": "shield",
-        "handles": "hand",
+        "scoring":    "crosshair",
+        "iq":         "brain",
+        "defense":    "shield",
+        "handles":    "hand",
         "playmaking": "zap",
-        "finishing": "flame",
+        "finishing":  "flame",
         "rebounding": "arrow-up-circle",
     ]
 
@@ -650,5 +826,15 @@ nonisolated struct AssessmentResult: Sendable {
         case 3.0..<4.5: return "Developing"
         default:        return "Focus area"
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: — Helpers
+// ─────────────────────────────────────────────────────────────
+
+private extension Double {
+    func clamped(to range: ClosedRange<Double>) -> Double {
+        Swift.max(range.lowerBound, Swift.min(self, range.upperBound))
     }
 }

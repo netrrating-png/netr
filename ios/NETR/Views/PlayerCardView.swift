@@ -28,7 +28,7 @@ struct PlayerCardView: View {
         SkillRow(icon: "zap", label: "Handles", value: player.skills.ballHandling),
         SkillRow(icon: "send", label: "Playmaking", value: player.skills.playmaking),
         SkillRow(icon: "shield", label: "Defense", value: player.skills.defense),
-        SkillRow(icon: "arrow-up-circle", label: "Rebounding", value: player.skills.rebounding),
+        SkillRow(icon: "arrow-up-from-line", label: "Rebounding", value: player.skills.rebounding),
         SkillRow(icon: "brain", label: "IQ", value: player.skills.basketballIQ),
     ]}
 

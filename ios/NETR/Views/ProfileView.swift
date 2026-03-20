@@ -16,6 +16,8 @@ struct ProfileView: View {
     @State private var showBioEdit: Bool = false
     @State private var showRatingScale: Bool = false
     @State private var showEditProfile: Bool = false
+    @State private var showCourtLeaderboard: Bool = false
+    @State private var localCourtsVM = CourtsViewModel()
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -89,13 +91,11 @@ struct ProfileView: View {
 
                             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
 
-                            if let vm = courtsViewModel {
-                                let favCourts = vm.courts.filter { vm.favoriteCourtIds.contains($0.id) }
-                                if !favCourts.isEmpty {
-                                    homeCourtsRow(courts: favCourts, accentColor: ratingColor(for: user))
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 40)
-                                }
+                            if let court = viewModel.homeCourt {
+                                homeCourtRow(court: court, accentColor: ratingColor(for: user))
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 40)
+                                    .onTapGesture { showCourtLeaderboard = true }
                             }
 
                             Spacer(minLength: 100)
@@ -151,6 +151,14 @@ struct ProfileView: View {
         .sheet(isPresented: $showEditProfile) {
             if let user = viewModel.player {
                 EditProfileView(viewModel: viewModel, player: user)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(NETRTheme.background)
+            }
+        }
+        .sheet(isPresented: $showCourtLeaderboard) {
+            if let court = viewModel.homeCourt {
+                CourtDetailView(court: court, viewModel: courtsViewModel ?? localCourtsVM, initialTab: 4)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.background)
@@ -245,16 +253,20 @@ struct ProfileView: View {
                     avatarInitials(user: user, color: color)
                 }
 
-                if let vibeScore = viewModel.vibeScore, vibeScore > 0 {
-                    let vibeColor = VibeTier.from(score: vibeScore).map {
-                        Color(red: $0.color.red, green: $0.color.green, blue: $0.color.blue)
-                    } ?? NETRTheme.subtext
+                let vibeTier = VibeTier.display(score: viewModel.vibeScore)
+                let vibeColor = Color(red: vibeTier.color.red, green: vibeTier.color.green, blue: vibeTier.color.blue)
+                ZStack {
+                    Circle()
+                        .fill(vibeColor.opacity(0.35))
+                        .frame(width: 20, height: 20)
                     Circle()
                         .fill(vibeColor)
-                        .frame(width: 14, height: 14)
-                        .shadow(color: vibeColor.opacity(0.8), radius: 4)
-                        .offset(x: 28, y: 28)
+                        .frame(width: 13, height: 13)
+                        .overlay(Circle().stroke(NETRTheme.background, lineWidth: 2))
+                        .shadow(color: vibeColor, radius: 6)
+                        .shadow(color: vibeColor.opacity(0.5), radius: 10)
                 }
+                .offset(x: 0, y: 34)
 
                 if viewModel.isCurrentUser {
                     PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
@@ -354,7 +366,7 @@ struct ProfileView: View {
                 }
             }
 
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Text(user.username)
                     .font(.system(size: 13))
                     .foregroundStyle(NETRTheme.subtext)
@@ -370,6 +382,21 @@ struct ProfileView: View {
                 Text(user.city)
                     .font(.system(size: 12))
                     .foregroundStyle(NETRTheme.subtext)
+                if let _ = viewModel.homeCourt {
+                    Text("·")
+                        .foregroundStyle(NETRTheme.muted)
+                    Button { showCourtLeaderboard = true } label: {
+                        HStack(spacing: 3) {
+                            LucideIcon("home", size: 11)
+                                .foregroundStyle(NETRTheme.neonGreen)
+                            Text(viewModel.homeCourt!.name)
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                                .lineLimit(1)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -523,18 +550,6 @@ struct ProfileView: View {
                         .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
                     }
                     .buttonStyle(PressButtonStyle())
-                } else if !isPeerRated {
-                    Button {
-                        showSelfAssessment = true
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.counterclockwise")
-                                .font(.system(size: 11, weight: .semibold))
-                            Text("Retake Self Assessment")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(NETRTheme.neonGreen)
-                    }
                 }
             }
 
@@ -702,39 +717,52 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Home Courts
+    // MARK: - Home Court
 
-    private func homeCourtsRow(courts: [Court], accentColor: Color) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private func homeCourtRow(court: Court, accentColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("HOME COURTS")
+                Text("HOME COURT")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NETRTheme.subtext)
                     .tracking(1.5)
                 Spacer()
-                LucideIcon("map-pin", size: 14)
-                    .foregroundStyle(NETRTheme.muted)
-            }
-
-            ForEach(Array(courts.prefix(3))) { court in
-                HStack(spacing: 12) {
-                    Circle()
-                        .fill(accentColor)
-                        .frame(width: 7, height: 7)
-                        .shadow(color: accentColor.opacity(0.6), radius: 4)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(court.name)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(court.neighborhood)
-                            .font(.system(size: 11))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    Spacer()
-                    LucideIcon("chevron-right", size: 11)
-                        .foregroundStyle(NETRTheme.muted)
+                HStack(spacing: 4) {
+                    LucideIcon("trophy", size: 11)
+                        .foregroundStyle(NETRTheme.gold)
+                    Text("TOP 20")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(NETRTheme.gold)
+                        .tracking(0.8)
                 }
             }
+
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(accentColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    LucideIcon("home", size: 15)
+                        .foregroundStyle(accentColor)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(court.name)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text(court.neighborhood)
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                LucideIcon("chevron-right", size: 11)
+                    .foregroundStyle(NETRTheme.muted)
+            }
+            .padding(12)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(accentColor.opacity(0.25), lineWidth: 1))
         }
     }
 
