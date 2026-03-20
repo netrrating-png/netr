@@ -1219,8 +1219,8 @@ struct GamePlayersPreviewSheet: View {
         isLoading = true
         defer { isLoading = false }
 
-        // Direct game_players queries are RLS-restricted in this context, so we go through
-        // games → game_players(…profiles(…)) as a doubly-nested join instead.
+        // Direct game_players queries are RLS-restricted in this context, so we embed
+        // game_players inside the games query to get user IDs.
         nonisolated struct GameWithPlayers: Decodable, Sendable {
             let id: String
             let format: String
@@ -1235,18 +1235,8 @@ struct GamePlayersPreviewSheet: View {
             let gamePlayers: [EmbeddedPlayer]
 
             nonisolated struct EmbeddedPlayer: Decodable, Sendable {
-                let id: String
                 let userId: String
-                let gameId: String
-                let checkedInAt: String?
-                let checkedOutAt: String?
-                let removed: Bool?
-                let profile: LobbyPlayerProfile
-                nonisolated enum CodingKeys: String, CodingKey {
-                    case id; case userId = "user_id"; case gameId = "game_id"
-                    case checkedInAt = "checked_in_at"; case checkedOutAt = "checked_out_at"
-                    case removed; case profile = "profiles"
-                }
+                nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
             }
             nonisolated enum CodingKeys: String, CodingKey {
                 case id; case format; case skillLevel = "skill_level"; case status
@@ -1259,7 +1249,7 @@ struct GamePlayersPreviewSheet: View {
 
         guard let gwp: GameWithPlayers = try? await client
             .from("games")
-            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id, game_players(id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings))")
+            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id, game_players(user_id)")
             .eq("id", value: gameId)
             .single()
             .execute()
@@ -1272,15 +1262,48 @@ struct GamePlayersPreviewSheet: View {
             createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt
         )
 
-        players = gwp.gamePlayers
-            .filter { !($0.removed ?? false) }
-            .map { ep in
-                LobbyPlayer(
-                    id: ep.id, userId: ep.userId, gameId: ep.gameId,
-                    checkedInAt: ep.checkedInAt, checkedOutAt: ep.checkedOutAt,
-                    removed: ep.removed,
-                    profile: ep.profile
-                )
+        let userIds = gwp.gamePlayers.map { $0.userId }
+        guard !userIds.isEmpty else { return }
+
+        // Minimal profile fetch — only columns guaranteed to exist. Avoids silently failing
+        // when cat_* skill columns haven't been added to the remote DB yet.
+        nonisolated struct SlimProfile: Decodable, Sendable {
+            let id: String
+            let fullName: String?
+            let username: String?
+            let position: String?
+            let avatarUrl: String?
+            let netrScore: Double?
+            let vibeScore: Double?
+            let totalRatings: Int?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case fullName = "full_name"; case username; case position
+                case avatarUrl = "avatar_url"; case netrScore = "netr_score"
+                case vibeScore = "vibe_score"; case totalRatings = "total_ratings"
             }
+        }
+
+        let profiles: [SlimProfile] = (try? await client
+            .from("profiles")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+            .in("id", values: userIds)
+            .execute()
+            .value) ?? []
+
+        let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+
+        players = userIds.enumerated().map { idx, uid in
+            let p = profileMap[uid]
+            return LobbyPlayer(
+                id: "\(gameId)-\(idx)", userId: uid, gameId: gameId,
+                checkedInAt: nil, checkedOutAt: nil, removed: false,
+                profile: LobbyPlayerProfile(
+                    id: uid,
+                    fullName: p?.fullName, username: p?.username, position: p?.position,
+                    avatarUrl: p?.avatarUrl, netrScore: p?.netrScore, vibeScore: p?.vibeScore,
+                    totalRatings: p?.totalRatings
+                )
+            )
+        }
     }
 }
