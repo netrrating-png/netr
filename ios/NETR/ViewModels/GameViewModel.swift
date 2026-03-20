@@ -36,15 +36,7 @@ class GameViewModel {
         }
 
         let code = generateJoinCode()
-        let maxPlayers: Int = {
-            switch format {
-            case "3v3": return 6
-            case "4v4": return 8
-            case "5v5": return 10
-            case "Run": return 20
-            default: return 10
-            }
-        }()
+        let maxPlayers: Int = GameFormat(rawValue: format)?.maxPlayers ?? 10
 
         var scheduledAtStr: String? = nil
         if let scheduledAt {
