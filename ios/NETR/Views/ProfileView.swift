@@ -939,10 +939,8 @@ struct ProfileFollowListSheet: View {
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(NETRRating.color(for: rating))
                     }
-                    if let vibe = user.vibeScore {
-                        Label(String(format: "%.1f", vibe), systemImage: "heart.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color.cyan)
+                    if user.vibeScore != nil {
+                        VibeDecalView(vibe: user.vibeScore, size: .small)
                     }
                 }
             }
