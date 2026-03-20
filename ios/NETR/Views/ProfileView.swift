@@ -619,7 +619,10 @@ struct ProfileView: View {
     // MARK: - Radar Section
 
     private func radarSection(user: Player) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        let radarSkills = buildRadarSkills(from: user.skills)
+        return VStack(alignment: .leading, spacing: 16) {
+            ArchetypeBadge(skills: radarSkills)
+
             HStack {
                 Text("SKILL BREAKDOWN")
                     .font(.system(size: 10, weight: .bold))
@@ -640,7 +643,7 @@ struct ProfileView: View {
                 }
             }
 
-            SkillRadarView(skills: buildRadarSkills(from: user.skills), size: 280, animated: true, tierColor: NETRRating.color(for: user.rating))
+            SkillRadarView(skills: radarSkills, size: 280, animated: true, tierColor: NETRRating.color(for: user.rating))
         }
     }
 
