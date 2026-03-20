@@ -1265,8 +1265,9 @@ struct GamePlayersPreviewSheet: View {
         let userIds = gwp.gamePlayers.map { $0.userId }
         guard !userIds.isEmpty else { return }
 
-        // Minimal profile fetch — only columns guaranteed to exist. Avoids silently failing
-        // when cat_* skill columns haven't been added to the remote DB yet.
+        // Profile fetch — same minimal column list used by other working queries in the app.
+        // total_ratings is intentionally omitted here; it may not exist in the remote DB yet
+        // (pending migration). We count from the ratings table instead.
         nonisolated struct SlimProfile: Decodable, Sendable {
             let id: String
             let fullName: String?
@@ -1275,22 +1276,36 @@ struct GamePlayersPreviewSheet: View {
             let avatarUrl: String?
             let netrScore: Double?
             let vibeScore: Double?
-            let totalRatings: Int?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id; case fullName = "full_name"; case username; case position
                 case avatarUrl = "avatar_url"; case netrScore = "netr_score"
-                case vibeScore = "vibe_score"; case totalRatings = "total_ratings"
+                case vibeScore = "vibe_score"
             }
         }
 
         let profiles: [SlimProfile] = (try? await client
             .from("profiles")
-            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score")
             .in("id", values: userIds)
             .execute()
             .value) ?? []
 
         let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+
+        // Count peer ratings per user from the ratings table (client-side group).
+        nonisolated struct RatingRow: Decodable, Sendable {
+            let ratedUserId: String
+            nonisolated enum CodingKeys: String, CodingKey { case ratedUserId = "rated_user_id" }
+        }
+        let ratingRows: [RatingRow] = (try? await client
+            .from("ratings")
+            .select("rated_user_id")
+            .in("rated_user_id", values: userIds)
+            .eq("is_self_rating", value: false)
+            .execute()
+            .value) ?? []
+        let ratingsCountMap = Dictionary(grouping: ratingRows, by: { $0.ratedUserId })
+            .mapValues { $0.count }
 
         players = userIds.enumerated().map { idx, uid in
             let p = profileMap[uid]
@@ -1301,7 +1316,7 @@ struct GamePlayersPreviewSheet: View {
                     id: uid,
                     fullName: p?.fullName, username: p?.username, position: p?.position,
                     avatarUrl: p?.avatarUrl, netrScore: p?.netrScore, vibeScore: p?.vibeScore,
-                    totalRatings: p?.totalRatings
+                    totalRatings: ratingsCountMap[uid]
                 )
             )
         }
