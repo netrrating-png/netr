@@ -93,6 +93,9 @@ class FeedViewModel {
                     .limit(30)
                     .execute()
                     .value
+
+            case .dm:
+                fetched = []
             }
 
             var results = fetched
