@@ -1,5 +1,7 @@
 import SwiftUI
 import PhotosUI
+import Supabase
+import Auth
 
 struct ProfileView: View {
     var profileUserId: String? = nil
