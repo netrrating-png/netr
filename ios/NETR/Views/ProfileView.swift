@@ -806,11 +806,13 @@ struct ProfileView: View {
 // MARK: - Follow List User Row Model
 
 private struct FollowUser: Identifiable, Sendable {
-    let id: String          // user UUID
+    let id: String
     let fullName: String?
     let username: String?
     let avatarUrl: String?
-    var isFollowing: Bool   // current viewer follows this person?
+    let netrScore: Double?
+    let vibeScore: Double?
+    var isFollowing: Bool
 
     var displayName: String { fullName ?? username ?? "Player" }
     var displayHandle: String { username.map { "@\($0)" } ?? "" }
@@ -837,6 +839,7 @@ struct ProfileFollowListSheet: View {
 
     @State private var users: [FollowUser] = []
     @State private var isLoading = true
+    @State private var selectedUserId: String?
 
     private let client = SupabaseManager.shared.client
 
@@ -870,9 +873,12 @@ struct ProfileFollowListSheet: View {
                     .background(NETRTheme.background)
                 } else {
                     List(users) { user in
-                        followRow(user)
-                            .listRowBackground(NETRTheme.background)
-                            .listRowSeparatorTint(NETRTheme.border)
+                        Button { selectedUserId = user.id } label: {
+                            followRow(user)
+                        }
+                        .buttonStyle(.plain)
+                        .listRowBackground(NETRTheme.background)
+                        .listRowSeparatorTint(NETRTheme.border)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -890,6 +896,9 @@ struct ProfileFollowListSheet: View {
             }
         }
         .task { await load() }
+        .fullScreenCover(item: $selectedUserId) { uid in
+            PublicPlayerProfileView(userId: uid)
+        }
     }
 
     @ViewBuilder
@@ -914,8 +923,8 @@ struct ProfileFollowListSheet: View {
                     }
                 }
 
-            // Name + handle
-            VStack(alignment: .leading, spacing: 2) {
+            // Name + handle + scores
+            VStack(alignment: .leading, spacing: 3) {
                 Text(user.displayName)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(NETRTheme.text)
@@ -923,6 +932,18 @@ struct ProfileFollowListSheet: View {
                     Text(user.displayHandle)
                         .font(.system(size: 12))
                         .foregroundStyle(NETRTheme.subtext)
+                }
+                HStack(spacing: 10) {
+                    if let rating = user.netrScore {
+                        Label(String(format: "%.2f", rating), systemImage: "star.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(NETRRating.color(for: rating))
+                    }
+                    if let vibe = user.vibeScore {
+                        Label(String(format: "%.1f", vibe), systemImage: "heart.fill")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.cyan)
+                    }
                 }
             }
             Spacer()
@@ -995,11 +1016,15 @@ struct ProfileFollowListSheet: View {
             let fullName: String?
             let username: String?
             let avatarUrl: String?
+            let netrScore: Double?
+            let vibeScore: Double?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
                 case fullName = "full_name"
                 case username
                 case avatarUrl = "avatar_url"
+                case netrScore = "netr_score"
+                case vibeScore = "vibe_score"
             }
         }
 
@@ -1007,7 +1032,7 @@ struct ProfileFollowListSheet: View {
         do {
             profiles = try await client
                 .from("profiles")
-                .select("id, full_name, username, avatar_url")
+                .select("id, full_name, username, avatar_url, netr_score, vibe_score")
                 .in("id", values: targetIds)
                 .execute()
                 .value
@@ -1044,6 +1069,8 @@ struct ProfileFollowListSheet: View {
                 fullName: p.fullName,
                 username: p.username,
                 avatarUrl: p.avatarUrl,
+                netrScore: p.netrScore,
+                vibeScore: p.vibeScore,
                 isFollowing: viewerFollowingSet.contains(p.id)
             )
         }
