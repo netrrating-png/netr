@@ -19,6 +19,7 @@ struct ProfileView: View {
     @State private var showEditProfile: Bool = false
     @State private var showCourtLeaderboard: Bool = false
     @State private var showInvite: Bool = false
+    @State private var showBioEdit: Bool = false
     @State private var localCourtsVM = CourtsViewModel()
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
