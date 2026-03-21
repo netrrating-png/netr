@@ -32,6 +32,11 @@ struct SettingsView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     profileCard
+                    NETRPlayerCardSection(
+                        user: profileViewModel.player ?? user,
+                        milestones: profileViewModel.milestones,
+                        homeCourt: profileViewModel.homeCourt
+                    )
                     myGamesButton
                     securitySection
                     accountSection

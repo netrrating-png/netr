@@ -25,6 +25,7 @@ class ProfileViewModel {
     var bio: String?
     var userPosts: [SupabaseFeedPost] = []
     var homeCourt: Court?
+    var milestones: [PlayerMilestone] = []
 
     func loadProfile(userId: String? = nil) async {
         isLoading = true
@@ -62,6 +63,7 @@ class ProfileViewModel {
 
             await loadSocialCounts(targetId: targetId)
             await loadHomeCourt(userId: targetId)
+            await loadMilestones(userId: targetId)
         } catch {
             if isCurrentUser {
                 let fallback = buildLocalOnlyPlayer()
@@ -75,6 +77,16 @@ class ProfileViewModel {
             isLoading = false
             print("Profile load error: \(error)")
         }
+    }
+
+    func loadMilestones(userId: String) async {
+        milestones = (try? await client
+            .from("player_milestones")
+            .select()
+            .eq("user_id", value: userId)
+            .order("created_at", ascending: false)
+            .execute()
+            .value) ?? []
     }
 
     func loadHomeCourt(userId: String) async {

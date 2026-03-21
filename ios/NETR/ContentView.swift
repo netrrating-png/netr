@@ -18,11 +18,11 @@ struct ContentView: View {
     }
 
     enum Tab: String, CaseIterable {
-        case feed = "Feed"
         case courts = "Courts"
         case rate = "Rate"
-        case notifications = "Alerts"
+        case feed = "Feed"
         case profile = "Profile"
+        case notifications = "Alerts"
 
         var icon: String {
             switch self {
@@ -34,8 +34,6 @@ struct ContentView: View {
             }
         }
     }
-
-    private let limeGreen = Color(red: 0.784, green: 1.0, blue: 0.0)
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -224,7 +222,7 @@ struct ContentView: View {
 
                                 // Lime green soft glow underneath
                                 Circle()
-                                    .fill(limeGreen.opacity(0.30))
+                                    .fill(NETRTheme.neonGreen.opacity(0.30))
                                     .frame(width: 40, height: 40)
                                     .blur(radius: 20)
                                     .offset(y: 4)
@@ -235,7 +233,7 @@ struct ContentView: View {
                                 LucideIcon(tab.icon, size: 18)
                                     .foregroundStyle(
                                         isSelected
-                                            ? limeGreen
+                                            ? NETRTheme.neonGreen
                                             : Color.white.opacity(0.40)
                                     )
                                     .scaleEffect(isSelected ? 1.15 : 1.0)
@@ -248,7 +246,7 @@ struct ContentView: View {
                                         .foregroundStyle(Color.black)
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 1)
-                                        .background(limeGreen, in: Capsule())
+                                        .background(NETRTheme.neonGreen, in: Capsule())
                                         .offset(x: 10, y: -8)
                                 }
                             }
@@ -259,7 +257,7 @@ struct ContentView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(
                                 isSelected
-                                    ? limeGreen
+                                    ? NETRTheme.neonGreen
                                     : Color.white.opacity(0.40)
                             )
                             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)

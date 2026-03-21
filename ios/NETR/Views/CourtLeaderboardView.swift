@@ -47,7 +47,7 @@ nonisolated struct LeaderboardEntry: Identifiable, Decodable, Sendable {
                 .from("profiles")
                 .select("id, full_name, username, avatar_url, netr_score, position, vibe_score")
                 .in("id", values: userIds)
-                .order("netr_score", ascending: false)
+                .order("netr_score", ascending: false, nullsFirst: false)
                 .limit(20)
                 .execute()
                 .value
