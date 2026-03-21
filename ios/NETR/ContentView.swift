@@ -4,13 +4,12 @@ struct ContentView: View {
     @Environment(MockDataStore.self) private var store
     @Environment(AppearanceManager.self) private var appearance
     @Environment(SupabaseManager.self) private var supabase
-    @State private var selectedTab: Tab = .courts
-    @State private var previousTab: Tab = .courts
+    @State private var selectedTab: Tab = .feed
     @State private var courtsViewModel = CourtsViewModel()
+    @State private var notificationViewModel = NotificationViewModel()
     @State private var showSelfAssessment: Bool = false
     @State private var dismissedAssessmentBanner: Bool = false
     @State private var showSettings: Bool = false
-    @State private var tabTransitionPhase: CGFloat = 1.0
     @Namespace private var tabBarNamespace
 
     private var isUnrated: Bool {
@@ -19,16 +18,18 @@ struct ContentView: View {
     }
 
     enum Tab: String, CaseIterable {
+        case feed = "Feed"
         case courts = "Courts"
         case rate = "Rate"
-        case feed = "Feed"
+        case notifications = "Alerts"
         case profile = "Profile"
 
         var icon: String {
             switch self {
+            case .feed: return "messages-square"
             case .courts: return "map"
             case .rate: return "star"
-            case .feed: return "messages-square"
+            case .notifications: return "bell"
             case .profile: return "user"
             }
         }
@@ -46,14 +47,17 @@ struct ContentView: View {
                 }
 
                 ZStack {
+                    tabContent(for: .feed)
+                        .zIndex(selectedTab == .feed ? 1 : 0)
+
                     tabContent(for: .courts)
                         .zIndex(selectedTab == .courts ? 1 : 0)
 
                     tabContent(for: .rate)
                         .zIndex(selectedTab == .rate ? 1 : 0)
 
-                    tabContent(for: .feed)
-                        .zIndex(selectedTab == .feed ? 1 : 0)
+                    tabContent(for: .notifications)
+                        .zIndex(selectedTab == .notifications ? 1 : 0)
 
                     tabContent(for: .profile)
                         .zIndex(selectedTab == .profile ? 1 : 0)
@@ -84,6 +88,10 @@ struct ContentView: View {
                 store.syncFromProfile(profile)
             }
         }
+        .task {
+            await notificationViewModel.fetchNotifications()
+            await notificationViewModel.subscribeToNotifications()
+        }
     }
 
     // MARK: - Tab Content with Transition
@@ -94,12 +102,14 @@ struct ContentView: View {
 
         Group {
             switch tab {
+            case .feed:
+                FeedView()
             case .courts:
                 CourtsView(viewModel: courtsViewModel)
             case .rate:
                 RateView()
-            case .feed:
-                FeedView()
+            case .notifications:
+                NotificationsView()
             case .profile:
                 ZStack(alignment: .topTrailing) {
                     ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
@@ -222,14 +232,28 @@ struct ContentView: View {
                                     .offset(y: 4)
                             }
 
-                            LucideIcon(tab.icon, size: 18)
-                                .foregroundStyle(
-                                    isSelected
-                                        ? limeGreen
-                                        : Color.white.opacity(0.40)
-                                )
-                                .scaleEffect(isSelected ? 1.15 : 1.0)
-                                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+                            // Icon with optional badge
+                            ZStack(alignment: .topTrailing) {
+                                LucideIcon(tab.icon, size: 18)
+                                    .foregroundStyle(
+                                        isSelected
+                                            ? limeGreen
+                                            : Color.white.opacity(0.40)
+                                    )
+                                    .scaleEffect(isSelected ? 1.15 : 1.0)
+                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+
+                                // Unread badge for notifications tab
+                                if tab == .notifications && notificationViewModel.unreadCount > 0 {
+                                    Text("\(min(notificationViewModel.unreadCount, 99))")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(Color.black)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(limeGreen, in: Capsule())
+                                        .offset(x: 10, y: -8)
+                                }
+                            }
                         }
                         .frame(height: 36)
 
