@@ -8,7 +8,7 @@ nonisolated struct UserProfile: Codable, Sendable {
     var dateOfBirth: String?
     var bio: String?
     var avatarUrl: String?
-    var bannerUrl: String?
+    var backgroundImageUrl: String?
     var city: String?
     var isProspect: Bool?
     var totalRatings: Int?
@@ -39,7 +39,7 @@ nonisolated struct UserProfile: Codable, Sendable {
         case dateOfBirth = "date_of_birth"
         case bio
         case avatarUrl = "avatar_url"
-        case bannerUrl = "banner_url"
+        case backgroundImageUrl = "background_image_url"
         case city
         case isProspect = "is_prospect"
         case totalRatings = "total_ratings"
@@ -123,7 +123,7 @@ extension UserProfile {
             ),
             profileImageData: nil,
             avatarUrl: avatarUrl,
-            bannerUrl: bannerUrl
+            bannerUrl: backgroundImageUrl
         )
     }
 

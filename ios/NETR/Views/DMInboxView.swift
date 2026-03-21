@@ -18,7 +18,7 @@ struct DMInboxView: View {
                 conversationList
             }
         }
-        .background(NETRTheme.background)
+        .background(Color.black)
         .sheet(isPresented: $viewModel.showNewMessage) {
             NewDMSheet(viewModel: viewModel) { convo in
                 viewModel.showNewMessage = false
@@ -27,7 +27,7 @@ struct DMInboxView: View {
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
-            .presentationBackground(NETRTheme.background)
+            .presentationBackground(Color.black)
         }
         .onChange(of: selectedConversation) { _, newConvo in
             if newConvo != nil { showChat = true }
@@ -37,7 +37,10 @@ struct DMInboxView: View {
             Task { await viewModel.loadConversations() }
         }) {
             if let convo = selectedConversation {
-                ChatThreadView(conversation: convo)
+                ChatThreadView(
+                    otherUserId: convo.otherUserId,
+                    otherUser: convo.otherUser
+                )
             }
         }
         .task {
@@ -148,7 +151,6 @@ struct ConversationRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Avatar
             ZStack(alignment: .bottomTrailing) {
                 dmAvatar(name: user?.displayName ?? "?", url: user?.avatarUrl, size: 48)
 
@@ -158,7 +160,7 @@ struct ConversationRow: View {
                         .foregroundStyle(NETRRating.color(for: score))
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
-                        .background(NETRTheme.background, in: .rect(cornerRadius: 4))
+                        .background(Color.black, in: .rect(cornerRadius: 4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
                                 .stroke(NETRRating.color(for: score).opacity(0.4), lineWidth: 1)
@@ -171,7 +173,7 @@ struct ConversationRow: View {
                 HStack {
                     Text(user?.displayName ?? "Player")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(conversation.unreadCount > 0 ? NETRTheme.text : NETRTheme.text)
+                        .foregroundStyle(NETRTheme.text)
                         .lineLimit(1)
 
                     Spacer()
@@ -184,7 +186,7 @@ struct ConversationRow: View {
                 }
 
                 HStack {
-                    Text(conversation.lastMessageText ?? "No messages yet")
+                    Text(conversation.lastMessage ?? "No messages yet")
                         .font(.caption)
                         .foregroundStyle(conversation.unreadCount > 0 ? NETRTheme.text : NETRTheme.subtext)
                         .fontWeight(conversation.unreadCount > 0 ? .medium : .regular)
@@ -241,15 +243,13 @@ struct NewDMSheet: View {
     var onConversationReady: (DMConversation) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var searchQuery: String = ""
-    @State private var isCreating: Bool = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                NETRTheme.background.ignoresSafeArea()
+                Color.black.ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    // Search bar
                     HStack(spacing: 8) {
                         LucideIcon("search", size: 14)
                             .foregroundStyle(NETRTheme.subtext)
@@ -279,15 +279,6 @@ struct NewDMSheet: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
-                    } else if isCreating {
-                        VStack(spacing: 12) {
-                            ProgressView().tint(NETRTheme.neonGreen)
-                            Text("Starting conversation...")
-                                .font(.caption)
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
                     } else if viewModel.searchResults.isEmpty && !searchQuery.isEmpty {
                         Text("No players found")
                             .font(.subheadline)
@@ -304,7 +295,6 @@ struct NewDMSheet: View {
                                         userRow(user: user)
                                     }
                                     .buttonStyle(.plain)
-                                    .disabled(isCreating)
                                     Divider().background(NETRTheme.border).padding(.leading, 64)
                                 }
                             }
@@ -382,14 +372,16 @@ struct NewDMSheet: View {
     }
 
     private func startConversation(with user: UserSearchResult) {
-        isCreating = true
-        Task {
-            if let convo = await viewModel.findOrCreateConversation(with: user.id) {
-                isCreating = false
-                onConversationReady(convo)
-            } else {
-                isCreating = false
-            }
-        }
+        let profile = FeedAuthor(
+            id: user.id,
+            fullName: user.fullName,
+            username: user.username,
+            avatarUrl: user.avatarUrl,
+            netrScore: user.netrScore,
+            vibeScore: nil
+        )
+        var convo = viewModel.findOrCreateConversation(with: user.id) ?? DMConversation(otherUserId: user.id)
+        convo.otherUser = profile
+        onConversationReady(convo)
     }
 }

@@ -9,16 +9,13 @@ struct SettingsView: View {
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
-    @AppStorage("notificationsEnabled") private var notificationsEnabled: Bool = true
-    @AppStorage("postNotifications") private var postNotifications: Bool = true
-    @AppStorage("ratingNotifications") private var ratingNotifications: Bool = true
     @AppStorage("profilePrivate") private var profilePrivate: Bool = false
     @State private var showMyGames: Bool = false
+    @State private var showNotificationPreferences: Bool = false
     @State private var showEditProfile: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
     @State private var showDeleteConfirm: Bool = false
-    @State private var showNotifications: Bool = false
     @State private var showPrivacy: Bool = false
     @State private var showAbout: Bool = false
     @State private var profileViewModel = ProfileViewModel()
@@ -323,71 +320,25 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    LucideIcon("bell")
-                        .foregroundStyle(NETRTheme.gold)
-                        .frame(width: 24)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Push Notifications")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(notificationsEnabled ? "Alerts & sounds enabled" : "All notifications off")
-                            .font(.caption)
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: $notificationsEnabled)
-                        .labelsHidden()
-                        .tint(NETRTheme.neonGreen)
-                }
-                .padding(14)
-
-                if notificationsEnabled {
-                    Divider().background(NETRTheme.border).padding(.leading, 50)
-
-                    HStack(spacing: 12) {
-                        LucideIcon("message-circle", size: 16)
-                            .foregroundStyle(NETRTheme.subtext)
-                            .frame(width: 24)
-
-                        Text("Post & Comment Alerts")
-                            .font(.subheadline)
-                            .foregroundStyle(NETRTheme.text)
-
-                        Spacer()
-
-                        Toggle("", isOn: $postNotifications)
-                            .labelsHidden()
-                            .tint(NETRTheme.neonGreen)
-                    }
-                    .padding(14)
-
-                    Divider().background(NETRTheme.border).padding(.leading, 50)
-
-                    HStack(spacing: 12) {
-                        LucideIcon("star", size: 16)
-                            .foregroundStyle(NETRTheme.subtext)
-                            .frame(width: 24)
-
-                        Text("Rating Updates")
-                            .font(.subheadline)
-                            .foregroundStyle(NETRTheme.text)
-
-                        Spacer()
-
-                        Toggle("", isOn: $ratingNotifications)
-                            .labelsHidden()
-                            .tint(NETRTheme.neonGreen)
-                    }
-                    .padding(14)
-                }
+                SettingsRow(
+                    icon: "bell",
+                    iconColor: NETRTheme.gold,
+                    title: "Notification Preferences",
+                    subtitle: "Push notifications, alerts & sounds",
+                    action: { showNotificationPreferences = true }
+                )
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
             .padding(.horizontal, 16)
+        }
+        .sheet(isPresented: $showNotificationPreferences) {
+            NavigationStack {
+                NotificationPreferencesView()
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
         }
     }
 

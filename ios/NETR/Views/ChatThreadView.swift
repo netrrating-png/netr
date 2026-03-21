@@ -1,17 +1,17 @@
 import SwiftUI
 
 struct ChatThreadView: View {
-    let conversation: DMConversation
+    let otherUserId: String
+    let otherUser: FeedAuthor?
     @State private var viewModel: ChatViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
 
-    init(conversation: DMConversation) {
-        self.conversation = conversation
-        self._viewModel = State(initialValue: ChatViewModel(conversation: conversation))
+    init(otherUserId: String, otherUser: FeedAuthor?) {
+        self.otherUserId = otherUserId
+        self.otherUser = otherUser
+        self._viewModel = State(initialValue: ChatViewModel(otherUserId: otherUserId, otherUser: otherUser))
     }
-
-    private var otherUser: FeedAuthor? { conversation.otherUser }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,13 +20,13 @@ struct ChatThreadView: View {
             messageList
             chatInput
         }
-        .background(NETRTheme.background)
+        .background(Color.black)
         .hideKeyboardOnTap()
         .task {
             await viewModel.loadMessages()
             await viewModel.subscribeToMessages()
-            // Mark conversation as read
-            await DMViewModel().markAsRead(conversationId: conversation.id)
+            // Mark messages from this user as read
+            await DMViewModel().markAsRead(otherUserId: otherUserId)
         }
         .onDisappear {
             Task { await viewModel.unsubscribe() }
@@ -270,7 +270,7 @@ struct ChatThreadView: View {
 // MARK: - Message Bubble
 
 struct MessageBubble: View {
-    let message: DMMessage
+    let message: DirectMessage
     let isCurrentUser: Bool
 
     var body: some View {
@@ -280,11 +280,11 @@ struct MessageBubble: View {
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 3) {
                 Text(message.content)
                     .font(.subheadline)
-                    .foregroundStyle(isCurrentUser ? NETRTheme.background : NETRTheme.text)
+                    .foregroundStyle(isCurrentUser ? Color.black : NETRTheme.text)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(
-                        isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
+                        isCurrentUser ? Color(red: 0.78, green: 1.0, blue: 0.0) : NETRTheme.card,
                         in: BubbleShape(isCurrentUser: isCurrentUser)
                     )
 
@@ -307,8 +307,6 @@ struct BubbleShape: Shape {
 
     func path(in rect: CGRect) -> Path {
         let radius: CGFloat = 16
-        let tailRadius: CGFloat = 4
-
         let path = UIBezierPath(
             roundedRect: rect,
             byRoundingCorners: isCurrentUser
@@ -316,19 +314,6 @@ struct BubbleShape: Shape {
                 : [.topLeft, .topRight, .bottomRight],
             cornerRadii: CGSize(width: radius, height: radius)
         )
-
-        // Small tail corner
-        let tailCorner: UIRectCorner = isCurrentUser ? .bottomRight : .bottomLeft
-        let tailPath = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: [tailCorner],
-            cornerRadii: CGSize(width: tailRadius, height: tailRadius)
-        )
-
-        let combined = UIBezierPath()
-        combined.append(path)
-
-        // Intersect to clip the tail corner to be smaller
         return Path(path.cgPath)
     }
 }

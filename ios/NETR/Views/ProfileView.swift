@@ -15,7 +15,6 @@ struct ProfileView: View {
     @State private var radarVisible: Bool = false
     @State private var showFollowers: Bool = false
     @State private var showFollowing: Bool = false
-    @State private var showBioEdit: Bool = false
     @State private var showRatingScale: Bool = false
     @State private var showEditProfile: Bool = false
     @State private var showCourtLeaderboard: Bool = false

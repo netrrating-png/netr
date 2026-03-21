@@ -8,6 +8,7 @@ struct PublicPlayerProfileView: View {
     @State private var ratingAnimated: Bool = false
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
+    @State private var showDMChat: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -72,6 +73,19 @@ struct PublicPlayerProfileView: View {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.surface)
+            }
+        }
+        .fullScreenCover(isPresented: $showDMChat) {
+            if let player = viewModel.player {
+                let otherUser = FeedAuthor(
+                    id: userId,
+                    fullName: player.name,
+                    username: player.username.hasPrefix("@") ? String(player.username.dropFirst()) : player.username,
+                    avatarUrl: player.avatarUrl,
+                    netrScore: player.rating,
+                    vibeScore: viewModel.vibeScore
+                )
+                ChatThreadView(otherUserId: userId, otherUser: otherUser)
             }
         }
     }
@@ -205,25 +219,38 @@ struct PublicPlayerProfileView: View {
             Spacer()
 
             if !viewModel.isCurrentUser {
-                Button {
-                    Task {
-                        await viewModel.toggleFollow()
-                        onFollowChanged?()
+                HStack(spacing: 8) {
+                    Button {
+                        showDMChat = true
+                    } label: {
+                        LucideIcon("message-circle", size: 15)
+                            .foregroundStyle(NETRTheme.subtext)
+                            .frame(width: 36, height: 36)
+                            .background(NETRTheme.card)
+                            .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                            .clipShape(Circle())
                     }
-                } label: {
-                    HStack(spacing: 6) {
-                        LucideIcon(viewModel.isFollowing ? "check" : "user-plus", size: 13)
-                        Text(viewModel.isFollowing ? "Following" : "Follow")
-                            .font(.system(size: 13, weight: .semibold))
+
+                    Button {
+                        Task {
+                            await viewModel.toggleFollow()
+                            onFollowChanged?()
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            LucideIcon(viewModel.isFollowing ? "check" : "user-plus", size: 13)
+                            Text(viewModel.isFollowing ? "Following" : "Follow")
+                                .font(.system(size: 13, weight: .semibold))
+                        }
+                        .foregroundStyle(viewModel.isFollowing ? NETRTheme.text : NETRTheme.background)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(viewModel.isFollowing ? NETRTheme.card : NETRTheme.neonGreen)
+                        .overlay(Capsule().stroke(viewModel.isFollowing ? NETRTheme.border : Color.clear, lineWidth: 1))
+                        .clipShape(Capsule())
                     }
-                    .foregroundStyle(viewModel.isFollowing ? NETRTheme.text : NETRTheme.background)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(viewModel.isFollowing ? NETRTheme.card : NETRTheme.neonGreen)
-                    .overlay(Capsule().stroke(viewModel.isFollowing ? NETRTheme.border : Color.clear, lineWidth: 1))
-                    .clipShape(Capsule())
+                    .sensoryFeedback(.selection, trigger: viewModel.isFollowing)
                 }
-                .sensoryFeedback(.selection, trigger: viewModel.isFollowing)
             }
         }
     }

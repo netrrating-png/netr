@@ -401,7 +401,7 @@ class ProfileViewModel {
 
         do {
             try await client.storage
-                .from("banners")
+                .from("profile-backgrounds")
                 .upload(
                     path,
                     data: imageData,
@@ -413,19 +413,19 @@ class ProfileViewModel {
                 )
 
             let publicURL = try client.storage
-                .from("banners")
+                .from("profile-backgrounds")
                 .getPublicURL(path: path)
 
             nonisolated struct BannerUpdate: Encodable, Sendable {
-                let bannerUrl: String
+                let backgroundImageUrl: String
                 nonisolated enum CodingKeys: String, CodingKey {
-                    case bannerUrl = "banner_url"
+                    case backgroundImageUrl = "background_image_url"
                 }
             }
 
             try await client
                 .from("profiles")
-                .update(BannerUpdate(bannerUrl: publicURL.absoluteString))
+                .update(BannerUpdate(backgroundImageUrl: publicURL.absoluteString))
                 .eq("id", value: userId)
                 .execute()
 

@@ -1,126 +1,64 @@
 import Foundation
 
-// MARK: - Conversation
+// MARK: - Direct Message (maps to direct_messages table)
 
-nonisolated struct DMConversation: Identifiable, Sendable, Equatable {
+nonisolated struct DirectMessage: Identifiable, Sendable, Equatable {
     let id: String
-    let participantIds: [String]
-    let lastMessageText: String?
-    let lastMessageAt: String?
+    let senderId: String
+    let recipientId: String
+    let content: String
+    let read: Bool
     let createdAt: String
+
+    static func == (lhs: DirectMessage, rhs: DirectMessage) -> Bool {
+        lhs.id == rhs.id && lhs.read == rhs.read
+    }
+}
+
+extension DirectMessage: Decodable {
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id
+        case senderId = "sender_id"
+        case recipientId = "recipient_id"
+        case content
+        case read
+        case createdAt = "created_at"
+    }
+}
+
+// MARK: - Send Message Payload
+
+nonisolated struct SendDirectMessagePayload: Encodable, Sendable {
+    let senderId: String
+    let recipientId: String
+    let content: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case senderId = "sender_id"
+        case recipientId = "recipient_id"
+        case content
+    }
+}
+
+// MARK: - Mark Read Update
+
+nonisolated struct MarkMessageReadPayload: Encodable, Sendable {
+    let read: Bool
+}
+
+// MARK: - Conversation (computed from direct_messages, not a table)
+
+struct DMConversation: Identifiable, Equatable {
+    var id: String { otherUserId }
+    let otherUserId: String
     var otherUser: FeedAuthor?
+    var lastMessage: String?
+    var lastMessageAt: String?
     var unreadCount: Int = 0
 
     static func == (lhs: DMConversation, rhs: DMConversation) -> Bool {
-        lhs.id == rhs.id && lhs.lastMessageAt == rhs.lastMessageAt && lhs.unreadCount == rhs.unreadCount
-    }
-}
-
-extension DMConversation: Decodable {
-    nonisolated enum CodingKeys: String, CodingKey {
-        case id
-        case participantIds = "participant_ids"
-        case lastMessageText = "last_message_text"
-        case lastMessageAt = "last_message_at"
-        case createdAt = "created_at"
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(String.self, forKey: .id)
-        participantIds = try container.decode([String].self, forKey: .participantIds)
-        lastMessageText = try container.decodeIfPresent(String.self, forKey: .lastMessageText)
-        lastMessageAt = try container.decodeIfPresent(String.self, forKey: .lastMessageAt)
-        createdAt = try container.decode(String.self, forKey: .createdAt)
-    }
-}
-
-// MARK: - Message
-
-nonisolated struct DMMessage: Identifiable, Sendable, Equatable {
-    let id: String
-    let conversationId: String
-    let senderId: String
-    let content: String
-    let createdAt: String
-    var sender: FeedAuthor?
-
-    static func == (lhs: DMMessage, rhs: DMMessage) -> Bool {
-        lhs.id == rhs.id
-    }
-}
-
-extension DMMessage: Decodable {
-    nonisolated enum CodingKeys: String, CodingKey {
-        case id
-        case conversationId = "conversation_id"
-        case senderId = "sender_id"
-        case content
-        case createdAt = "created_at"
-        case sender = "profiles"
-    }
-}
-
-// MARK: - Payloads
-
-nonisolated struct CreateConversationPayload: Encodable, Sendable {
-    let participantIds: [String]
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case participantIds = "participant_ids"
-    }
-}
-
-nonisolated struct CreateMessagePayload: Encodable, Sendable {
-    let conversationId: String
-    let senderId: String
-    let content: String
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case conversationId = "conversation_id"
-        case senderId = "sender_id"
-        case content
-    }
-}
-
-nonisolated struct UpdateConversationLastMessage: Encodable, Sendable {
-    let lastMessageText: String
-    let lastMessageAt: String
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case lastMessageText = "last_message_text"
-        case lastMessageAt = "last_message_at"
-    }
-}
-
-nonisolated struct MarkReadPayload: Encodable, Sendable {
-    let readAt: String
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case readAt = "read_at"
-    }
-}
-
-// MARK: - Unread tracking row
-
-nonisolated struct ConversationReadRow: Decodable, Sendable {
-    let conversationId: String
-    let userId: String
-    let readAt: String?
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case conversationId = "conversation_id"
-        case userId = "user_id"
-        case readAt = "read_at"
-    }
-}
-
-nonisolated struct MessageCountRow: Decodable, Sendable {
-    let conversationId: String
-    let createdAt: String
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case conversationId = "conversation_id"
-        case createdAt = "created_at"
+        lhs.otherUserId == rhs.otherUserId
+            && lhs.lastMessageAt == rhs.lastMessageAt
+            && lhs.unreadCount == rhs.unreadCount
     }
 }
