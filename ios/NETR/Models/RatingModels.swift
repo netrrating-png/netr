@@ -77,7 +77,7 @@ struct SkillCategory: Identifiable {
 }
 
 let skillCategories: [SkillCategory] = [
-    SkillCategory(id: "shooting",     label: "Scoring",    icon: "crosshair",       description: "Shot creation & consistency",      colorHex: "#39FF14"),
+    SkillCategory(id: "shooting",     label: "Shooting",    icon: "crosshair",       description: "Shot creation & consistency",      colorHex: "#39FF14"),
     SkillCategory(id: "finishing",    label: "Finishing",  icon: "flame",           description: "At the rim through contact",       colorHex: "#FF7A00"),
     SkillCategory(id: "dribbling",    label: "Handles",    icon: "dumbbell",        description: "Ball handling & shot creation",    colorHex: "#FFC247"),
     SkillCategory(id: "passing",      label: "Playmaking", icon: "route",           description: "Vision, passing & court reads",    colorHex: "#2ECC71"),

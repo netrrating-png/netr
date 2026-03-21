@@ -1,19 +1,31 @@
 import Foundation
 
 nonisolated enum GameFormat: String, CaseIterable, Sendable, Identifiable {
+    case oneVOne = "1v1"
+    case twoVTwo = "2v2"
     case threeVThree = "3v3"
     case fourVFour = "4v4"
     case fiveVFive = "5v5"
-    case run = "Run"
+    case run = "Run"          // DB enum value must stay "Run"
 
     var id: String { rawValue }
 
+    /// Human-readable label shown in the UI
+    var displayName: String {
+        switch self {
+        case .run: return "Open Run"
+        default: return rawValue
+        }
+    }
+
     var maxPlayers: Int {
         switch self {
+        case .oneVOne: return 2
+        case .twoVTwo: return 4
         case .threeVThree: return 6
         case .fourVFour: return 8
         case .fiveVFive: return 10
-        case .run: return 20
+        case .run: return 50
         }
     }
 }

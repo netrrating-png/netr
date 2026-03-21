@@ -23,7 +23,7 @@ struct PlayerCardView: View {
     private var ratingColor: Color { NETRRating.color(for: player.rating) }
 
     private var skills: [SkillRow] {[
-        SkillRow(icon: "crosshair", label: "Scoring", value: player.skills.shooting),
+        SkillRow(icon: "crosshair", label: "Shooting", value: player.skills.shooting),
         SkillRow(icon: "flame", label: "Finishing", value: player.skills.finishing),
         SkillRow(icon: "zap", label: "Handles", value: player.skills.ballHandling),
         SkillRow(icon: "send", label: "Playmaking", value: player.skills.playmaking),

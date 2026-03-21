@@ -178,7 +178,7 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Custom Tab Bar
+    private let limeGreen = NETRTheme.neonGreen
 
     private var customTabBar: some View {
         HStack(spacing: 0) {
