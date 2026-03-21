@@ -184,8 +184,7 @@ class FeedViewModel {
         content: String,
         courtId: String? = nil,
         gameId: String? = nil,
-        quoteOf: String? = nil,
-        photoImage: UIImage? = nil
+        quoteOf: String? = nil
     ) async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         isPosting = true
@@ -193,11 +192,6 @@ class FeedViewModel {
         let tags = extractHashtags(from: content)
         let mentions = extractMentions(from: content)
         let mentionedIds = await resolveMentions(mentions)
-
-        var photoUrl: String? = nil
-        if let image = photoImage {
-            photoUrl = await uploadFeedPhoto(image: image, userId: userId)
-        }
 
         let payload = CreateFeedPostPayload(
             authorId: userId,
@@ -208,7 +202,7 @@ class FeedViewModel {
             gameId: gameId,
             quoteOfId: quoteOf,
             repostOfId: nil,
-            photoUrl: photoUrl
+            photoUrl: nil
         )
 
         do {
@@ -225,30 +219,8 @@ class FeedViewModel {
             showCompose = false
         } catch {
             isPosting = false
+            self.error = "Failed to create post"
             print("Create post error: \(error)")
-        }
-    }
-
-    // MARK: - Photo Upload
-
-    private func uploadFeedPhoto(image: UIImage, userId: String) async -> String? {
-        guard let data = image.jpegData(compressionQuality: 0.8) else { return nil }
-        let timestamp = Int(Date().timeIntervalSince1970)
-        let path = "\(userId)/\(timestamp).jpg"
-
-        do {
-            try await client.storage
-                .from("feed-photos")
-                .upload(path, data: data, options: FileOptions(
-                    cacheControl: "3600", contentType: "image/jpeg", upsert: true
-                ))
-            let url = try client.storage
-                .from("feed-photos")
-                .getPublicURL(path: path)
-            return url.absoluteString
-        } catch {
-            print("Feed photo upload error: \(error)")
-            return nil
         }
     }
 
@@ -265,14 +237,14 @@ class FeedViewModel {
         do {
             if wasLiked {
                 try await client
-                    .from("post_likes")
+                    .from("likes")
                     .delete()
                     .eq("post_id", value: post.id)
                     .eq("user_id", value: userId)
                     .execute()
             } else {
                 try await client
-                    .from("post_likes")
+                    .from("likes")
                     .insert(FeedLikePayload(postId: post.id, userId: userId))
                     .execute()
             }
@@ -377,13 +349,13 @@ class FeedViewModel {
         let likeChanges = channel.postgresChange(
             AnyAction.self,
             schema: "public",
-            table: "post_likes"
+            table: "likes"
         )
 
         let commentChanges = channel.postgresChange(
             InsertAction.self,
             schema: "public",
-            table: "post_comments"
+            table: "comments"
         )
 
         await channel.subscribe()
@@ -427,7 +399,7 @@ class FeedViewModel {
 
     private func fetchLikedPostIds(userId: String) async -> Set<String> {
         let rows: [FeedLikeRow]? = try? await client
-            .from("post_likes")
+            .from("likes")
             .select("post_id")
             .eq("user_id", value: userId)
             .execute()

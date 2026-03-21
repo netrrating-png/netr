@@ -85,28 +85,20 @@ extension FeedCourt: Decodable {
 nonisolated struct PostComment: Identifiable, Sendable {
     let id: String
     let postId: String
-    let userId: String
+    let authorId: String
     let content: String
-    let likeCount: Int
-    let photoUrl: String?
-    let courtId: String?
     let createdAt: String
     var author: FeedAuthor?
-    var taggedCourt: FeedCourt?
 }
 
 extension PostComment: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
         case id
         case postId = "post_id"
-        case userId = "user_id"
+        case authorId = "author_id"
         case content
-        case likeCount = "like_count"
-        case photoUrl = "photo_url"
-        case courtId = "court_id"
         case createdAt = "created_at"
         case author = "profiles"
-        case taggedCourt = "courts"
     }
 }
 
@@ -156,17 +148,13 @@ nonisolated struct FeedRepostPayload: Encodable, Sendable {
 
 nonisolated struct CreateCommentPayload: Encodable, Sendable {
     let postId: String
-    let userId: String
+    let authorId: String
     let content: String
-    let photoUrl: String?
-    let courtId: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case postId = "post_id"
-        case userId = "user_id"
+        case authorId = "author_id"
         case content
-        case photoUrl = "photo_url"
-        case courtId = "court_id"
     }
 }
 

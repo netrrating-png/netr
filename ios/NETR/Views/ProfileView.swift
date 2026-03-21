@@ -13,7 +13,6 @@ struct ProfileView: View {
     @State private var radarVisible: Bool = false
     @State private var showFollowers: Bool = false
     @State private var showFollowing: Bool = false
-    @State private var showBioEdit: Bool = false
     @State private var showRatingScale: Bool = false
     @State private var showEditProfile: Bool = false
     @State private var showCourtLeaderboard: Bool = false
@@ -146,7 +145,6 @@ struct ProfileView: View {
         .sheet(isPresented: $showScoreInfo) { ScoreInfoSheet() }
         .sheet(isPresented: $showFollowers) { ProfileFollowListSheet(title: "Followers", count: viewModel.followerCount) }
         .sheet(isPresented: $showFollowing) { ProfileFollowListSheet(title: "Following", count: viewModel.followingCount) }
-        .sheet(isPresented: $showBioEdit) { ProfileBioEditSheet() }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
         .sheet(isPresented: $showEditProfile) {
             if let user = viewModel.player {
@@ -405,17 +403,12 @@ struct ProfileView: View {
 
     private func bioSection(user: Player) -> some View {
         Group {
-            if viewModel.isCurrentUser {
-                Button { showBioEdit = true } label: {
-                    HStack(spacing: 8) {
-                        LucideIcon("plus-circle", size: 13)
-                            .foregroundStyle(NETRTheme.neonGreen)
-                        Text("Add a bio")
-                            .font(.system(size: 13))
-                            .foregroundStyle(NETRTheme.neonGreen)
-                    }
-                    .padding(.top, 10)
-                }
+            if let bio = viewModel.bio, !bio.isEmpty {
+                Text(bio)
+                    .font(.system(size: 14))
+                    .foregroundStyle(NETRTheme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 6)
             }
         }
     }
@@ -841,67 +834,3 @@ struct ProfileFollowListSheet: View {
     }
 }
 
-// MARK: - Bio Edit Sheet
-
-struct ProfileBioEditSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var bio: String = ""
-    private let maxChars = 160
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("Tell the courts who you are.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(NETRTheme.subtext)
-
-                ZStack(alignment: .topLeading) {
-                    if bio.isEmpty {
-                        Text("e.g. Hooper since '09. Come find me at Rucker.")
-                            .font(.system(size: 14))
-                            .foregroundStyle(NETRTheme.muted)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 8)
-                    }
-                    TextEditor(text: $bio)
-                        .font(.system(size: 14))
-                        .foregroundStyle(NETRTheme.text)
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .frame(minHeight: 100)
-                        .onChange(of: bio) { _, val in
-                            if val.count > maxChars { bio = String(val.prefix(maxChars)) }
-                        }
-                }
-                .padding(12)
-                .background(NETRTheme.card)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
-                .clipShape(.rect(cornerRadius: 12))
-
-                HStack {
-                    Spacer()
-                    Text("\(bio.count)/\(maxChars)")
-                        .font(.system(size: 12))
-                        .foregroundStyle(bio.count > maxChars - 20 ? NETRTheme.gold : NETRTheme.subtext)
-                }
-
-                Spacer()
-            }
-            .padding(20)
-            .background(NETRTheme.background.ignoresSafeArea())
-            .navigationTitle("Edit Bio")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") { dismiss() }
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
-            }
-        }
-    }
-}

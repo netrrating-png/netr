@@ -1,5 +1,4 @@
 import SwiftUI
-import PhotosUI
 
 struct ComposePostView: View {
     @Bindable var viewModel: FeedViewModel
@@ -7,8 +6,6 @@ struct ComposePostView: View {
     @State private var postText: String = ""
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtSearch: Bool = false
-    @State private var selectedPhotoItem: PhotosPickerItem?
-    @State private var selectedImage: UIImage?
 
     private let maxChars = 280
 
@@ -32,11 +29,6 @@ struct ComposePostView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
 
-                        if let image = selectedImage {
-                            photoPreview(image)
-                                .padding(.horizontal, 16)
-                        }
-
                         if let court = selectedCourt {
                             selectedCourtChip(court)
                                 .padding(.horizontal, 16)
@@ -50,7 +42,7 @@ struct ComposePostView: View {
 
                 bottomBar
             }
-            .background(NETRTheme.background)
+            .background(Color.black)
             .hideKeyboardOnTap()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -63,8 +55,7 @@ struct ComposePostView: View {
                         Task {
                             await viewModel.createPost(
                                 content: postText,
-                                courtId: selectedCourt.map { String($0.id) },
-                                photoImage: selectedImage
+                                courtId: selectedCourt.map { String($0.id) }
                             )
                         }
                     } label: {
@@ -84,15 +75,6 @@ struct ComposePostView: View {
                     .presentationDetents([.medium])
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.surface)
-            }
-            .onChange(of: selectedPhotoItem) { _, newValue in
-                guard let item = newValue else { return }
-                Task {
-                    if let data = try? await item.loadTransferable(type: Data.self),
-                       let image = UIImage(data: data) {
-                        selectedImage = image
-                    }
-                }
             }
         }
     }
@@ -162,27 +144,6 @@ struct ComposePostView: View {
         }
     }
 
-    private func photoPreview(_ image: UIImage) -> some View {
-        ZStack(alignment: .topTrailing) {
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(maxHeight: 200)
-                .clipShape(.rect(cornerRadius: 12))
-
-            Button {
-                selectedImage = nil
-                selectedPhotoItem = nil
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .shadow(radius: 4)
-            }
-            .padding(8)
-        }
-    }
-
     private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
         HStack(spacing: 6) {
             LucideIcon("map-pin", size: 12)
@@ -220,16 +181,6 @@ struct ComposePostView: View {
                 }
                 .foregroundStyle(NETRTheme.blue)
             }
-
-            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                HStack(spacing: 4) {
-                    LucideIcon("image", size: 14)
-                    Text("Photo")
-                        .font(.caption.weight(.semibold))
-                }
-                .foregroundStyle(selectedImage != nil ? NETRTheme.neonGreen : NETRTheme.purple)
-            }
-            .disabled(selectedImage != nil)
 
             Spacer()
 

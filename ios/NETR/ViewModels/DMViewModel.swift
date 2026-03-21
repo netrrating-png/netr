@@ -9,7 +9,6 @@ class DMViewModel {
     var totalUnread: Int = 0
 
     // New message search
-    var searchText: String = ""
     var searchResults: [UserSearchResult] = []
     var isSearching: Bool = false
     var showNewMessage: Bool = false
@@ -23,29 +22,62 @@ class DMViewModel {
         SupabaseManager.shared.session?.user.id.uuidString
     }
 
-    // MARK: - Load Conversations
+    // MARK: - Load Conversations (grouped from direct_messages)
 
     func loadConversations() async {
         guard let userId = currentUserId else { return }
         isLoading = true
 
         do {
-            let rows: [DMConversation] = try await client
-                .from("conversations")
-                .select("id, participant_ids, last_message_text, last_message_at, created_at")
-                .contains("participant_ids", value: [userId])
-                .order("last_message_at", ascending: false)
+            // Fetch all messages where user is sender or recipient
+            let sent: [DirectMessage] = try await client
+                .from("direct_messages")
+                .select("id, sender_id, recipient_id, content, read, created_at")
+                .eq("sender_id", value: userId)
+                .order("created_at", ascending: false)
                 .execute()
                 .value
 
-            // Load other user profiles and unread counts
+            let received: [DirectMessage] = try await client
+                .from("direct_messages")
+                .select("id, sender_id, recipient_id, content, read, created_at")
+                .eq("recipient_id", value: userId)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+
+            let allMessages = (sent + received).sorted { $0.createdAt > $1.createdAt }
+
+            // Group by other user
+            var convoMap: [String: DMConversation] = [:]
+
+            for msg in allMessages {
+                let otherId = msg.senderId == userId ? msg.recipientId : msg.senderId
+                if convoMap[otherId] == nil {
+                    convoMap[otherId] = DMConversation(
+                        otherUserId: otherId,
+                        lastMessage: msg.content,
+                        lastMessageAt: msg.createdAt,
+                        unreadCount: 0
+                    )
+                }
+            }
+
+            // Count unread (received messages where read == false)
+            for msg in received where !msg.read {
+                let otherId = msg.senderId
+                convoMap[otherId]?.unreadCount += 1
+            }
+
+            // Load profiles for all other users
             var enriched: [DMConversation] = []
-            for var convo in rows {
-                let otherId = convo.participantIds.first(where: { $0 != userId }) ?? userId
+            for (otherId, var convo) in convoMap {
                 convo.otherUser = await loadUserProfile(userId: otherId)
-                convo.unreadCount = await getUnreadCount(conversationId: convo.id, userId: userId)
                 enriched.append(convo)
             }
+
+            // Sort by most recent
+            enriched.sort { ($0.lastMessageAt ?? "") > ($1.lastMessageAt ?? "") }
 
             conversations = enriched
             totalUnread = enriched.reduce(0) { $0 + $1.unreadCount }
@@ -58,57 +90,31 @@ class DMViewModel {
 
     // MARK: - Find or Create Conversation
 
-    func findOrCreateConversation(with otherId: String) async -> DMConversation? {
-        guard let userId = currentUserId else { return nil }
-
-        // Check if conversation already exists
-        if let existing = conversations.first(where: { convo in
-            convo.participantIds.contains(otherId) && convo.participantIds.contains(userId)
-        }) {
+    func findOrCreateConversation(with otherId: String) -> DMConversation? {
+        if let existing = conversations.first(where: { $0.otherUserId == otherId }) {
             return existing
         }
-
-        // Create new conversation
-        do {
-            let payload = CreateConversationPayload(participantIds: [userId, otherId])
-            let created: DMConversation = try await client
-                .from("conversations")
-                .insert(payload)
-                .select("id, participant_ids, last_message_text, last_message_at, created_at")
-                .single()
-                .execute()
-                .value
-
-            var convo = created
-            convo.otherUser = await loadUserProfile(userId: otherId)
-            conversations.insert(convo, at: 0)
-            return convo
-        } catch {
-            print("Create conversation error: \(error)")
-            return nil
-        }
+        // Create a new empty conversation entry (no table row needed — first message creates it)
+        let convo = DMConversation(otherUserId: otherId)
+        conversations.insert(convo, at: 0)
+        return convo
     }
 
     // MARK: - Mark as Read
 
-    func markAsRead(conversationId: String) async {
+    func markAsRead(otherUserId: String) async {
         guard let userId = currentUserId else { return }
 
-        let now = ISO8601DateFormatter().string(from: Date())
-
         do {
-            // Upsert the read marker
             try await client
-                .from("conversation_reads")
-                .upsert([
-                    "conversation_id": AnyJSON.string(conversationId),
-                    "user_id": AnyJSON.string(userId),
-                    "read_at": AnyJSON.string(now)
-                ])
+                .from("direct_messages")
+                .update(MarkMessageReadPayload(read: true))
+                .eq("sender_id", value: otherUserId)
+                .eq("recipient_id", value: userId)
+                .eq("read", value: false)
                 .execute()
 
-            // Update local state
-            if let idx = conversations.firstIndex(where: { $0.id == conversationId }) {
+            if let idx = conversations.firstIndex(where: { $0.otherUserId == otherUserId }) {
                 conversations[idx].unreadCount = 0
                 totalUnread = conversations.reduce(0) { $0 + $1.unreadCount }
             }
@@ -117,7 +123,7 @@ class DMViewModel {
         }
     }
 
-    // MARK: - User Search (for new message)
+    // MARK: - User Search
 
     func searchUsers(query: String) {
         searchTask?.cancel()
@@ -158,13 +164,13 @@ class DMViewModel {
     // MARK: - Realtime
 
     func subscribeToConversations() async {
-        realtimeChannel = client.realtimeV2.channel("dm-conversations")
+        realtimeChannel = client.realtimeV2.channel("dm-inbox")
         guard let channel = realtimeChannel else { return }
 
         let messageChanges = channel.postgresChange(
             InsertAction.self,
             schema: "public",
-            table: "messages"
+            table: "direct_messages"
         )
 
         await channel.subscribe()
@@ -196,45 +202,16 @@ class DMViewModel {
             .execute()
             .value
     }
-
-    private func getUnreadCount(conversationId: String, userId: String) async -> Int {
-        // Get the user's last read timestamp
-        let readRow: ConversationReadRow? = try? await client
-            .from("conversation_reads")
-            .select("conversation_id, user_id, read_at")
-            .eq("conversation_id", value: conversationId)
-            .eq("user_id", value: userId)
-            .single()
-            .execute()
-            .value
-
-        // Count messages after that timestamp from other users
-        do {
-            var query = client
-                .from("messages")
-                .select("conversation_id, created_at")
-                .eq("conversation_id", value: conversationId)
-                .neq("sender_id", value: userId)
-
-            if let readAt = readRow?.readAt {
-                query = query.gt("created_at", value: readAt)
-            }
-
-            let rows: [MessageCountRow] = try await query.execute().value
-            return rows.count
-        } catch {
-            return 0
-        }
-    }
 }
 
-// MARK: - Chat ViewModel (for a single conversation thread)
+// MARK: - Chat ViewModel (single conversation thread)
 
 @Observable
 class ChatViewModel {
 
-    let conversation: DMConversation
-    var messages: [DMMessage] = []
+    let otherUserId: String
+    var otherUser: FeedAuthor?
+    var messages: [DirectMessage] = []
     var isLoading: Bool = false
     var isSending: Bool = false
     var messageText: String = ""
@@ -259,25 +236,39 @@ class ChatViewModel {
     var characterCount: Int { messageText.count }
     var showCharCount: Bool { messageText.count > 400 }
 
-    init(conversation: DMConversation) {
-        self.conversation = conversation
+    init(otherUserId: String, otherUser: FeedAuthor? = nil) {
+        self.otherUserId = otherUserId
+        self.otherUser = otherUser
     }
 
     // MARK: - Load Messages
 
     func loadMessages() async {
+        guard let userId = currentUserId else { return }
         isLoading = true
 
         do {
-            let rows: [DMMessage] = try await client
-                .from("messages")
-                .select("id, conversation_id, sender_id, content, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)")
-                .eq("conversation_id", value: conversation.id)
+            // Messages sent by me to them
+            let sent: [DirectMessage] = try await client
+                .from("direct_messages")
+                .select("id, sender_id, recipient_id, content, read, created_at")
+                .eq("sender_id", value: userId)
+                .eq("recipient_id", value: otherUserId)
                 .order("created_at", ascending: true)
                 .execute()
                 .value
 
-            messages = rows
+            // Messages sent by them to me
+            let received: [DirectMessage] = try await client
+                .from("direct_messages")
+                .select("id, sender_id, recipient_id, content, read, created_at")
+                .eq("sender_id", value: otherUserId)
+                .eq("recipient_id", value: userId)
+                .order("created_at", ascending: true)
+                .execute()
+                .value
+
+            messages = (sent + received).sorted { $0.createdAt < $1.createdAt }
             isLoading = false
         } catch {
             isLoading = false
@@ -297,30 +288,21 @@ class ChatViewModel {
         messageText = ""
 
         do {
-            let payload = CreateMessagePayload(
-                conversationId: conversation.id,
+            let payload = SendDirectMessagePayload(
                 senderId: userId,
+                recipientId: otherUserId,
                 content: text
             )
 
-            let created: DMMessage = try await client
-                .from("messages")
+            let created: DirectMessage = try await client
+                .from("direct_messages")
                 .insert(payload)
-                .select("id, conversation_id, sender_id, content, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)")
+                .select("id, sender_id, recipient_id, content, read, created_at")
                 .single()
                 .execute()
                 .value
 
             messages.append(created)
-
-            // Update conversation's last message
-            let now = ISO8601DateFormatter().string(from: Date())
-            try await client
-                .from("conversations")
-                .update(UpdateConversationLastMessage(lastMessageText: text, lastMessageAt: now))
-                .eq("id", value: conversation.id)
-                .execute()
-
             isSending = false
         } catch {
             isSending = false
@@ -333,30 +315,20 @@ class ChatViewModel {
     // MARK: - Realtime
 
     func subscribeToMessages() async {
-        realtimeChannel = client.realtimeV2.channel("chat-\(conversation.id)")
+        realtimeChannel = client.realtimeV2.channel("chat-\(otherUserId)")
         guard let channel = realtimeChannel else { return }
 
         let insertions = channel.postgresChange(
             InsertAction.self,
             schema: "public",
-            table: "messages",
-            filter: "conversation_id=eq.\(conversation.id)"
+            table: "direct_messages"
         )
 
         await channel.subscribe()
 
         realtimeTask = Task {
-            for await insert in insertions {
-                // Only add if not already present (avoid duplicating our own sent messages)
-                if let record = try? insert.decodeRecord(as: DMMessage.self, decoder: JSONDecoder()) {
-                    if !self.messages.contains(where: { $0.id == record.id }) {
-                        // Re-fetch to get full join data
-                        await self.loadMessages()
-                    }
-                } else {
-                    // Fallback: just reload
-                    await self.loadMessages()
-                }
+            for await _ in insertions {
+                await self.loadMessages()
             }
         }
     }

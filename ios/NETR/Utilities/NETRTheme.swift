@@ -4,7 +4,7 @@ nonisolated enum NETRTheme {
     static let neonGreen = Color(red: 0.224, green: 1.0, blue: 0.078)
     static let darkGreen = Color(red: 0.122, green: 0.8, blue: 0.0)
 
-    static let background = Color(red: 0.016, green: 0.016, blue: 0.024)
+    static let background = Color(red: 0.0, green: 0.0, blue: 0.0)
     static let surface = Color(red: 0.039, green: 0.039, blue: 0.051)
     static let card = Color(red: 0.059, green: 0.059, blue: 0.078)
     static let cardAlt = Color(red: 0.075, green: 0.075, blue: 0.098)
