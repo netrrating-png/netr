@@ -188,8 +188,6 @@ struct ContentView: View {
         }
     }
 
-    private let limeGreen = NETRTheme.neonGreen
-
     private var customTabBar: some View {
         HStack(spacing: 0) {
             ForEach(Tab.allCases, id: \.rawValue) { tab in
