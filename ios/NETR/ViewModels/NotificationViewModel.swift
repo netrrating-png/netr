@@ -126,12 +126,11 @@ class NotificationViewModel {
 
         let insertions = channel.postgresChange(
             InsertAction.self,
-            schema: "public",
             table: "notifications",
-            filter: "recipient_id=eq.\(userId)"
+            filter: .eq("recipient_id", value: userId)
         )
 
-        await channel.subscribe()
+        try? await channel.subscribe()
 
         realtimeTask = Task {
             for await _ in insertions {
