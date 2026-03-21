@@ -8,6 +8,7 @@ struct NotificationsView: View {
     @State private var navigateToCourt: String?
     @State private var showPublicProfile: Bool = false
     @State private var showDMThread: Bool = false
+    @State private var dmSender: FeedAuthor?
 
     private let limeGreen = Color(red: 0.784, green: 1.0, blue: 0.0)
 
@@ -37,7 +38,7 @@ struct NotificationsView: View {
         .sheet(isPresented: $showDMThread) {
             if let otherId = navigateToDM {
                 NavigationStack {
-                    ChatThreadView(otherUserId: otherId)
+                    ChatThreadView(otherUserId: otherId, otherUser: dmSender)
                 }
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
@@ -268,6 +269,7 @@ struct NotificationsView: View {
         case .dm:
             if let senderId = item.notification.senderId {
                 navigateToDM = senderId
+                dmSender = item.sender
                 showDMThread = true
             }
 

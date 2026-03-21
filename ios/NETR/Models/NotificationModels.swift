@@ -65,7 +65,7 @@ extension AppNotification: Decodable {
 
 struct NotificationWithSender: Identifiable, Equatable {
     var id: String { notification.id }
-    let notification: AppNotification
+    var notification: AppNotification
     var sender: FeedAuthor?
 
     var displayMessage: String {
