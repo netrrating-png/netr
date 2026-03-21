@@ -348,14 +348,18 @@ struct PublicPlayerProfileView: View {
     // MARK: - Radar Chart
 
     private func radarSection(user: Player) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let skills = buildRadarSkills(from: user.skills)
+        let hasRatings = skills.contains { $0.raw > 2.5 }
+
+        return VStack(alignment: .leading, spacing: 12) {
+            if hasRatings {
+                ArchetypeBadge(skills: skills)
+            }
+
             Text("SKILL BREAKDOWN")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(NETRTheme.subtext)
                 .tracking(1.5)
-
-            let skills = buildRadarSkills(from: user.skills)
-            let hasRatings = skills.contains { $0.raw > 2.5 }
 
             if hasRatings {
                 SkillRadarView(

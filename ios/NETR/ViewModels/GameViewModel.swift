@@ -36,15 +36,7 @@ class GameViewModel {
         }
 
         let code = generateJoinCode()
-        let maxPlayers: Int = {
-            switch format {
-            case "3v3": return 6
-            case "4v4": return 8
-            case "5v5": return 10
-            case "Run": return 20
-            default: return 10
-            }
-        }()
+        let maxPlayers: Int = GameFormat(rawValue: format)?.maxPlayers ?? 10
 
         var scheduledAtStr: String? = nil
         if let scheduledAt {
@@ -120,7 +112,7 @@ class GameViewModel {
         do {
             let result: [LobbyPlayer] = try await client
                 .from("game_players")
-                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score)")
+                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
                 .eq("game_id", value: gameId)
                 .order("created_at", ascending: true)
                 .execute()

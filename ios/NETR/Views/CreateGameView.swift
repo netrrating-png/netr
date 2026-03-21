@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreLocation
+import Supabase
 
 struct CreateGameView: View {
     @Bindable var viewModel: CourtsViewModel
@@ -369,7 +370,7 @@ struct CreateGameView: View {
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(format.rawValue)
+                                Text(format.displayName)
                                     .font(.system(.title3, design: .default, weight: .black).width(.compressed))
                                     .foregroundStyle(NETRTheme.text)
                                 Text("Max \(format.maxPlayers) players")
@@ -404,7 +405,7 @@ struct CreateGameView: View {
                         .foregroundStyle(NETRTheme.subtext)
                     Text("·")
                         .foregroundStyle(NETRTheme.muted)
-                    Text(selectedFormat.rawValue)
+                    Text(selectedFormat.displayName)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(NETRTheme.subtext)
                 }
@@ -973,6 +974,45 @@ struct GameLobbyView: View {
 
 // MARK: - Lobby Player Row
 
+// MARK: - Rating Progress Circle (shown when peer score is locked)
+
+private struct RatingProgressCircle: View {
+    let totalRatings: Int   // how many peer ratings received so far
+    let needed: Int = 5
+
+    private var progress: Double { min(Double(totalRatings) / Double(needed), 1.0) }
+
+    var body: some View {
+        ZStack {
+            // Dark fill
+            Circle()
+                .fill(Color(hex: "#111111"))
+                .frame(width: 44, height: 44)
+
+            // Background track
+            Circle()
+                .stroke(NETRTheme.neonGreen.opacity(0.15), lineWidth: 2.5)
+                .frame(width: 44, height: 44)
+
+            // Progress arc
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    NETRTheme.neonGreen,
+                    style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                )
+                .frame(width: 44, height: 44)
+                .rotationEffect(.degrees(-90))
+                .shadow(color: NETRTheme.neonGreen.opacity(0.6), radius: 4)
+
+            // Lock icon
+            Image(systemName: "lock.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(NETRTheme.subtext)
+        }
+    }
+}
+
 struct LobbyPlayerRow: View {
     let player: LobbyPlayer
     var isHost: Bool = false
@@ -991,33 +1031,43 @@ struct LobbyPlayerRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            if let avatarUrl = player.profile.avatarUrl, let url = URL(string: avatarUrl) {
-                NETRTheme.card
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
+            // Avatar with vibe dot overlay
+            ZStack(alignment: .bottomTrailing) {
+                Group {
+                    if let avatarUrl = player.profile.avatarUrl, let url = URL(string: avatarUrl) {
+                        NETRTheme.card
+                            .frame(width: 44, height: 44)
+                            .overlay {
+                                AsyncImage(url: url) { phase in
+                                    if let image = phase.image {
+                                        image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
+                                    }
+                                }
                             }
-                        }
+                            .clipShape(Circle())
+                    } else {
+                        Text(initials)
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(player.isCheckedOut ? NETRTheme.muted : NETRTheme.neonGreen)
+                            .frame(width: 44, height: 44)
+                            .background(NETRTheme.card, in: Circle())
                     }
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(
-                        player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
-                        lineWidth: 1.5
-                    ))
-                    .opacity(player.isCheckedOut ? 0.5 : 1)
-            } else {
-                Text(initials)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(player.isCheckedOut ? NETRTheme.muted : NETRTheme.neonGreen)
-                    .frame(width: 40, height: 40)
-                    .background(NETRTheme.card, in: Circle())
-                    .overlay(Circle().stroke(
-                        player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
-                        lineWidth: 1.5
-                    ))
-                    .opacity(player.isCheckedOut ? 0.5 : 1)
+                }
+                .overlay(Circle().stroke(
+                    player.isCheckedOut ? NETRTheme.muted.opacity(0.3) : NETRTheme.neonGreen.opacity(0.3),
+                    lineWidth: 1.5
+                ))
+                .opacity(player.isCheckedOut ? 0.5 : 1)
+
+                // Vibe dot — bottom-right of avatar
+                if player.profile.vibeScore != nil {
+                    VibeDecalView(vibe: player.profile.vibeScore, size: .small)
+                        .frame(width: 12, height: 12)
+                        .background(NETRTheme.surface, in: Circle())
+                        .padding(1)
+                        .background(NETRTheme.surface, in: Circle())
+                        .offset(x: 2, y: 2)
+                }
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -1042,26 +1092,233 @@ struct LobbyPlayerRow: View {
                             .background(NETRTheme.muted.opacity(0.12), in: .capsule)
                     }
                 }
-                Text(player.profile.position ?? "PG")
-                    .font(.caption)
-                    .foregroundStyle(NETRTheme.subtext)
+                if let pos = player.profile.position, !pos.isEmpty {
+                    Text(pos)
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
             }
 
             Spacer()
 
-            HStack(spacing: 8) {
-                if let vibe = player.profile.vibeScore {
-                    VibeDecalView(vibe: vibe, size: .small)
-                }
-
-                if let r = player.profile.netrScore {
-                    Text(String(format: "%.1f", r))
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(NETRRating.color(for: r))
-                }
+            // NETR rating circle — or progress circle if not yet unlocked
+            if (player.profile.totalRatings ?? 0) >= 5 {
+                NETRBadge(score: player.profile.netrScore, size: .small)
+            } else {
+                RatingProgressCircle(totalRatings: player.profile.totalRatings ?? 0)
             }
         }
         .padding(10)
         .background(NETRTheme.surface, in: .rect(cornerRadius: 10))
+    }
+}
+
+// MARK: - Game Players Preview Sheet
+
+struct GamePlayersPreviewSheet: View {
+    let gameId: String
+    @Environment(\.dismiss) private var dismiss
+    @State private var players: [LobbyPlayer] = []
+    @State private var game: SupabaseGame?
+    @State private var isLoading = true
+    @State private var selectedProfileId: String?
+
+    private let client = SupabaseManager.shared.client
+    private var currentUserId: String? { SupabaseManager.shared.session?.user.id.uuidString }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .tint(NETRTheme.neonGreen)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 12) {
+                            // Header stats
+                            if let g = game {
+                                HStack(spacing: 24) {
+                                    VStack(spacing: 2) {
+                                        Text(GameFormat(rawValue: g.format)?.displayName ?? g.format)
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .foregroundStyle(NETRTheme.text)
+                                        Text("Format").font(.caption2).foregroundStyle(NETRTheme.subtext)
+                                    }
+                                    Divider().frame(height: 28).background(NETRTheme.border)
+                                    VStack(spacing: 2) {
+                                        Text("\(activePlayers.count)/\(g.maxPlayers)")
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .foregroundStyle(activePlayers.count >= g.maxPlayers ? NETRTheme.gold : NETRTheme.neonGreen)
+                                        Text("Players").font(.caption2).foregroundStyle(NETRTheme.subtext)
+                                    }
+                                    Divider().frame(height: 28).background(NETRTheme.border)
+                                    VStack(spacing: 2) {
+                                        Text("\(g.maxPlayers - activePlayers.count)")
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .foregroundStyle(NETRTheme.text)
+                                        Text("Open spots").font(.caption2).foregroundStyle(NETRTheme.subtext)
+                                    }
+                                }
+                                .padding(14)
+                                .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+                            }
+
+                            if activePlayers.isEmpty {
+                                Text("No players have joined yet.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                    .padding(.top, 20)
+                            } else {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("WHO'S IN")
+                                        .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                                        .tracking(1)
+                                        .foregroundStyle(NETRTheme.subtext)
+                                    ForEach(activePlayers) { player in
+                                        Button { selectedProfileId = player.userId } label: {
+                                            LobbyPlayerRow(player: player)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(16)
+                    }
+                }
+            }
+            .background(NETRTheme.background.ignoresSafeArea())
+            .navigationTitle("Players")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                }
+            }
+        }
+        .task { await load() }
+        .fullScreenCover(item: $selectedProfileId) { uid in
+            if uid == currentUserId {
+                ProfileView()
+            } else {
+                PublicPlayerProfileView(userId: uid)
+            }
+        }
+    }
+
+    // Show all non-removed players (including checked-out so count matches the card)
+    private var activePlayers: [LobbyPlayer] {
+        players.filter { !$0.isRemoved }
+    }
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+
+        // Direct game_players queries are RLS-restricted in this context, so we embed
+        // game_players inside the games query to get user IDs.
+        nonisolated struct GameWithPlayers: Decodable, Sendable {
+            let id: String
+            let format: String
+            let skillLevel: String
+            let status: String
+            let maxPlayers: Int
+            let joinCode: String
+            let hostId: String
+            let createdAt: String?
+            let scheduledAt: String?
+            let courtId: String?
+            let gamePlayers: [EmbeddedPlayer]
+
+            nonisolated struct EmbeddedPlayer: Decodable, Sendable {
+                let userId: String
+                nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
+            }
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case format; case skillLevel = "skill_level"; case status
+                case maxPlayers = "max_players"; case joinCode = "join_code"
+                case hostId = "host_id"; case createdAt = "created_at"
+                case scheduledAt = "scheduled_at"; case courtId = "court_id"
+                case gamePlayers = "game_players"
+            }
+        }
+
+        guard let gwp: GameWithPlayers = try? await client
+            .from("games")
+            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id, game_players(user_id)")
+            .eq("id", value: gameId)
+            .single()
+            .execute()
+            .value else { return }
+
+        game = SupabaseGame(
+            id: gwp.id, courtId: gwp.courtId, hostId: gwp.hostId,
+            joinCode: gwp.joinCode, format: gwp.format, skillLevel: gwp.skillLevel,
+            status: gwp.status, maxPlayers: gwp.maxPlayers,
+            createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt
+        )
+
+        let userIds = gwp.gamePlayers.map { $0.userId }
+        guard !userIds.isEmpty else { return }
+
+        // Profile fetch — same minimal column list used by other working queries in the app.
+        // total_ratings is intentionally omitted here; it may not exist in the remote DB yet
+        // (pending migration). We count from the ratings table instead.
+        nonisolated struct SlimProfile: Decodable, Sendable {
+            let id: String
+            let fullName: String?
+            let username: String?
+            let position: String?
+            let avatarUrl: String?
+            let netrScore: Double?
+            let vibeScore: Double?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case fullName = "full_name"; case username; case position
+                case avatarUrl = "avatar_url"; case netrScore = "netr_score"
+                case vibeScore = "vibe_score"
+            }
+        }
+
+        let profiles: [SlimProfile] = (try? await client
+            .from("profiles")
+            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score")
+            .in("id", values: userIds)
+            .execute()
+            .value) ?? []
+
+        let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+
+        // Count peer ratings per user from the ratings table (client-side group).
+        nonisolated struct RatingRow: Decodable, Sendable {
+            let ratedUserId: String
+            nonisolated enum CodingKeys: String, CodingKey { case ratedUserId = "rated_user_id" }
+        }
+        let ratingRows: [RatingRow] = (try? await client
+            .from("ratings")
+            .select("rated_user_id")
+            .in("rated_user_id", values: userIds)
+            .eq("is_self_rating", value: false)
+            .execute()
+            .value) ?? []
+        let ratingsCountMap = Dictionary(grouping: ratingRows, by: { $0.ratedUserId })
+            .mapValues { $0.count }
+
+        players = userIds.enumerated().map { idx, uid in
+            let p = profileMap[uid]
+            return LobbyPlayer(
+                id: "\(gameId)-\(idx)", userId: uid, gameId: gameId,
+                checkedInAt: nil, checkedOutAt: nil, removed: false,
+                profile: LobbyPlayerProfile(
+                    id: uid,
+                    fullName: p?.fullName, username: p?.username, position: p?.position,
+                    avatarUrl: p?.avatarUrl, netrScore: p?.netrScore, vibeScore: p?.vibeScore,
+                    totalRatings: ratingsCountMap[uid]
+                )
+            )
+        }
     }
 }

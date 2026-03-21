@@ -198,16 +198,10 @@ struct NETRScoreText: View {
     var color: Color
 
     var body: some View {
-        if let parts = NETRRating.formattedParts(score) {
-            HStack(alignment: .bottom, spacing: 0) {
-                Text(parts.main)
-                    .font(.custom("BarlowCondensed-Black", size: fontSize))
-                    .foregroundColor(color)
-                Text(parts.cents)
-                    .font(.custom("BarlowCondensed-Black", size: fontSize * 0.52))
-                    .foregroundColor(color)
-                    .baselineOffset(fontSize * 0.36)
-            }
+        if let score {
+            Text(String(format: "%.2f", score))
+                .font(.custom("BarlowCondensed-Black", size: fontSize))
+                .foregroundColor(color)
         } else {
             Text("—")
                 .font(.custom("BarlowCondensed-Black", size: fontSize))
@@ -460,6 +454,8 @@ private struct TierCard: View {
     let tier: NETRTier
     var isAverage: Bool = false
 
+    @State private var isExpanded = false
+
     private let bg    = Color(hex: "#111116")
     private let border = Color(hex: "#1E1E26")
     private let sub   = Color(hex: "#6A6A82")
@@ -490,21 +486,18 @@ private struct TierCard: View {
 
                 // Info
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .center, spacing: 6) {
-                        if tier.isLocked {
-                            Text("⭐")
-                                .font(.system(size: 14))
-                        }
-                        Text(tier.name)
-                            .font(.custom("BarlowCondensed-Black", size: 24))
-                            .foregroundColor(.white)
-                    }
+                    Text(tier.name)
+                        .font(.custom("BarlowCondensed-Black", size: 24))
+                        .foregroundColor(.white)
 
                     Text(tier.description)
                         .font(.system(size: 12))
                         .foregroundColor(sub)
-                        .lineLimit(3)
+                        .lineLimit(isExpanded ? nil : 3)
                         .fixedSize(horizontal: false, vertical: true)
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) { isExpanded.toggle() }
+                        }
 
                     // Progress bar
                     GeometryReader { geo in

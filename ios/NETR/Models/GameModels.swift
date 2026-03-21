@@ -83,6 +83,7 @@ nonisolated struct LobbyPlayerProfile: Sendable {
     let avatarUrl: String?
     let netrScore: Double?
     let vibeScore: Double?
+    var totalRatings: Int?
 }
 
 extension LobbyPlayerProfile: Decodable {
@@ -94,6 +95,7 @@ extension LobbyPlayerProfile: Decodable {
         case avatarUrl = "avatar_url"
         case netrScore = "netr_score"
         case vibeScore = "vibe_score"
+        case totalRatings = "total_ratings"
     }
 }
 
