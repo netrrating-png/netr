@@ -119,13 +119,13 @@ class CrewViewModel {
             // Lowercase IDs for profile lookup — Swift uuidString is uppercase
             let userIds = memberRows.map { $0.userId.lowercased() }
 
-            // Fetch profiles; if this fails, still show members with placeholder names
-            let profiles: [ProfileRow] = (try? await client
+            // Fetch profiles
+            let profiles: [ProfileRow] = try await client
                 .from("profiles")
                 .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
                 .in("id", values: userIds)
                 .execute()
-                .value) ?? []
+                .value
 
             let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id.lowercased(), $0) })
 
