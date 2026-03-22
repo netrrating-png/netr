@@ -23,6 +23,8 @@ struct ProfileView: View {
     @State private var showEditMilestones: Bool = false
     @State private var scrollToMilestones: Bool = false
     @State private var localCourtsVM = CourtsViewModel()
+    @State private var crewViewModel = CrewViewModel()
+    @State private var showMyCrews: Bool = false
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -92,6 +94,12 @@ struct ProfileView: View {
                             }
 
                             courtRepRow(user: user)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 24)
+
+                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
+
+                            crewRepRow
                                 .padding(.horizontal, 20)
                                 .padding(.bottom, 24)
 
@@ -210,6 +218,14 @@ struct ProfileView: View {
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.background)
             }
+        }
+        .sheet(isPresented: $showMyCrews) {
+            NavigationStack {
+                MyCrewsView(viewModel: crewViewModel)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
         }
     }
 
@@ -876,6 +892,102 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Crew Rep
+
+    @ViewBuilder
+    private var crewRepRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("MY CREW")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .tracking(1.5)
+                Spacer()
+                Button {
+                    showMyCrews = true
+                } label: {
+                    HStack(spacing: 4) {
+                        LucideIcon("users", size: 11)
+                        Text(crewViewModel.myCrews.isEmpty ? "Join a Crew" : "Manage")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+                    .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+            }
+
+            if let primary = crewViewModel.primaryCrew {
+                Button { showMyCrews = true } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.neonGreen.opacity(0.12))
+                                .frame(width: 48, height: 48)
+                            LucideIcon(primary.icon, size: 22)
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(primary.name)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(NETRTheme.text)
+                                Text("PRIMARY")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .tracking(0.8)
+                                    .foregroundStyle(NETRTheme.gold)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(NETRTheme.gold.opacity(0.12), in: .rect(cornerRadius: 4))
+                            }
+                            Text("\(crewViewModel.myCrews.count) crew\(crewViewModel.myCrews.count == 1 ? "" : "s") total")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                        Spacer()
+                        LucideIcon("chevron-right", size: 14)
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    .padding(14)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+            } else {
+                Button { showMyCrews = true } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.card)
+                                .frame(width: 44, height: 44)
+                            LucideIcon("users", size: 20)
+                                .foregroundStyle(NETRTheme.muted)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("No crew yet")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(NETRTheme.subtext)
+                            Text("Create or join a crew with your ballers")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.muted)
+                        }
+                        Spacer()
+                        LucideIcon("chevron-right", size: 14)
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    .padding(14)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+            }
+        }
+        .task { await crewViewModel.loadMyCrews() }
     }
 
     // MARK: - Home Court
