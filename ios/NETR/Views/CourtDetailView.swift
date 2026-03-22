@@ -615,14 +615,16 @@ struct CourtDetailView: View {
         ]
 
         var loadError: Error?
+        var live: [NearbyGame] = []
+        var scheduled: [NearbyGame] = []
         for (i, select) in selects.enumerated() {
             do {
-                let (live, scheduled) = try await fetchCourtGames(
+                let result = try await fetchCourtGames(
                     client: client, select: select,
                     courtId: court.id, cutoff: cutoff, twoHoursAgo: twoHoursAgo
                 )
-                courtLiveGames = live
-                courtScheduledGames = scheduled
+                live = result.live
+                scheduled = result.scheduled
                 print("[CourtGames] level \(i+1) select: \(live.count) live, \(scheduled.count) scheduled")
                 loadError = nil
                 break
@@ -634,6 +636,28 @@ struct CourtDetailView: View {
         if let err = loadError {
             gamesLoadError = err.localizedDescription
         }
+
+        // Fetch player counts directly — no FK join needed
+        let allGameIds = (live + scheduled).map { $0.id }
+        if !allGameIds.isEmpty {
+            nonisolated struct GameIdRow: Decodable, Sendable {
+                let gameId: String
+                nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+            }
+            let playerRows: [GameIdRow] = (try? await client
+                .from("game_players")
+                .select("game_id")
+                .in("game_id", values: allGameIds)
+                .execute()
+                .value) ?? []
+            let countMap = Dictionary(grouping: playerRows, by: { $0.gameId })
+                .mapValues { $0.count }
+            live     = live.map     { var g = $0; g.playerCount = countMap[g.id] ?? g.joinedCount; return g }
+            scheduled = scheduled.map { var g = $0; g.playerCount = countMap[g.id] ?? g.joinedCount; return g }
+        }
+
+        courtLiveGames = live
+        courtScheduledGames = scheduled
 
         if let userId = SupabaseManager.shared.session?.user.id.uuidString {
             do {

@@ -39,8 +39,9 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         case host_id
     }
 
-    // game_players rows don't carry removed status in the card select, so count is total active slots
-    var joinedCount: Int { game_players?.count ?? 0 }
+    // playerCount is set separately via a direct game_players query (no FK join needed)
+    var playerCount: Int? = nil
+    var joinedCount: Int { playerCount ?? game_players?.count ?? 0 }
 
     var courtName: String { courts?.name ?? "Unknown Court" }
     var neighborhood: String { courts?.neighborhood ?? "" }
