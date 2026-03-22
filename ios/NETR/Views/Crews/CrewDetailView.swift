@@ -331,7 +331,7 @@ struct CrewDetailView: View {
             Spacer()
 
             // Score Badge — shows the selected category score
-            let displayScore = member.score(for: selectedFilter) ?? member.netrScore
+            let displayScore = member.score(for: selectedFilter)
             if let score = displayScore {
                 VStack(alignment: .trailing, spacing: 1) {
                     Text(String(format: "%.1f", score))
@@ -347,9 +347,11 @@ struct CrewDetailView: View {
                     }
                 }
             } else {
-                Text("—")
-                    .font(.system(size: 13))
+                LucideIcon("lock", size: 13)
                     .foregroundStyle(NETRTheme.muted)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(NETRTheme.surface, in: .rect(cornerRadius: 8))
             }
         }
         .padding(.vertical, 12)
