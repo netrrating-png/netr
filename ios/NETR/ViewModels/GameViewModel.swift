@@ -121,9 +121,8 @@ class GameViewModel {
             return
         }
 
-        // Level 2: embed game_players inside the games query (bypasses game_players SELECT RLS)
-        // then fetch profiles separately — same pattern used by GamePlayersPreviewSheet
-        nonisolated struct EmbeddedPlayerRow: Decodable, Sendable {
+        // Level 2: bare direct query — no FK joins, no profiles join, just the raw rows
+        nonisolated struct BarePlayerRow: Decodable, Sendable {
             let id: String
             let userId: String
             let checkedInAt: String?
@@ -137,27 +136,15 @@ class GameViewModel {
                 case removed
             }
         }
-        nonisolated struct GameWithEmbeddedPlayers: Decodable, Sendable {
-            let id: String
-            let gamePlayers: [EmbeddedPlayerRow]
-            nonisolated enum CodingKeys: String, CodingKey {
-                case id
-                case gamePlayers = "game_players"
-            }
-        }
 
-        guard let gwp: GameWithEmbeddedPlayers = try? await client
-            .from("games")
-            .select("id, game_players(id, user_id, checked_in_at, checked_out_at, removed)")
-            .eq("id", value: gameId)
-            .single()
+        let bareRows: [BarePlayerRow] = (try? await client
+            .from("game_players")
+            .select("id, user_id, checked_in_at, checked_out_at, removed")
+            .eq("game_id", value: gameId)
             .execute()
-            .value else {
-            print("loadPlayers: all levels failed for game \(gameId)")
-            return
-        }
+            .value) ?? []
 
-        let activeRows = gwp.gamePlayers.filter { !($0.removed ?? false) }
+        let activeRows = bareRows.filter { !($0.removed ?? false) }
         let userIds = activeRows.map { $0.userId }
 
         var profileMap: [String: LobbyPlayerProfile] = [:]
