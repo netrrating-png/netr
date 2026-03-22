@@ -677,9 +677,14 @@ struct CourtDetailView: View {
                 hostMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
             }
 
+            let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+
             func applyMeta(_ g: NearbyGame) -> NearbyGame {
                 var g = g
-                g.playerCount = countMap[g.id] ?? g.joinedCount
+                let dbCount = countMap[g.id] ?? g.joinedCount
+                // Host is always at least 1 player even if game_players row hasn't synced yet
+                let isHostGame = g.host_id?.lowercased() == currentUserId?.lowercased()
+                g.playerCount = dbCount > 0 ? dbCount : (isHostGame ? 1 : 0)
                 if let p = hostMap[g.host_id ?? ""] {
                     let name = p.fullName?.isEmpty == false ? p.fullName! : (p.username.map { "@\($0)" } ?? "")
                     if !name.isEmpty { g.resolvedHostName = name }
