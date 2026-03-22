@@ -612,24 +612,33 @@ struct CrewDetailView: View {
     @ViewBuilder
     private func ratingLockBadge(member: CrewMemberProfile) -> some View {
         let progress = member.ratingProgress
-        let ringSize: CGFloat = 28
+        let ringSize: CGFloat = 36
 
         ZStack {
+            // Background fill
             Circle()
-                .stroke(NETRTheme.surface, lineWidth: 2)
+                .fill(NETRTheme.card)
                 .frame(width: ringSize, height: ringSize)
 
+            // Track
             Circle()
-                .trim(from: 0, to: progress)
-                .stroke(
-                    NETRTheme.neonGreen.opacity(0.7),
-                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
-                )
+                .stroke(NETRTheme.border, lineWidth: 2.5)
                 .frame(width: ringSize, height: ringSize)
-                .rotationEffect(.degrees(-90))
 
-            LucideIcon("lock", size: 10)
-                .foregroundStyle(NETRTheme.muted)
+            // Progress arc
+            if progress > 0 {
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(
+                        NETRTheme.neonGreen,
+                        style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
+                    )
+                    .frame(width: ringSize, height: ringSize)
+                    .rotationEffect(.degrees(-90))
+            }
+
+            LucideIcon("lock", size: 13)
+                .foregroundStyle(NETRTheme.subtext)
         }
     }
 
