@@ -39,17 +39,20 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         case host_id
     }
 
-    // playerCount is set separately via a direct game_players query (no FK join needed)
+    // playerCount and resolvedHostName are set separately via direct queries (no FK joins needed)
     var playerCount: Int? = nil
     var joinedCount: Int { playerCount ?? game_players?.count ?? 0 }
 
-    var courtName: String { courts?.name ?? "Unknown Court" }
-    var neighborhood: String { courts?.neighborhood ?? "" }
+    var resolvedHostName: String? = nil
     var hostName: String {
+        if let name = resolvedHostName, !name.isEmpty { return name }
         if let name = host?.full_name, !name.isEmpty { return name }
-        if let username = host?.username { return "@\(username)" }
+        if let username = host?.username, !username.isEmpty { return "@\(username)" }
         return "Unknown"
     }
+
+    var courtName: String { courts?.name ?? "Unknown Court" }
+    var neighborhood: String { courts?.neighborhood ?? "" }
     var isScheduled: Bool { scheduled_at != nil }
     var scheduledDate: Date? {
         guard let str = scheduled_at else { return nil }

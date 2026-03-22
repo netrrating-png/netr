@@ -637,9 +637,10 @@ struct CourtDetailView: View {
             gamesLoadError = err.localizedDescription
         }
 
-        // Fetch player counts directly — no FK join needed
+        // Fetch player counts + host names directly — no FK joins needed
         let allGameIds = (live + scheduled).map { $0.id }
         if !allGameIds.isEmpty {
+            // Player counts
             nonisolated struct GameIdRow: Decodable, Sendable {
                 let gameId: String
                 nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
@@ -652,8 +653,41 @@ struct CourtDetailView: View {
                 .value) ?? []
             let countMap = Dictionary(grouping: playerRows, by: { $0.gameId })
                 .mapValues { $0.count }
-            live     = live.map     { var g = $0; g.playerCount = countMap[g.id] ?? g.joinedCount; return g }
-            scheduled = scheduled.map { var g = $0; g.playerCount = countMap[g.id] ?? g.joinedCount; return g }
+
+            // Host names
+            let hostIds = Array(Set((live + scheduled).compactMap { $0.host_id }))
+            nonisolated struct HostProfile: Decodable, Sendable {
+                let id: String
+                let fullName: String?
+                let username: String?
+                nonisolated enum CodingKeys: String, CodingKey {
+                    case id
+                    case fullName = "full_name"
+                    case username
+                }
+            }
+            var hostMap: [String: HostProfile] = [:]
+            if !hostIds.isEmpty,
+               let profiles: [HostProfile] = try? await client
+                   .from("profiles")
+                   .select("id, full_name, username")
+                   .in("id", values: hostIds)
+                   .execute()
+                   .value {
+                hostMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+            }
+
+            func applyMeta(_ g: NearbyGame) -> NearbyGame {
+                var g = g
+                g.playerCount = countMap[g.id] ?? g.joinedCount
+                if let p = hostMap[g.host_id ?? ""] {
+                    let name = p.fullName?.isEmpty == false ? p.fullName! : (p.username.map { "@\($0)" } ?? "")
+                    if !name.isEmpty { g.resolvedHostName = name }
+                }
+                return g
+            }
+            live      = live.map      { applyMeta($0) }
+            scheduled = scheduled.map { applyMeta($0) }
         }
 
         courtLiveGames = live
