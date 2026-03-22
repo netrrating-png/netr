@@ -104,11 +104,13 @@ extension LobbyPlayerProfile: Decodable {
 nonisolated struct GamePlayerPayload: Encodable, Sendable {
     let gameId: String
     let userId: String
+    let joinedAt: String?
     let checkedInAt: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case gameId = "game_id"
         case userId = "user_id"
+        case joinedAt = "joined_at"
         case checkedInAt = "checked_in_at"
     }
 }

@@ -231,9 +231,10 @@ class JoinGameViewModel {
         nowFmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         do {
+            let now = nowFmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: game.id, userId: userId, checkedInAt: nowFmt.string(from: Date())))
+                .insert(GamePlayerPayload(gameId: game.id, userId: userId, joinedAt: now, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client

@@ -102,9 +102,10 @@ class GameViewModel {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = fmt.string(from: Date())
         try await client
             .from("game_players")
-            .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: fmt.string(from: Date())))
+            .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
             .execute()
     }
 
@@ -398,9 +399,10 @@ class GameViewModel {
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         do {
+            let now = fmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: fmt.string(from: Date())))
+                .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client
