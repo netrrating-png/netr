@@ -109,7 +109,7 @@ class GameViewModel {
     }
 
     func loadPlayers(gameId: String) async {
-        // Level 1: full join with profiles (requires game_players→profiles FK in PostgREST cache)
+        // Level 1: direct game_players + profile FK join
         if let result: [LobbyPlayer] = try? await client
             .from("game_players")
             .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
@@ -121,68 +121,71 @@ class GameViewModel {
             return
         }
 
-        // Level 2: bare rows (no profile join) — build minimal LobbyPlayer with userId only
-        nonisolated struct BarePlayerRow: Decodable, Sendable {
+        // Level 2: embed game_players inside the games query (bypasses game_players SELECT RLS)
+        // then fetch profiles separately — same pattern used by GamePlayersPreviewSheet
+        nonisolated struct EmbeddedPlayerRow: Decodable, Sendable {
             let id: String
             let userId: String
-            let gameId: String
             let checkedInAt: String?
             let checkedOutAt: String?
             let removed: Bool?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case userId      = "user_id"
-                case gameId      = "game_id"
-                case checkedInAt = "checked_in_at"
+                case userId       = "user_id"
+                case checkedInAt  = "checked_in_at"
                 case checkedOutAt = "checked_out_at"
                 case removed
             }
         }
+        nonisolated struct GameWithEmbeddedPlayers: Decodable, Sendable {
+            let id: String
+            let gamePlayers: [EmbeddedPlayerRow]
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id
+                case gamePlayers = "game_players"
+            }
+        }
 
-        guard let bare: [BarePlayerRow] = try? await client
-            .from("game_players")
-            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed")
-            .eq("game_id", value: gameId)
-            .order("created_at", ascending: true)
+        guard let gwp: GameWithEmbeddedPlayers = try? await client
+            .from("games")
+            .select("id, game_players(id, user_id, checked_in_at, checked_out_at, removed)")
+            .eq("id", value: gameId)
+            .single()
             .execute()
             .value else {
-            print("loadPlayers: both query levels failed for game \(gameId)")
+            print("loadPlayers: all levels failed for game \(gameId)")
             return
         }
 
-        // Fetch profiles separately for the user IDs we got
-        let userIds = bare.filter { !($0.removed ?? false) }.map { $0.userId }
-        let profileRows: [LobbyPlayerProfile]
+        let activeRows = gwp.gamePlayers.filter { !($0.removed ?? false) }
+        let userIds = activeRows.map { $0.userId }
+
+        var profileMap: [String: LobbyPlayerProfile] = [:]
         if !userIds.isEmpty,
-           let fetched: [LobbyPlayerProfile] = try? await client
+           let profiles: [LobbyPlayerProfile] = try? await client
                .from("profiles")
                .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
                .in("id", values: userIds)
                .execute()
                .value {
-            profileRows = fetched
-        } else {
-            profileRows = []
+            profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
         }
-        let profileMap = Dictionary(uniqueKeysWithValues: profileRows.map { ($0.id, $0) })
 
-        players = bare
-            .filter { !($0.removed ?? false) }
-            .map { row in
-                LobbyPlayer(
-                    id: row.id,
-                    userId: row.userId,
-                    gameId: row.gameId,
-                    checkedInAt: row.checkedInAt,
-                    checkedOutAt: row.checkedOutAt,
-                    removed: row.removed,
-                    profile: profileMap[row.userId] ?? LobbyPlayerProfile(
-                        id: row.userId,
-                        fullName: nil, username: nil, position: nil,
-                        avatarUrl: nil, netrScore: nil, vibeScore: nil, totalRatings: nil
-                    )
+        players = activeRows.map { row in
+            LobbyPlayer(
+                id: row.id,
+                userId: row.userId,
+                gameId: gameId,
+                checkedInAt: row.checkedInAt,
+                checkedOutAt: row.checkedOutAt,
+                removed: row.removed,
+                profile: profileMap[row.userId] ?? LobbyPlayerProfile(
+                    id: row.userId,
+                    fullName: nil, username: nil, position: nil,
+                    avatarUrl: nil, netrScore: nil, vibeScore: nil, totalRatings: nil
                 )
-            }
+            )
+        }
     }
 
     func startGame() async {
