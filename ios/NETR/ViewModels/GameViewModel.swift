@@ -109,19 +109,80 @@ class GameViewModel {
     }
 
     func loadPlayers(gameId: String) async {
-        do {
-            let result: [LobbyPlayer] = try await client
-                .from("game_players")
-                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
-                .eq("game_id", value: gameId)
-                .order("created_at", ascending: true)
-                .execute()
-                .value
-
+        // Level 1: full join with profiles (requires game_players→profiles FK in PostgREST cache)
+        if let result: [LobbyPlayer] = try? await client
+            .from("game_players")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
+            .eq("game_id", value: gameId)
+            .order("created_at", ascending: true)
+            .execute()
+            .value, !result.isEmpty {
             players = result.filter { !$0.isRemoved }
-        } catch {
-            print("Load players error: \(error)")
+            return
         }
+
+        // Level 2: bare rows (no profile join) — build minimal LobbyPlayer with userId only
+        nonisolated struct BarePlayerRow: Decodable, Sendable {
+            let id: String
+            let userId: String
+            let gameId: String
+            let checkedInAt: String?
+            let checkedOutAt: String?
+            let removed: Bool?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id
+                case userId      = "user_id"
+                case gameId      = "game_id"
+                case checkedInAt = "checked_in_at"
+                case checkedOutAt = "checked_out_at"
+                case removed
+            }
+        }
+
+        guard let bare: [BarePlayerRow] = try? await client
+            .from("game_players")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed")
+            .eq("game_id", value: gameId)
+            .order("created_at", ascending: true)
+            .execute()
+            .value else {
+            print("loadPlayers: both query levels failed for game \(gameId)")
+            return
+        }
+
+        // Fetch profiles separately for the user IDs we got
+        let userIds = bare.filter { !($0.removed ?? false) }.map { $0.userId }
+        let profileRows: [LobbyPlayerProfile]
+        if !userIds.isEmpty,
+           let fetched: [LobbyPlayerProfile] = try? await client
+               .from("profiles")
+               .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+               .in("id", values: userIds)
+               .execute()
+               .value {
+            profileRows = fetched
+        } else {
+            profileRows = []
+        }
+        let profileMap = Dictionary(uniqueKeysWithValues: profileRows.map { ($0.id, $0) })
+
+        players = bare
+            .filter { !($0.removed ?? false) }
+            .map { row in
+                LobbyPlayer(
+                    id: row.id,
+                    userId: row.userId,
+                    gameId: row.gameId,
+                    checkedInAt: row.checkedInAt,
+                    checkedOutAt: row.checkedOutAt,
+                    removed: row.removed,
+                    profile: profileMap[row.userId] ?? LobbyPlayerProfile(
+                        id: row.userId,
+                        fullName: nil, username: nil, position: nil,
+                        avatarUrl: nil, netrScore: nil, vibeScore: nil, totalRatings: nil
+                    )
+                )
+            }
     }
 
     func startGame() async {
@@ -456,7 +517,8 @@ class GameViewModel {
         guard let hostId = game?.hostId,
               let userId = SupabaseManager.shared.session?.user.id.uuidString
         else { return false }
-        return hostId == userId
+        // Postgres returns UUIDs lowercase; Swift's uuidString is uppercase — compare case-insensitively
+        return hostId.lowercased() == userId.lowercased()
     }
 
     var isFull: Bool {
