@@ -645,12 +645,15 @@ struct CourtDetailView: View {
                 let gameId: String
                 nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
             }
-            let playerRows: [GameIdRow] = (try? await client
+            // game_players.game_id is UUID — fetch all rows and filter client-side
+            // to avoid PostgREST text-vs-uuid cast issues with .in()
+            let allPlayerRows: [GameIdRow] = (try? await client
                 .from("game_players")
                 .select("game_id")
-                .in("game_id", values: allGameIds)
                 .execute()
                 .value) ?? []
+            let gameIdSet = Set(allGameIds)
+            let playerRows = allPlayerRows.filter { gameIdSet.contains($0.gameId) }
             let countMap = Dictionary(grouping: playerRows, by: { $0.gameId })
                 .mapValues { $0.count }
 
