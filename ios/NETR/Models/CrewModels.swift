@@ -67,8 +67,12 @@ struct CrewMemberProfile: Identifiable {
     let catDefense: Double?
     let catHustle: Double?
     let catSportsmanship: Double?
+    let reviewCount: Int?
     let isPrimary: Bool
     let joinedAt: String?
+
+    var ratingProgress: Double { min(1.0, Double(reviewCount ?? 0) / 5.0) }
+    var isRated: Bool { (reviewCount ?? 0) >= 5 }
 
     var displayName: String {
         if let n = fullName, !n.isEmpty { return n }

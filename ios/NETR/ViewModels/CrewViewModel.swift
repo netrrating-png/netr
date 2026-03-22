@@ -89,6 +89,7 @@ class CrewViewModel {
             let catDefense: Double?
             let catHustle: Double?
             let catSportsmanship: Double?
+            let reviewCount: Int?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
                 case fullName         = "full_name"
@@ -101,6 +102,7 @@ class CrewViewModel {
                 case catDefense       = "cat_defense"
                 case catHustle        = "cat_hustle"
                 case catSportsmanship = "cat_sportsmanship"
+                case reviewCount      = "review_count"
             }
         }
 
@@ -120,7 +122,7 @@ class CrewViewModel {
             // Fetch profiles
             let profiles: [ProfileRow] = try await client
                 .from("profiles")
-                .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_dribbling, cat_passing, cat_defense, cat_hustle, cat_sportsmanship")
+                .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_dribbling, cat_passing, cat_defense, cat_hustle, cat_sportsmanship, review_count")
                 .in("id", values: userIds)
                 .execute()
                 .value
@@ -142,6 +144,7 @@ class CrewViewModel {
                     catDefense: p?.catDefense,
                     catHustle: p?.catHustle,
                     catSportsmanship: p?.catSportsmanship,
+                    reviewCount: p?.reviewCount,
                     isPrimary: member.isPrimary ?? false,
                     joinedAt: member.joinedAt
                 )

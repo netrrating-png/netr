@@ -347,11 +347,7 @@ struct CrewDetailView: View {
                     }
                 }
             } else {
-                LucideIcon("lock", size: 13)
-                    .foregroundStyle(NETRTheme.muted)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(NETRTheme.surface, in: .rect(cornerRadius: 8))
+                ratingLockBadge(member: member)
             }
         }
         .padding(.vertical, 12)
@@ -605,6 +601,32 @@ struct CrewDetailView: View {
         }
     }
 
+    // MARK: - Rating Lock Badge (progress ring + lock icon)
+
+    @ViewBuilder
+    private func ratingLockBadge(member: CrewMemberProfile) -> some View {
+        let progress = member.ratingProgress
+        let ringSize: CGFloat = 28
+
+        ZStack {
+            Circle()
+                .stroke(NETRTheme.surface, lineWidth: 2)
+                .frame(width: ringSize, height: ringSize)
+
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(
+                    NETRTheme.neonGreen.opacity(0.7),
+                    style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                )
+                .frame(width: ringSize, height: ringSize)
+                .rotationEffect(.degrees(-90))
+
+            LucideIcon("lock", size: 10)
+                .foregroundStyle(NETRTheme.muted)
+        }
+    }
+
     // MARK: - Avatar Helper
 
     @ViewBuilder
@@ -614,21 +636,22 @@ struct CrewDetailView: View {
                 .fill(NETRTheme.surface)
                 .frame(width: size, height: size)
 
+            initialsView(name: profile.displayName, size: size)
+
             if let urlString = profile.avatarUrl, let url = URL(string: urlString) {
                 AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image.resizable().scaledToFill()
-                    default:
-                        initialsView(name: profile.displayName, size: size)
+                    if case .success(let image) = phase {
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: size, height: size)
+                            .clipShape(Circle())
                     }
                 }
-                .frame(width: size, height: size)
-                .clipShape(Circle())
-            } else {
-                initialsView(name: profile.displayName, size: size)
             }
         }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
     }
 
     @ViewBuilder
