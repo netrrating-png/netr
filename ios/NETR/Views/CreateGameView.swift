@@ -1309,7 +1309,7 @@ struct GamePlayersPreviewSheet: View {
             id: gwp.id, courtId: gwp.courtId, hostId: gwp.hostId,
             joinCode: gwp.joinCode, format: gwp.format, skillLevel: gwp.skillLevel,
             status: gwp.status, maxPlayers: gwp.maxPlayers,
-            createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt
+            createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt, completedAt: nil
         )
 
         let userIds = gwp.gamePlayers.map { $0.userId }

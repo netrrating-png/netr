@@ -434,7 +434,13 @@ struct CourtDetailView: View {
 
     private func courtGameCard(_ game: NearbyGame) -> some View {
         VStack(spacing: 0) {
-            Button { previewGameId = game.id } label: {
+            Button {
+                if courtJoinedGameIds.contains(game.id) {
+                    Task { await openCourtLobby(game.id) }
+                } else {
+                    previewGameId = game.id
+                }
+            } label: {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
@@ -506,17 +512,25 @@ struct CourtDetailView: View {
             .buttonStyle(.plain)
 
             if courtJoinedGameIds.contains(game.id) {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 15))
-                    Text("JOINED")
-                        .font(.system(size: 14, weight: .bold))
+                Button {
+                    Task { await openCourtLobby(game.id) }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 15))
+                        Text("OPEN LOBBY")
+                            .font(.system(size: 14, weight: .bold))
+                        Spacer()
+                        LucideIcon("chevron-right", size: 12)
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .padding(.horizontal, 12)
+                    .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
                 }
-                .foregroundStyle(NETRTheme.neonGreen)
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+                .buttonStyle(PressButtonStyle())
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
             } else {
@@ -549,6 +563,23 @@ struct CourtDetailView: View {
         .background(NETRTheme.card)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
         .clipShape(.rect(cornerRadius: 14))
+    }
+
+    // Open the full GameLobbyView for a game the user is already in
+    private func openCourtLobby(_ gameId: String) async {
+        do {
+            let found: SupabaseGame = try await SupabaseManager.shared.client
+                .from("games")
+                .select()
+                .eq("id", value: gameId)
+                .single()
+                .execute()
+                .value
+            courtLobbyVM.game = found
+        } catch { return }
+        await courtLobbyVM.subscribeToLobby(gameId: gameId)
+        await courtLobbyVM.loadPlayers(gameId: gameId)
+        showCourtLobby = true
     }
 
     private func loadCourtGames() async {

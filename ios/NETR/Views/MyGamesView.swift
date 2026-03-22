@@ -166,21 +166,18 @@ struct MyGamesView: View {
     }
 
     private func openGame(_ game: DiscoverableGame) async {
-        if let joined = await gameViewModel.joinGameDirectly(game.id) {
-            gameViewModel.game = joined
-        } else {
-            do {
-                let found: SupabaseGame = try await SupabaseManager.shared.client
-                    .from("games")
-                    .select()
-                    .eq("id", value: game.id)
-                    .single()
-                    .execute()
-                    .value
-                gameViewModel.game = found
-            } catch {
-                return
-            }
+        // User is already in this game — just fetch it and open the lobby, don't try to join again
+        do {
+            let found: SupabaseGame = try await SupabaseManager.shared.client
+                .from("games")
+                .select()
+                .eq("id", value: game.id)
+                .single()
+                .execute()
+                .value
+            gameViewModel.game = found
+        } catch {
+            return
         }
         await gameViewModel.subscribeToLobby(gameId: game.id)
         await gameViewModel.loadPlayers(gameId: game.id)
