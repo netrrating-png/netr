@@ -51,6 +51,16 @@ struct CrewDetailView: View {
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
 
+                // Debug error (temp)
+                if let err = errorMsg {
+                    Text(err)
+                        .font(.system(size: 12))
+                        .foregroundStyle(NETRTheme.red)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 4)
+                        .multilineTextAlignment(.center)
+                }
+
                 // Content
                 if selectedTab == 0 {
                     leaderboardTab
@@ -635,7 +645,11 @@ struct CrewDetailView: View {
 
     private func loadData() async {
         isLoading = true
+        viewModel.errorMessage = nil
         await viewModel.loadCrewDetail(crewId: crew.id)
+        if let err = viewModel.errorMessage {
+            errorMsg = "Load error: \(err)"
+        }
         isLoading = false
     }
 

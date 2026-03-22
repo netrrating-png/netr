@@ -114,34 +114,37 @@ class CrewViewModel {
                 .execute()
                 .value
 
-            let userIds = memberRows.map { $0.userId.lowercased() }
-            guard !userIds.isEmpty else { members = []; return }
+            guard !memberRows.isEmpty else { members = []; return }
 
-            let profiles: [ProfileRow] = try await client
+            // Lowercase IDs for profile lookup — Swift uuidString is uppercase
+            let userIds = memberRows.map { $0.userId.lowercased() }
+
+            // Fetch profiles; if this fails, still show members with placeholder names
+            let profiles: [ProfileRow] = (try? await client
                 .from("profiles")
                 .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
                 .in("id", values: userIds)
                 .execute()
-                .value
+                .value) ?? []
 
             let profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id.lowercased(), $0) })
 
-            members = memberRows.compactMap { member in
-                guard let p = profileMap[member.userId.lowercased()] else { return nil }
+            members = memberRows.map { member in
+                let p = profileMap[member.userId.lowercased()]
                 return CrewMemberProfile(
                     id: member.userId,
                     memberId: member.id,
-                    fullName: p.fullName,
-                    username: p.username,
-                    avatarUrl: p.avatarUrl,
-                    netrScore: p.netrScore,
-                    catShooting: p.catShooting,
-                    catFinishing: p.catFinishing,
-                    catDribbling: p.catDribbling,
-                    catPassing: p.catPassing,
-                    catDefense: p.catDefense,
-                    catRebounding: p.catRebounding,
-                    catBasketballIq: p.catBasketballIq,
+                    fullName: p?.fullName,
+                    username: p?.username,
+                    avatarUrl: p?.avatarUrl,
+                    netrScore: p?.netrScore,
+                    catShooting: p?.catShooting,
+                    catFinishing: p?.catFinishing,
+                    catDribbling: p?.catDribbling,
+                    catPassing: p?.catPassing,
+                    catDefense: p?.catDefense,
+                    catRebounding: p?.catRebounding,
+                    catBasketballIq: p?.catBasketballIq,
                     isPrimary: member.isPrimary ?? false,
                     joinedAt: member.joinedAt
                 )
