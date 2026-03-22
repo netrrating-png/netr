@@ -160,13 +160,22 @@ class CrewViewModel {
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let now = fmt.string(from: Date())
 
-        let created: Crew = try await client
-            .from("crews")
-            .insert(CreateCrewPayload(name: name, icon: icon, password: password, creatorId: userId, adminId: userId))
-            .select("id, name, icon, creator_id, admin_id, created_at")
-            .single()
-            .execute()
-            .value
+        let created: Crew
+        do {
+            created = try await client
+                .from("crews")
+                .insert(CreateCrewPayload(name: name, icon: icon, password: password, creatorId: userId, adminId: userId))
+                .select("id, name, icon, creator_id, admin_id, created_at")
+                .single()
+                .execute()
+                .value
+        } catch {
+            if error.localizedDescription.contains("crews_name_key") ||
+               error.localizedDescription.contains("unique constraint") {
+                throw CrewError.nameTaken
+            }
+            throw error
+        }
 
         // Add creator as first member
         try await client
