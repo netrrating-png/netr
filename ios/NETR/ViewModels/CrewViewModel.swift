@@ -84,25 +84,23 @@ class CrewViewModel {
             let avatarUrl: String?
             let netrScore: Double?
             let catShooting: Double?
-            let catFinishing: Double?
             let catDribbling: Double?
             let catPassing: Double?
             let catDefense: Double?
-            let catRebounding: Double?
-            let catBasketballIq: Double?
+            let catHustle: Double?
+            let catSportsmanship: Double?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case fullName        = "full_name"
+                case fullName         = "full_name"
                 case username
-                case avatarUrl       = "avatar_url"
-                case netrScore       = "netr_score"
-                case catShooting     = "cat_shooting"
-                case catFinishing    = "cat_finishing"
-                case catDribbling    = "cat_dribbling"
-                case catPassing      = "cat_passing"
-                case catDefense      = "cat_defense"
-                case catRebounding   = "cat_rebounding"
-                case catBasketballIq = "cat_basketball_iq"
+                case avatarUrl        = "avatar_url"
+                case netrScore        = "netr_score"
+                case catShooting      = "cat_shooting"
+                case catDribbling     = "cat_dribbling"
+                case catPassing       = "cat_passing"
+                case catDefense       = "cat_defense"
+                case catHustle        = "cat_hustle"
+                case catSportsmanship = "cat_sportsmanship"
             }
         }
 
@@ -122,7 +120,7 @@ class CrewViewModel {
             // Fetch profiles
             let profiles: [ProfileRow] = try await client
                 .from("profiles")
-                .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq")
+                .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_dribbling, cat_passing, cat_defense, cat_hustle, cat_sportsmanship")
                 .in("id", values: userIds)
                 .execute()
                 .value
@@ -139,12 +137,11 @@ class CrewViewModel {
                     avatarUrl: p?.avatarUrl,
                     netrScore: p?.netrScore,
                     catShooting: p?.catShooting,
-                    catFinishing: p?.catFinishing,
                     catDribbling: p?.catDribbling,
                     catPassing: p?.catPassing,
                     catDefense: p?.catDefense,
-                    catRebounding: p?.catRebounding,
-                    catBasketballIq: p?.catBasketballIq,
+                    catHustle: p?.catHustle,
+                    catSportsmanship: p?.catSportsmanship,
                     isPrimary: member.isPrimary ?? false,
                     joinedAt: member.joinedAt
                 )
