@@ -6,7 +6,6 @@ struct DMInboxView: View {
     @State private var showChat: Bool = false
     @State private var crewViewModel = CrewViewModel()
     @State private var selectedCrew: MyCrew? = nil
-    @State private var showCrewChat: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,12 +45,8 @@ struct DMInboxView: View {
                 )
             }
         }
-        .fullScreenCover(isPresented: $showCrewChat, onDismiss: {
-            selectedCrew = nil
-        }) {
-            if let crew = selectedCrew {
-                CrewChatView(viewModel: crewViewModel, crew: crew)
-            }
+        .fullScreenCover(item: $selectedCrew) { crew in
+            CrewChatView(viewModel: crewViewModel, crew: crew)
         }
         .task {
             await viewModel.loadConversations()
@@ -105,9 +100,8 @@ struct DMInboxView: View {
 
                     ForEach(crewViewModel.myCrews) { myCrew in
                         Button {
-                            selectedCrew = myCrew
                             crewViewModel.messages = []
-                            showCrewChat = true
+                            selectedCrew = myCrew
                         } label: {
                             CrewConversationRow(crew: myCrew)
                         }
