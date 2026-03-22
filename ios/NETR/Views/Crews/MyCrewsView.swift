@@ -212,7 +212,7 @@ struct MyCrewsView: View {
                     HStack(spacing: 4) {
                         LucideIcon("users", size: 11)
                             .foregroundStyle(NETRTheme.subtext)
-                        Text("\(crew.memberCount) member\(crew.memberCount == 1 ? "" : "s")")
+                        Text("Crew")
                             .font(.system(size: 12))
                             .foregroundStyle(NETRTheme.subtext)
                     }

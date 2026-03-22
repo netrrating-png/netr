@@ -1,4 +1,5 @@
 import SwiftUI
+import Auth
 
 struct CrewChatView: View {
     @Bindable var viewModel: CrewViewModel

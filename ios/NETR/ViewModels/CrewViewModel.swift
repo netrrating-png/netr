@@ -458,14 +458,14 @@ class CrewViewModel {
 
     // MARK: - Latest message for DM inbox preview
     func latestMessage(for crewId: String) async -> CrewMessage? {
-        try? await client
+        let rows: [CrewMessage] = (try? await client
             .from("crew_messages")
             .select("id, crew_id, sender_id, content, created_at")
             .eq("crew_id", value: crewId)
             .order("created_at", ascending: false)
             .limit(1)
             .execute()
-            .value
-            .first
+            .value) ?? []
+        return rows.first
     }
 }
