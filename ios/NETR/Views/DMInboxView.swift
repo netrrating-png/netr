@@ -13,9 +13,9 @@ struct DMInboxView: View {
             header
             Divider().background(NETRTheme.border)
 
-            if viewModel.isLoading && viewModel.conversations.isEmpty {
+            if viewModel.isLoading && viewModel.conversations.isEmpty && crewViewModel.myCrews.isEmpty {
                 loadingState
-            } else if viewModel.conversations.isEmpty {
+            } else if viewModel.conversations.isEmpty && crewViewModel.myCrews.isEmpty {
                 emptyState
             } else {
                 conversationList
