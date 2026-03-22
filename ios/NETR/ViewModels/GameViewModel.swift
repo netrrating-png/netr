@@ -186,6 +186,33 @@ class GameViewModel {
                 )
             )
         }
+
+        // Level 3: If still empty, the host is always in the game — synthesize their entry
+        // from their profile so the count is never 0 when you're the host.
+        if players.isEmpty,
+           let userId = SupabaseManager.shared.session?.user.id.uuidString,
+           game?.hostId.lowercased() == userId.lowercased() {
+            let hostProfile: LobbyPlayerProfile? = try? await client
+                .from("profiles")
+                .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+            players = [LobbyPlayer(
+                id: "host-\(userId)",
+                userId: userId,
+                gameId: gameId,
+                checkedInAt: nil,
+                checkedOutAt: nil,
+                removed: false,
+                profile: hostProfile ?? LobbyPlayerProfile(
+                    id: userId,
+                    fullName: nil, username: nil, position: nil,
+                    avatarUrl: nil, netrScore: nil, vibeScore: nil, totalRatings: nil
+                )
+            )]
+        }
     }
 
     func startGame() async {
