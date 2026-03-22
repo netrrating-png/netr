@@ -114,7 +114,7 @@ class CrewViewModel {
                 .execute()
                 .value
 
-            let userIds = memberRows.map { $0.userId }
+            let userIds = memberRows.map { $0.userId.lowercased() }
             guard !userIds.isEmpty else { members = []; return }
 
             let profiles: [ProfileRow] = try await client
@@ -194,6 +194,20 @@ class CrewViewModel {
         }
 
         await loadMyCrews()
+    }
+
+    // MARK: - Search Crews
+    func searchCrews(query: String) async -> [CrewSearchResult] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 2 else { return [] }
+        let results: [CrewSearchResult] = (try? await client
+            .from("crews")
+            .select("id, name, icon")
+            .ilike("name", pattern: "%\(q)%")
+            .limit(10)
+            .execute()
+            .value) ?? []
+        return results
     }
 
     // MARK: - Join Crew

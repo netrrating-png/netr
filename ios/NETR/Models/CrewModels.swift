@@ -109,6 +109,14 @@ nonisolated struct CrewMessage: Identifiable, Sendable, Decodable {
     }
 }
 
+// MARK: - Crew Search Result
+
+nonisolated struct CrewSearchResult: Identifiable, Decodable, Sendable {
+    let id: String
+    let name: String
+    let icon: String
+}
+
 // MARK: - Payloads
 
 nonisolated struct CreateCrewPayload: Encodable, Sendable {
