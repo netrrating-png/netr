@@ -1,4 +1,6 @@
 import SwiftUI
+import Supabase
+import Auth
 
 struct ContentView: View {
     @Environment(MockDataStore.self) private var store
