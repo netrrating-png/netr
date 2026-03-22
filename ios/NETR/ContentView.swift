@@ -12,6 +12,11 @@ struct ContentView: View {
     @State private var showSettings: Bool = false
     @Namespace private var tabBarNamespace
 
+    // Active game banner
+    @State private var hostActiveGame: SupabaseGame? = nil
+    @State private var activeGameLobbyVM = GameViewModel()
+    @State private var showActiveGameSheet: Bool = false
+
     private var isUnrated: Bool {
         guard let profile = supabase.currentProfile else { return false }
         return profile.netrScore == nil && SelfAssessmentStore.savedScore == nil
@@ -42,6 +47,10 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 if isUnrated && !dismissedAssessmentBanner {
                     assessmentBanner
+                }
+
+                if let game = hostActiveGame, !showActiveGameSheet {
+                    activeGameBanner(game: game)
                 }
 
                 ZStack {
@@ -89,6 +98,16 @@ struct ContentView: View {
         .task {
             await notificationViewModel.fetchNotifications()
             await notificationViewModel.subscribeToNotifications()
+            await checkForHostActiveGame()
+        }
+        .sheet(isPresented: $showActiveGameSheet, onDismiss: {
+            Task { await checkForHostActiveGame() }
+        }) {
+            GameLobbyView(viewModel: activeGameLobbyVM, onDismiss: {
+                showActiveGameSheet = false
+                hostActiveGame = nil
+                Task { await checkForHostActiveGame() }
+            })
         }
     }
 
@@ -138,6 +157,79 @@ struct ContentView: View {
         .blur(radius: isActive ? 0 : 2)
         .animation(.easeInOut(duration: 0.25), value: selectedTab)
         .allowsHitTesting(isActive)
+    }
+
+    // MARK: - Active Game Banner
+
+    private func checkForHostActiveGame() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        let games: [SupabaseGame] = (try? await SupabaseManager.shared.client
+            .from("games")
+            .select()
+            .eq("host_id", value: userId)
+            .in("status", values: ["active", "waiting"])
+            .order("created_at", ascending: false)
+            .limit(1)
+            .execute()
+            .value) ?? []
+        hostActiveGame = games.first
+    }
+
+    @ViewBuilder
+    private func activeGameBanner(game: SupabaseGame) -> some View {
+        let isActive = game.status == "active"
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+                    .frame(width: 8, height: 8)
+                if isActive {
+                    Circle()
+                        .fill(NETRTheme.neonGreen.opacity(0.3))
+                        .frame(width: 14, height: 14)
+                }
+            }
+
+            Text(isActive ? "GAME IN PROGRESS" : "LOBBY OPEN")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+                .tracking(0.8)
+
+            if let fmt = GameFormat(rawValue: game.format) {
+                Text("·")
+                    .foregroundStyle(NETRTheme.muted)
+                Text(fmt.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            Spacer(minLength: 4)
+
+            Text(isActive ? "Manage" : "Open")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+        .background((isActive ? NETRTheme.neonGreen : NETRTheme.gold).opacity(0.07))
+        .overlay(
+            Rectangle()
+                .fill((isActive ? NETRTheme.neonGreen : NETRTheme.gold).opacity(0.25))
+                .frame(height: 1),
+            alignment: .bottom
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Task {
+                activeGameLobbyVM.game = game
+                await activeGameLobbyVM.loadPlayers(gameId: game.id)
+                await activeGameLobbyVM.subscribeToLobby(gameId: game.id)
+                showActiveGameSheet = true
+            }
+        }
     }
 
     // MARK: - Assessment Banner

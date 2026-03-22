@@ -11,6 +11,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let max_players: Int?
     let scheduled_at: String?
     let status: String?
+    let host_id: String?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -35,6 +36,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         case id, format, courts, host, status
         case join_code, created_at, max_players, scheduled_at
         case game_players
+        case host_id
     }
 
     // game_players rows don't carry removed status in the card select, so count is total active slots

@@ -511,14 +511,18 @@ struct CourtDetailView: View {
             }
             .buttonStyle(.plain)
 
-            if courtJoinedGameIds.contains(game.id) {
+            let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+            let isMyGame = courtJoinedGameIds.contains(game.id)
+                || (game.host_id?.lowercased() == currentUserId?.lowercased())
+
+            if isMyGame {
                 Button {
                     Task { await openCourtLobby(game.id) }
                 } label: {
                     HStack(spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
+                        Image(systemName: game.status == "active" ? "play.circle.fill" : "checkmark.circle.fill")
                             .font(.system(size: 15))
-                        Text("OPEN LOBBY")
+                        Text(game.status == "active" ? "OPEN GAME" : "OPEN LOBBY")
                             .font(.system(size: 14, weight: .bold))
                         Spacer()
                         LucideIcon("chevron-right", size: 12)
@@ -599,15 +603,15 @@ struct CourtDetailView: View {
         let selects = [
             // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
             """
-            id, join_code, created_at, format, max_players, scheduled_at, status,
+            id, host_id, join_code, created_at, format, max_players, scheduled_at, status,
             courts(name, neighborhood, lat, lng),
             host:profiles!host_id(full_name, username),
             game_players(id)
             """,
             // Level 2: courts name only
-            "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
+            "id, host_id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
             // Level 3: bare — no FK joins needed at all
-            "id, join_code, created_at, format, max_players, scheduled_at, status",
+            "id, host_id, join_code, created_at, format, max_players, scheduled_at, status",
         ]
 
         var loadError: Error?
