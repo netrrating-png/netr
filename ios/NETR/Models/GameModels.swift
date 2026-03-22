@@ -11,6 +11,7 @@ nonisolated struct SupabaseGame: Identifiable, Sendable {
     let maxPlayers: Int
     let createdAt: String?
     let scheduledAt: String?
+    let completedAt: String?
 }
 
 extension SupabaseGame: Decodable {
@@ -25,6 +26,7 @@ extension SupabaseGame: Decodable {
         case maxPlayers = "max_players"
         case createdAt = "created_at"
         case scheduledAt = "scheduled_at"
+        case completedAt = "completed_at"
     }
 }
 

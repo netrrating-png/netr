@@ -21,13 +21,15 @@ struct RateablePlayer: Identifiable, Hashable {
 nonisolated struct RateGameRow: Decodable, Sendable {
     let id: String
     let createdAt: String
+    let completedAt: String?
     let courtId: String?
     let status: String
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id, status
-        case createdAt = "created_at"
-        case courtId   = "court_id"
+        case createdAt   = "created_at"
+        case completedAt = "completed_at"
+        case courtId     = "court_id"
     }
 }
 

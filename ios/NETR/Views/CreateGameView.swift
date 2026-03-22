@@ -658,6 +658,7 @@ struct GameLobbyView: View {
     @State private var showRateSheet: Bool = false
     @State private var countdownTimer: Timer?
     @State private var timeRemaining: TimeInterval = 0
+    @State private var showFormatPicker: Bool = false
 
     var body: some View {
         ScrollView {
@@ -701,19 +702,38 @@ struct GameLobbyView: View {
                     .background(NETRTheme.card, in: .rect(cornerRadius: 12))
 
                 HStack(spacing: 16) {
-                    VStack(spacing: 2) {
-                        Text(viewModel.game?.format ?? "")
-                            .font(.headline.weight(.black))
-                            .foregroundStyle(NETRTheme.text)
-                        Text("Format")
-                            .font(.caption2)
-                            .foregroundStyle(NETRTheme.subtext)
+                    // Format — tappable for host while waiting
+                    let canChangeFormat = viewModel.isHost && viewModel.game?.status == "waiting"
+                    Button {
+                        if canChangeFormat { showFormatPicker = true }
+                    } label: {
+                        VStack(spacing: 2) {
+                            HStack(spacing: 4) {
+                                Text(viewModel.game?.format ?? "")
+                                    .font(.headline.weight(.black))
+                                    .foregroundStyle(NETRTheme.text)
+                                if canChangeFormat {
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(NETRTheme.neonGreen)
+                                }
+                            }
+                            Text(canChangeFormat ? "Format (tap)" : "Format")
+                                .font(.caption2)
+                                .foregroundStyle(canChangeFormat ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        }
                     }
+                    .buttonStyle(.plain)
+                    .disabled(!canChangeFormat)
+
                     Divider().frame(height: 30).background(NETRTheme.border)
                     VStack(spacing: 2) {
                         Text("\(viewModel.players.count)/\(viewModel.game?.maxPlayers ?? 0)")
                             .font(.headline.weight(.black))
-                            .foregroundStyle(NETRTheme.text)
+                            .foregroundStyle(
+                                viewModel.players.count >= (viewModel.game?.maxPlayers ?? 99)
+                                ? NETRTheme.neonGreen : NETRTheme.text
+                            )
                         Text("Players")
                             .font(.caption2)
                             .foregroundStyle(NETRTheme.subtext)
@@ -731,6 +751,16 @@ struct GameLobbyView: View {
                 .padding(12)
                 .background(NETRTheme.card, in: .rect(cornerRadius: 12))
                 .padding(.horizontal, 16)
+                .confirmationDialog("Change Game Format", isPresented: $showFormatPicker, titleVisibility: .visible) {
+                    ForEach(GameFormat.allCases) { fmt in
+                        Button(fmt.displayName) {
+                            Task { await viewModel.updateFormat(fmt) }
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("You have \(viewModel.players.count) players. Pick a format that fits.")
+                }
 
                 if viewModel.game?.status == "active" {
                     HStack(spacing: 8) {
@@ -791,28 +821,48 @@ struct GameLobbyView: View {
 
                 VStack(spacing: 12) {
                     if viewModel.game?.status == "waiting" {
-                        Button {
-                            Task { await viewModel.startGame() }
-                        } label: {
-                            HStack(spacing: 8) {
-                                if viewModel.isStarting {
-                                    ProgressView().tint(NETRTheme.background)
-                                } else {
-                                    Text("START GAME")
-                                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                                        .tracking(1)
+                        VStack(spacing: 6) {
+                            Button {
+                                Task { await viewModel.startGame() }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    if viewModel.isStarting {
+                                        ProgressView().tint(NETRTheme.background)
+                                    } else {
+                                        Text("START GAME")
+                                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                            .tracking(1)
+                                    }
                                 }
+                                .foregroundStyle(NETRTheme.background)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    viewModel.canStart ? NETRTheme.neonGreen : NETRTheme.neonGreen.opacity(0.3),
+                                    in: .rect(cornerRadius: 14)
+                                )
                             }
-                            .foregroundStyle(NETRTheme.background)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(
-                                viewModel.canStart ? NETRTheme.neonGreen : NETRTheme.neonGreen.opacity(0.3),
-                                in: .rect(cornerRadius: 14)
-                            )
+                            .buttonStyle(PressButtonStyle())
+                            .disabled(!viewModel.canStart || viewModel.isStarting)
+
+                            if viewModel.isHost && viewModel.players.count >= 2 {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 11))
+                                    Text("Not full? No problem — start when you're ready. Tap the format above to adjust.")
+                                        .font(.system(size: 11))
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .foregroundStyle(NETRTheme.subtext)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            } else if viewModel.isHost && viewModel.players.count < 2 {
+                                Text("Waiting for at least 1 more player to join.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(NETRTheme.subtext)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
                         }
-                        .buttonStyle(PressButtonStyle())
-                        .disabled(!viewModel.canStart || viewModel.isStarting)
                     }
 
                     // Check Out button (active game, not yet checked out)

@@ -267,6 +267,35 @@ struct OnboardingView: View {
                         }
 
                         Spacer()
+
+                        if tier.range.hasPrefix("3.0") {
+                            Text("MOST PLAYERS")
+                                .font(.system(size: 7, weight: .black))
+                                .tracking(0.5)
+                                .foregroundStyle(tier.color)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(tier.color.opacity(0.15), in: Capsule())
+                                .overlay(Capsule().stroke(tier.color.opacity(0.35), lineWidth: 1))
+                        } else if tier.range.hasPrefix("4.0") {
+                            Text("AVG PICKUP")
+                                .font(.system(size: 7, weight: .black))
+                                .tracking(0.5)
+                                .foregroundStyle(tier.color)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(tier.color.opacity(0.15), in: Capsule())
+                                .overlay(Capsule().stroke(tier.color.opacity(0.35), lineWidth: 1))
+                        } else if tier.range.hasPrefix("5.0") {
+                            Text("SOLID HOOPER")
+                                .font(.system(size: 7, weight: .black))
+                                .tracking(0.5)
+                                .foregroundStyle(tier.color)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(tier.color.opacity(0.15), in: Capsule())
+                                .overlay(Capsule().stroke(tier.color.opacity(0.35), lineWidth: 1))
+                        }
                     }
                     .padding(.vertical, 4)
 
@@ -357,8 +386,12 @@ struct OnboardingView: View {
         )
     }
 
+    private var ageFromDOB: Int {
+        Calendar.current.dateComponents([.year], from: dateOfBirth, to: Date()).year ?? 20
+    }
+
     private var selfAssessmentStep: some View {
-        SelfAssessmentFlowView { score, profile, catScores in
+        SelfAssessmentFlowView(initialAge: ageFromDOB) { score, profile, catScores in
             selfAssessmentScore = score
             selfAssessmentCategoryScores = catScores
             selfAssessmentIsProClaim = (profile.highestLevel == .nba)

@@ -24,8 +24,9 @@ class RateTabViewModel {
         }
 
         do {
+            // 24-hour rating window from when the game was *completed*
             let cutoff = ISO8601DateFormatter().string(
-                from: Date().addingTimeInterval(-2 * 60 * 60)
+                from: Date().addingTimeInterval(-24 * 60 * 60)
             )
 
             // ── Step 1: All game_ids the current user participated in ──
@@ -47,13 +48,16 @@ class RateTabViewModel {
             }
 
             // ── Step 2: Filter to completed games from last 24h ──
+            // Filter on completed_at (when host ended game) so long games aren't
+            // excluded just because they were created >24h ago.
+            // Fall back to created_at for older games that don't have completed_at yet.
             let games: [RateGameRow] = try await supabase.client
                 .from("games")
-                .select("id, court_id, created_at, status")
+                .select("id, court_id, created_at, completed_at, status")
                 .in("id", values: myGameIds)
                 .eq("status", value: "completed")
-                .gte("created_at", value: cutoff)
-                .order("created_at", ascending: false)
+                .or("completed_at.gte.\(cutoff),and(completed_at.is.null,created_at.gte.\(cutoff))")
+                .order("completed_at", ascending: false)
                 .execute()
                 .value
 
@@ -164,7 +168,10 @@ class RateTabViewModel {
                 players.sort { !$0.alreadyRated && $1.alreadyRated }
                 guard !players.isEmpty else { continue }
 
-                let playedAt = formatter.date(from: game.createdAt) ?? Date()
+                // Use completed_at if available (more accurate "played at"), else created_at
+                let playedAt = game.completedAt.flatMap { formatter.date(from: $0) }
+                    ?? formatter.date(from: game.createdAt)
+                    ?? Date()
                 let courtName = game.courtId.flatMap { courtMap[$0] } ?? "Unknown Court"
 
                 builtSessions.append(RecentGameSession(

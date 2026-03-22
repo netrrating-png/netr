@@ -22,6 +22,7 @@ struct SettingsView: View {
     @State private var isUploadingAvatar: Bool = false
     @State private var avatarUploadError: String?
     @State private var showAvatarError: Bool = false
+    @State private var showRatingInsights: Bool = false
 
     private var user: Player { store.currentUser }
 
@@ -38,6 +39,7 @@ struct SettingsView: View {
                         homeCourt: profileViewModel.homeCourt
                     )
                     myGamesButton
+                    ratingInsightsButton
                     securitySection
                     accountSection
                     notificationsSection
@@ -50,6 +52,14 @@ struct SettingsView: View {
                 .padding(.top, 8)
             }
             .scrollIndicators(.hidden)
+        }
+        .sheet(isPresented: $showRatingInsights) {
+            if let profile = profileViewModel.userProfile {
+                RatingInsightsView(profile: profile, vibeScore: profileViewModel.vibeScore)
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(NETRTheme.background)
+            }
         }
         .task {
             await profileViewModel.loadProfile()
@@ -215,6 +225,46 @@ struct SettingsView: View {
         .padding(16)
         .background(NETRTheme.card, in: .rect(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    private var ratingInsightsButton: some View {
+        Button {
+            showRatingInsights = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(NETRTheme.neonGreen.opacity(0.1))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Rating Breakdown")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Understand what's behind your score")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            .padding(14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PressButtonStyle())
         .padding(.horizontal, 16)
     }
 

@@ -6,12 +6,11 @@ import Combine
 // ─────────────────────────────────────────────────────────────
 
 enum Gender: String, CaseIterable, Identifiable {
-    case male = "Male", female = "Female", nonBinary = "Non-Binary", preferNot = "Prefer Not to Say"
+    case male = "Male", female = "Female", preferNot = "Prefer Not to Say"
     var id: String { rawValue }
     var icon: String {
         switch self {
         case .male, .female: return "person.fill"
-        case .nonBinary:     return "person.fill.questionmark"
         case .preferNot:     return "eye.slash.fill"
         }
     }
@@ -19,30 +18,32 @@ enum Gender: String, CaseIterable, Identifiable {
 
 enum SAPosition: String, CaseIterable, Identifiable {
     case pg = "Point Guard", sg = "Shooting Guard", sf = "Small Forward"
-    case pf = "Power Forward", c = "Center"
+    case pf = "Power Forward", c = "Center", notSure = "Not Sure Yet"
     var id: String { rawValue }
     var short: String {
         switch self {
         case .pg: return "PG"; case .sg: return "SG"; case .sf: return "SF"
-        case .pf: return "PF"; case .c:  return "C"
+        case .pf: return "PF"; case .c:  return "C"; case .notSure: return "?"
         }
     }
     var icon: String {
         switch self {
-        case .pg: return "arrow.left.and.right.circle.fill"
-        case .sg: return "scope"
-        case .sf: return "figure.run"
-        case .pf: return "rectangle.compress.vertical"
-        case .c:  return "arrow.up.circle.fill"
+        case .pg:      return "arrow.left.and.right.circle.fill"
+        case .sg:      return "scope"
+        case .sf:      return "figure.run"
+        case .pf:      return "rectangle.compress.vertical"
+        case .c:       return "arrow.up.circle.fill"
+        case .notSure: return "questionmark.circle.fill"
         }
     }
     var description: String {
         switch self {
-        case .pg: return "Ball handler, playmaker"
-        case .sg: return "Scorer, off-ball threat"
-        case .sf: return "Versatile, can do it all"
-        case .pf: return "Physical, interior presence"
-        case .c:  return "Paint presence, rebounder"
+        case .pg:      return "Ball handler, playmaker"
+        case .sg:      return "Scorer, off-ball threat"
+        case .sf:      return "Versatile, can do it all"
+        case .pf:      return "Physical, interior presence"
+        case .c:       return "Paint presence, rebounder"
+        case .notSure: return "All categories weighted equally"
         }
     }
 }
@@ -217,7 +218,7 @@ enum SAPlayFrequency: String, CaseIterable, Identifiable {
     case daily   = "Multiple times a week"
     case weekly  = "Once a week"
     case monthly = "Few times a month"
-    case rarely  = "Rarely / just getting back"
+    case rarely  = "Whenever I get the chance, but not often"
     var id: String { rawValue }
     var icon: String {
         switch self {
@@ -293,19 +294,19 @@ enum SASkillCategory: String, CaseIterable {
     func weight(for position: SAPosition) -> Double {
         switch self {
         case .shooting:
-            switch position { case .pg: return 1.1; case .sg: return 1.2; case .sf: return 1.0; case .pf: return 0.9; case .c: return 0.8 }
+            switch position { case .pg: return 1.1; case .sg: return 1.2; case .sf: return 1.0; case .pf: return 0.9; case .c: return 0.8; case .notSure: return 1.0 }
         case .finishing:
-            switch position { case .pg: return 1.0; case .sg: return 1.0; case .sf: return 1.1; case .pf: return 1.1; case .c: return 1.2 }
+            switch position { case .pg: return 1.0; case .sg: return 1.0; case .sf: return 1.1; case .pf: return 1.1; case .c: return 1.2; case .notSure: return 1.0 }
         case .rebounding:
-            switch position { case .pg: return 0.7; case .sg: return 0.7; case .sf: return 0.9; case .pf: return 1.2; case .c: return 1.3 }
+            switch position { case .pg: return 0.7; case .sg: return 0.7; case .sf: return 0.9; case .pf: return 1.2; case .c: return 1.3; case .notSure: return 1.0 }
         case .handles:
-            switch position { case .pg: return 1.3; case .sg: return 1.1; case .sf: return 0.9; case .pf: return 0.7; case .c: return 0.5 }
+            switch position { case .pg: return 1.3; case .sg: return 1.1; case .sf: return 0.9; case .pf: return 0.7; case .c: return 0.5; case .notSure: return 1.0 }
         case .passing:
-            switch position { case .pg: return 1.3; case .sg: return 1.0; case .sf: return 1.0; case .pf: return 0.9; case .c: return 0.8 }
+            switch position { case .pg: return 1.3; case .sg: return 1.0; case .sf: return 1.0; case .pf: return 0.9; case .c: return 0.8; case .notSure: return 1.0 }
         case .iq:
-            switch position { case .pg: return 1.2; case .sg: return 1.1; case .sf: return 1.1; case .pf: return 1.0; case .c: return 1.0 }
+            switch position { case .pg: return 1.2; case .sg: return 1.1; case .sf: return 1.1; case .pf: return 1.0; case .c: return 1.0; case .notSure: return 1.0 }
         case .defense:
-            switch position { case .pg: return 1.0; case .sg: return 1.0; case .sf: return 1.0; case .pf: return 1.1; case .c: return 1.2 }
+            switch position { case .pg: return 1.0; case .sg: return 1.0; case .sf: return 1.0; case .pf: return 1.1; case .c: return 1.2; case .notSure: return 1.0 }
         }
     }
 }
@@ -393,11 +394,11 @@ let saAssessmentQuestions: [SAAssessmentQuestion] = [
         AssessmentChoice(label: "Sometimes — I still miss windows I should hit",     icon: "clock.fill",                  value: 2),
         AssessmentChoice(label: "I'm more focused on my own game",                   icon: "person.fill",                 value: 1),
     ]),
-    SAAssessmentQuestion(category: .passing, question: "How are you with the ball in traffic?", choices: [
-        AssessmentChoice(label: "I find angles others don't even see",               icon: "sparkles",                    value: 4),
-        AssessmentChoice(label: "I keep it simple — not forcing tight spaces",       icon: "minus.circle.fill",           value: 3),
-        AssessmentChoice(label: "I hold it too long trying to figure it out",        icon: "timer",                       value: 2),
-        AssessmentChoice(label: "I get rid of it fast before it's a turnover",      icon: "arrow.forward.circle.fill",   value: 1),
+    SAAssessmentQuestion(category: .passing, question: "Can you deliver the pass in traffic before the window closes?", choices: [
+        AssessmentChoice(label: "Yes — I thread it before the defense can react",    icon: "sparkles",                    value: 4),
+        AssessmentChoice(label: "If the window's clear enough, I'll make the pass",  icon: "checkmark.circle.fill",       value: 3),
+        AssessmentChoice(label: "I tend to take my own shot — I miss tight windows", icon: "person.fill",                 value: 2),
+        AssessmentChoice(label: "Passing in traffic isn't really my thing",          icon: "arrow.turn.up.right",         value: 1),
     ]),
 
     // IQ
@@ -410,7 +411,7 @@ let saAssessmentQuestions: [SAAssessmentQuestion] = [
     SAAssessmentQuestion(category: .iq, question: "When the game is close and it matters most?", choices: [
         AssessmentChoice(label: "I want the ball — I make the right play under pressure", icon: "flame.fill",             value: 4),
         AssessmentChoice(label: "I stay composed and stick to what I know",          icon: "lock.fill",                   value: 3),
-        AssessmentChoice(label: "I get tight and second-guess myself",               icon: "exclamationmark.bubble.fill", value: 2),
+        AssessmentChoice(label: "I manage it — play simpler and stay controlled", icon: "exclamationmark.bubble.fill", value: 2),
         AssessmentChoice(label: "I try to stay out of the way",                      icon: "arrow.backward.circle.fill", value: 1),
     ]),
 
@@ -491,7 +492,7 @@ class SelfAssessmentViewModel: ObservableObject {
     @Published var categoryScores: [SASkillCategory: Double] = [:]
 
     let questions            = saAssessmentQuestions
-    let totalOnboardingSteps = 5
+    let totalOnboardingSteps = 4
 
     var onboardingComplete: Bool {
         profile.gender != nil && profile.age != nil &&
@@ -561,6 +562,7 @@ class SelfAssessmentViewModel: ObservableObject {
 // ─────────────────────────────────────────────────────────────
 
 struct SelfAssessmentFlowView: View {
+    var initialAge: Int? = nil
     var onComplete: ((Double, PlayerProfile, [String: Double]) -> Void)? = nil
     @StateObject private var vm = SelfAssessmentViewModel()
 
@@ -580,14 +582,23 @@ struct SelfAssessmentFlowView: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if vm.onboardingComplete {
                 QuestionFlowView(vm: vm)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.94).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
             } else {
                 OnboardingFlowView(vm: vm)
-                    .transition(.opacity)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .leading).combined(with: .opacity),
+                        removal: .move(edge: .leading).combined(with: .opacity)
+                    ))
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: vm.showResult)
-        .animation(.easeInOut(duration: 0.3), value: vm.onboardingComplete)
+        .animation(.easeInOut(duration: 0.35), value: vm.showResult)
+        .animation(.spring(response: 0.55, dampingFraction: 0.82), value: vm.onboardingComplete)
+        .onAppear {
+            vm.profile.age = initialAge ?? 20
+        }
     }
 }
 
@@ -733,10 +744,9 @@ struct OnboardingFlowView: View {
             Group {
                 switch vm.onboardingStep {
                 case 0: GenderStepView(vm: vm)
-                case 1: AgeStepView(vm: vm)
-                case 2: PositionStepView(vm: vm)
-                case 3: LevelStepView(vm: vm)
-                case 4: FrequencyStepView(vm: vm)
+                case 1: PositionStepView(vm: vm)
+                case 2: LevelStepView(vm: vm)
+                case 3: FrequencyStepView(vm: vm)
                 default: EmptyView()
                 }
             }
@@ -753,7 +763,7 @@ struct GenderStepView: View {
     let accent = Color(hex: "#39FF14")
     var body: some View {
         VStack(spacing: 0) {
-            StepHeader(step: "Step 1 of 5", title: "How do you\nidentify?",
+            StepHeader(step: "Step 1 of 4", title: "How do you\nidentify?",
                        subtitle: "Won't affect your rating. Used so players can filter games by gender.")
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
@@ -823,12 +833,13 @@ struct PositionStepView: View {
     let accent = Color(hex: "#39FF14")
     var body: some View {
         VStack(spacing: 0) {
-            StepHeader(step: "Step 3 of 5", title: "What's your\nposition?",
+            StepHeader(step: "Step 2 of 4", title: "What's your\nposition?",
                        subtitle: "Different categories are weighted based on your role on the court.")
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     ForEach(SAPosition.allCases) { pos in
-                        OptionCard(value: pos, label: "\(pos.short) — \(pos.rawValue)",
+                        let label = pos == .notSure ? pos.rawValue : "\(pos.short) — \(pos.rawValue)"
+                        OptionCard(value: pos, label: label,
                                    sublabel: pos.description, icon: pos.icon,
                                    selected: vm.profile.position, color: accent) {
                             withAnimation(.spring(response: 0.25)) { vm.profile.position = pos }
@@ -837,7 +848,7 @@ struct PositionStepView: View {
                 }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
             }
             ContinueButton(label: "Continue", enabled: vm.profile.position != nil, color: accent) {
-                withAnimation { vm.onboardingStep = 3 }
+                withAnimation { vm.onboardingStep = 2 }
             }
         }
     }
@@ -848,7 +859,7 @@ struct LevelStepView: View {
     let accent = Color(hex: "#39FF14")
     var body: some View {
         VStack(spacing: 0) {
-            StepHeader(step: "Step 4 of 5", title: "Highest level\nyou've played?",
+            StepHeader(step: "Step 3 of 4", title: "Highest level\nyou've played?",
                        subtitle: "Current or past — we figure that out based on your age.")
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
@@ -862,7 +873,7 @@ struct LevelStepView: View {
                 }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
             }
             ContinueButton(label: "Continue", enabled: vm.profile.highestLevel != nil, color: accent) {
-                withAnimation { vm.onboardingStep = 4 }
+                withAnimation { vm.onboardingStep = 3 }
             }
         }
     }
@@ -870,23 +881,27 @@ struct LevelStepView: View {
 
 struct FrequencyStepView: View {
     @ObservedObject var vm: SelfAssessmentViewModel
+    @State private var pendingFrequency: SAPlayFrequency? = nil
     let accent = Color(hex: "#39FF14")
     var body: some View {
         VStack(spacing: 0) {
-            StepHeader(step: "Step 5 of 5", title: "How often do you\ncurrently play?",
+            StepHeader(step: "Step 4 of 4", title: "How often do you\ncurrently play?",
                        subtitle: "Helps us understand where you are right now.")
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     ForEach(SAPlayFrequency.allCases) { freq in
                         OptionCard(value: freq, label: freq.rawValue, sublabel: nil,
-                                   icon: freq.icon, selected: vm.profile.frequency, color: accent) {
-                            withAnimation(.spring(response: 0.25)) { vm.profile.frequency = freq }
+                                   icon: freq.icon, selected: pendingFrequency, color: accent) {
+                            withAnimation(.spring(response: 0.25)) { pendingFrequency = freq }
                         }
                     }
                 }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
             }
-            ContinueButton(label: "Start Assessment", enabled: vm.profile.frequency != nil, color: accent) {
-                _ = vm.onboardingComplete
+            ContinueButton(label: "Start Assessment", enabled: pendingFrequency != nil, color: accent) {
+                guard let freq = pendingFrequency else { return }
+                withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                    vm.profile.frequency = freq
+                }
             }
         }
     }

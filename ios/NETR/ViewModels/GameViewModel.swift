@@ -154,10 +154,23 @@ class GameViewModel {
     func endGame() async {
         guard let gameId = game?.id else { return }
 
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let nowStr = fmt.string(from: Date())
+
+        nonisolated struct EndGamePayload: Encodable, Sendable {
+            let status: String
+            let completedAt: String
+            nonisolated enum CodingKeys: String, CodingKey {
+                case status
+                case completedAt = "completed_at"
+            }
+        }
+
         do {
             try await client
                 .from("games")
-                .update(GameStatusUpdate(status: "completed"))
+                .update(EndGamePayload(status: "completed", completedAt: nowStr))
                 .eq("id", value: gameId)
                 .execute()
 
@@ -166,6 +179,38 @@ class GameViewModel {
             showRateScreen = true
         } catch {
             print("End game error: \(error)")
+        }
+    }
+
+    func updateFormat(_ format: GameFormat) async {
+        guard let gameId = game?.id, isHost, game?.status == "waiting" else { return }
+
+        nonisolated struct FormatUpdate: Encodable, Sendable {
+            let format: String
+            let maxPlayers: Int
+            nonisolated enum CodingKeys: String, CodingKey {
+                case format
+                case maxPlayers = "max_players"
+            }
+        }
+
+        do {
+            try await client
+                .from("games")
+                .update(FormatUpdate(format: format.rawValue, maxPlayers: format.maxPlayers))
+                .eq("id", value: gameId)
+                .execute()
+
+            let updated: SupabaseGame = try await client
+                .from("games")
+                .select()
+                .eq("id", value: gameId)
+                .single()
+                .execute()
+                .value
+            game = updated
+        } catch {
+            print("Update format error: \(error)")
         }
     }
 

@@ -38,7 +38,7 @@ struct NETRTier {
             hexColor: "#FF3B30",
             description: "The highest reachable tier for pickup players. Everyone at the court knows your name before you touch the ball. Semi-pro talent. Undeniable presence.",
             percentile: "Top 1%",
-            stat: "Extremely rare",
+            stat: "Semi-pro / Pro-Am",
             isLocked: false
         ),
         NETRTier(
@@ -48,7 +48,7 @@ struct NETRTier {
             hexColor: "#FF7A00",
             description: "You dominate most runs you step into. Whether it's organized ball or years of grinding — the result is the same. You can hoop.",
             percentile: "Top 3%",
-            stat: "Rare",
+            stat: "Post-college level",
             isLocked: false
         ),
         NETRTier(
@@ -58,7 +58,7 @@ struct NETRTier {
             hexColor: "#FFC247",
             description: "Something in your game stands out. Doesn't matter if it was the weight room, the gym, or thousands of hours at the park — people feel it when they guard you.",
             percentile: "Top 10%",
-            stat: "Serious hoopers",
+            stat: "HS Varsity / college-bound",
             isLocked: false
         ),
         NETRTier(
@@ -68,7 +68,7 @@ struct NETRTier {
             hexColor: "#39FF14",
             description: "Nobody questions if you belong. You make plays, understand the game, hold your own in any run. Top quarter of all pickup players.",
             percentile: "Top 20%",
-            stat: "Park regular",
+            stat: "HS JV to Varsity range",
             isLocked: false
         ),
         NETRTier(
@@ -78,7 +78,7 @@ struct NETRTier {
             hexColor: "#2ECC71",
             description: "You contribute, you compete, you make your team better. Better than most people who lace up. The ceiling is right there.",
             percentile: "Top 35%",
-            stat: "Above average",
+            stat: "Rec league to HS JV",
             isLocked: false
         ),
         NETRTier(
@@ -88,7 +88,7 @@ struct NETRTier {
             hexColor: "#2DA8FF",
             description: "The foundation is there. Whether you built it at organized practice, the rec center, or grinding at the park every weekend — you can play.",
             percentile: "Above Avg",
-            stat: "Developing",
+            stat: "Casual organized play",
             isLocked: false
         ),
         NETRTier(
@@ -98,7 +98,7 @@ struct NETRTier {
             hexColor: "#7B9FFF",
             description: "The real average — the majority of people who show up to a pickup game land right here. You showed up, you ran, you're putting in reps.",
             percentile: "Average",
-            stat: "Most players",
+            stat: "Avg pickup player",
             isLocked: false
         ),
         NETRTier(
@@ -108,7 +108,7 @@ struct NETRTier {
             hexColor: "#9B8BFF",
             description: "Everybody started here. You laced up, you showed up — that's the whole thing. Your score will move as your game does.",
             percentile: "Just Starting",
-            stat: "The beginning",
+            stat: "New to the game",
             isLocked: false
         ),
     ]

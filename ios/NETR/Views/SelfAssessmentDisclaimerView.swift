@@ -8,7 +8,7 @@ struct SelfAssessmentDisclaimerView: View {
 
     private let points: [(icon: String, text: String)] = [
         ("hand", "Be honest — not humble, not hype. Rate yourself like a coach watching from the sideline would."),
-        ("arrow-up-right", "This is your starting point. As you play and get peer ratings, your score will update automatically."),
+        ("refresh-cw", "This is your starting point. As you play and get peer ratings, your score will update automatically."),
         ("lock", "Your self-assessment stays locked until you collect 5 peer reviews. That's when it becomes your real NETR score."),
         ("users", "Players who rate themselves accurately tend to get more accurate peer ratings back. The court always sorts it out."),
     ]
@@ -50,8 +50,8 @@ struct SelfAssessmentDisclaimerView: View {
                                 RoundedRectangle(cornerRadius: 20)
                                     .stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1)
                                     .frame(width: 64, height: 64)
-                                Text("🏀")
-                                    .font(.system(size: 30))
+                                LucideIcon("clipboard-check", size: 28)
+                                    .foregroundStyle(NETRTheme.neonGreen)
                             }
                             .opacity(appeared ? 1 : 0)
                             .offset(y: appeared ? 0 : 12)
@@ -80,6 +80,20 @@ struct SelfAssessmentDisclaimerView: View {
                                 .opacity(appeared ? 1 : 0)
                                 .offset(y: appeared ? 0 : 8)
                                 .animation(.easeOut(duration: 0.5).delay(0.2), value: appeared)
+
+                            HStack(spacing: 8) {
+                                LucideIcon("clock", size: 13)
+                                    .foregroundStyle(NETRTheme.neonGreen)
+                                Text("Takes about 2 minutes")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(NETRTheme.text)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .background(NETRTheme.neonGreen.opacity(0.08), in: Capsule())
+                            .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                            .opacity(appeared ? 1 : 0)
+                            .animation(.easeOut(duration: 0.4).delay(0.22), value: appeared)
                         }
                         .padding(.horizontal, 24)
                         .padding(.bottom, 36)
@@ -165,10 +179,6 @@ struct SelfAssessmentDisclaimerView: View {
                         .shadow(color: NETRTheme.neonGreen.opacity(0.35), radius: 16, x: 0, y: 6)
                     }
                     .buttonStyle(.plain)
-
-                    Text("Takes about 2 minutes")
-                        .font(.system(size: 12))
-                        .foregroundStyle(NETRTheme.muted)
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 40)

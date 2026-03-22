@@ -6,6 +6,7 @@ import Auth
 class ProfileViewModel {
 
     var player: Player?
+    var userProfile: UserProfile?
     var isLoading: Bool = false
     var isSaving: Bool = false
     var error: String?
@@ -57,6 +58,7 @@ class ProfileViewModel {
             }
 
             player = bridgedPlayer
+            userProfile = profile
             vibeScore = profile.vibeScore
             bio = profile.bio
             isLoading = false
