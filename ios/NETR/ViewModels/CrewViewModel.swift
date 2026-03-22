@@ -92,16 +92,16 @@ class CrewViewModel {
             let catBasketballIq: Double?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case fullName      = "full_name"
+                case fullName        = "full_name"
                 case username
-                case avatarUrl     = "avatar_url"
-                case netrScore     = "netr_score"
-                case catShooting   = "cat_shooting"
-                case catFinishing  = "cat_finishing"
-                case catDribbling  = "cat_dribbling"
-                case catPassing    = "cat_passing"
-                case catDefense    = "cat_defense"
-                case catRebounding = "cat_rebounding"
+                case avatarUrl       = "avatar_url"
+                case netrScore       = "netr_score"
+                case catShooting     = "cat_shooting"
+                case catFinishing    = "cat_finishing"
+                case catDribbling    = "cat_dribbling"
+                case catPassing      = "cat_passing"
+                case catDefense      = "cat_defense"
+                case catRebounding   = "cat_rebounding"
                 case catBasketballIq = "cat_basketball_iq"
             }
         }
