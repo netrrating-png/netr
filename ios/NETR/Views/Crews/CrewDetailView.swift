@@ -293,16 +293,22 @@ struct CrewDetailView: View {
     private func leaderboardRow(member: CrewMemberProfile, rank: Int) -> some View {
         HStack(spacing: 12) {
             // Rank
-            Group {
-                switch rank {
-                case 1: Text("🥇")
-                case 2: Text("🥈")
-                case 3: Text("🥉")
-                default:
+            ZStack {
+                if rank <= 3 {
+                    Circle()
+                        .fill(rank == 1 ? Color(hex: "#FFD700").opacity(0.15) :
+                              rank == 2 ? Color(hex: "#C0C0C0").opacity(0.15) :
+                              Color(hex: "#CD7F32").opacity(0.15))
+                        .frame(width: 24, height: 24)
+                    Text("\(rank)")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(rank == 1 ? Color(hex: "#FFD700") :
+                                         rank == 2 ? Color(hex: "#C0C0C0") :
+                                         Color(hex: "#CD7F32"))
+                } else {
                     Text("\(rank)")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(NETRTheme.muted)
-                        .frame(width: 24)
                 }
             }
             .frame(width: 28)
@@ -638,7 +644,9 @@ struct CrewDetailView: View {
 
             initialsView(name: profile.displayName, size: size)
 
-            if let urlString = profile.avatarUrl, let url = URL(string: urlString) {
+            if let urlString = profile.avatarUrl,
+               urlString.hasPrefix("http"),
+               let url = URL(string: urlString) {
                 AsyncImage(url: url) { phase in
                     if case .success(let image) = phase {
                         image
