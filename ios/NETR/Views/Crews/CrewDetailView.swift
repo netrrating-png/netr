@@ -613,10 +613,13 @@ struct CrewDetailView: View {
                 .frame(width: size, height: size)
 
             if let urlString = profile.avatarUrl, let url = URL(string: urlString) {
-                AsyncImage(url: url) { image in
-                    image.resizable().scaledToFill()
-                } placeholder: {
-                    initialsView(name: profile.displayName, size: size)
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    default:
+                        initialsView(name: profile.displayName, size: size)
+                    }
                 }
                 .frame(width: size, height: size)
                 .clipShape(Circle())
