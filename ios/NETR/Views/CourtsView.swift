@@ -11,7 +11,14 @@ struct CourtsView: View {
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var hasSetInitialLocation: Bool = false
 
-    private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
+    private let filters: [(label: String, icon: String)] = [
+        ("All", "layout-grid"),
+        ("Favorites", "heart"),
+        ("Live Now", "circle-dot"),
+        ("Lights", "sun"),
+        ("Indoor", "warehouse"),
+        ("Verified", "shield-check")
+    ]
 
     var body: some View {
         ZStack {
@@ -23,7 +30,6 @@ struct CourtsView: View {
                     mapSection
                     searchSection
                     filterChips
-                    neighborhoodChips
                     resultsHeader
                     courtsList
                 }
@@ -50,26 +56,6 @@ struct CourtsView: View {
                     center: loc,
                     span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
                 ))
-            }
-        }
-        .onChange(of: viewModel.selectedNeighborhood) { _, hood in
-            if let hood {
-                let hoodsFiltered = viewModel.courts.filter { $0.neighborhood == hood }
-                if let first = hoodsFiltered.first {
-                    withAnimation {
-                        cameraPosition = .region(MKCoordinateRegion(
-                            center: first.coordinate,
-                            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                        ))
-                    }
-                }
-            } else if let loc = viewModel.userLocation {
-                withAnimation {
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: loc,
-                        span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
-                    ))
-                }
             }
         }
         .sheet(item: $selectedCourt) { court in
@@ -228,21 +214,22 @@ struct CourtsView: View {
 
     private var filterChips: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: 8) {
-                ForEach(filters, id: \.self) { filter in
+            HStack(spacing: 6) {
+                ForEach(filters, id: \.label) { filter in
+                    let isSelected = viewModel.selectedFilter == filter.label
                     Button {
-                        withAnimation(.snappy) { viewModel.selectedFilter = filter }
+                        withAnimation(.snappy) { viewModel.selectedFilter = filter.label }
                     } label: {
-                        Text(filter)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(viewModel.selectedFilter == filter ? NETRTheme.background : NETRTheme.subtext)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(
-                                viewModel.selectedFilter == filter ? NETRTheme.neonGreen : NETRTheme.card,
-                                in: Capsule()
-                            )
-                            .overlay(Capsule().stroke(viewModel.selectedFilter == filter ? Color.clear : NETRTheme.border, lineWidth: 1))
+                        HStack(spacing: 5) {
+                            LucideIcon(filter.icon, size: 11)
+                            Text(filter.label)
+                                .font(.system(size: 12, weight: .semibold))
+                        }
+                        .foregroundStyle(isSelected ? NETRTheme.background : NETRTheme.subtext)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(isSelected ? NETRTheme.neonGreen : NETRTheme.card, in: Capsule())
+                        .overlay(Capsule().stroke(isSelected ? Color.clear : NETRTheme.border, lineWidth: 1))
                     }
                     .buttonStyle(PressButtonStyle())
                 }
@@ -250,44 +237,7 @@ struct CourtsView: View {
         }
         .contentMargins(.horizontal, 16)
         .scrollIndicators(.hidden)
-        .padding(.top, 12)
-    }
-
-    private var neighborhoodChips: some View {
-        Group {
-            if !viewModel.neighborhoods.isEmpty {
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.neighborhoods, id: \.self) { hood in
-                            Button {
-                                withAnimation(.snappy) {
-                                    if viewModel.selectedNeighborhood == hood {
-                                        viewModel.selectedNeighborhood = nil
-                                    } else {
-                                        viewModel.selectedNeighborhood = hood
-                                    }
-                                }
-                            } label: {
-                                Text(hood)
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundStyle(viewModel.selectedNeighborhood == hood ? NETRTheme.background : NETRTheme.text)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        viewModel.selectedNeighborhood == hood ? NETRTheme.blue : NETRTheme.surface,
-                                        in: Capsule()
-                                    )
-                                    .overlay(Capsule().stroke(viewModel.selectedNeighborhood == hood ? Color.clear : NETRTheme.border, lineWidth: 1))
-                            }
-                            .buttonStyle(PressButtonStyle())
-                        }
-                    }
-                }
-                .contentMargins(.horizontal, 16)
-                .scrollIndicators(.hidden)
-                .padding(.top, 8)
-            }
-        }
+        .padding(.top, 10)
     }
 
     private var resultsHeader: some View {
