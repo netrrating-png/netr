@@ -247,7 +247,7 @@ struct EditProfileView: View {
 
                 Button { showCourtPicker = true } label: {
                     HStack(spacing: 10) {
-                        LucideIcon("home", size: 14)
+                        LucideIcon("house", size: 14)
                             .foregroundStyle(viewModel.homeCourt != nil ? NETRTheme.neonGreen : NETRTheme.subtext)
                         Text(viewModel.homeCourt?.name ?? "Select Home Court")
                             .font(.system(size: 14))

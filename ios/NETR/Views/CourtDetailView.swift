@@ -146,7 +146,7 @@ struct CourtDetailView: View {
 
                 if isHome {
                     VStack(spacing: 2) {
-                        LucideIcon("home")
+                        LucideIcon("house")
                             .foregroundStyle(NETRTheme.neonGreen)
                         Text("HOME")
                             .font(.system(size: 8, weight: .bold))

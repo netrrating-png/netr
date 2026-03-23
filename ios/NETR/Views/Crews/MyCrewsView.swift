@@ -230,20 +230,10 @@ struct MyCrewsView: View {
         .contextMenu {
             if !crew.isPrimary {
                 Button {
-                    Task { await viewModel.setPrimaryCrew(crewId: crew.id) }
+                    Task { try? await viewModel.setPrimary(crewId: crew.id) }
                 } label: {
                     Label("Set as Primary", systemImage: "star.fill")
                 }
-            }
-        }
-        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-            if !crew.isPrimary {
-                Button {
-                    Task { await viewModel.setPrimaryCrew(crewId: crew.id) }
-                } label: {
-                    Label("Primary", systemImage: "star.fill")
-                }
-                .tint(NETRTheme.gold)
             }
         }
     }

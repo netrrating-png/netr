@@ -51,6 +51,28 @@ struct CrewChatView: View {
 
                 NETRTheme.border.frame(height: 1)
 
+                // Error banner
+                if let err = viewModel.errorMessage {
+                    HStack(spacing: 8) {
+                        LucideIcon("alert-circle", size: 13)
+                            .foregroundStyle(NETRTheme.red)
+                        Text(err)
+                            .font(.system(size: 12))
+                            .foregroundStyle(NETRTheme.red)
+                            .lineLimit(2)
+                        Spacer()
+                        Button {
+                            viewModel.errorMessage = nil
+                        } label: {
+                            LucideIcon("x", size: 11)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(NETRTheme.red.opacity(0.08))
+                }
+
                 // Input Bar
                 inputBar
             }
@@ -142,17 +164,23 @@ struct CrewChatView: View {
                 // Avatar circle
                 ZStack {
                     Circle().fill(NETRTheme.surface).frame(width: 30, height: 30)
-                    if let urlStr = senderAvatarUrl, let url = URL(string: urlStr) {
-                        AsyncImage(url: url) { img in
-                            img.resizable().scaledToFill()
-                        } placeholder: {
-                            Text(initials(from: senderName)).font(.system(size: 10, weight: .bold)).foregroundStyle(NETRTheme.subtext)
+                    Text(initials(from: senderName))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(NETRTheme.subtext)
+                    if let urlStr = senderAvatarUrl,
+                       urlStr.hasPrefix("http"),
+                       let url = URL(string: urlStr) {
+                        AsyncImage(url: url) { phase in
+                            if case .success(let image) = phase {
+                                image.resizable().scaledToFill()
+                                    .frame(width: 30, height: 30)
+                                    .clipShape(Circle())
+                            }
                         }
-                        .frame(width: 30, height: 30).clipShape(Circle())
-                    } else {
-                        Text(initials(from: senderName)).font(.system(size: 10, weight: .bold)).foregroundStyle(NETRTheme.subtext)
                     }
                 }
+                .frame(width: 30, height: 30)
+                .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(senderName)
@@ -232,9 +260,14 @@ struct CrewChatView: View {
         let content = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !content.isEmpty else { return }
         viewModel.sendText = content
+        viewModel.errorMessage = nil
         messageText = ""
         isSending = true
         await viewModel.sendMessage(crewId: crew.id)
+        if viewModel.errorMessage != nil {
+            // Restore text so the user can retry
+            messageText = content
+        }
         isSending = false
     }
 

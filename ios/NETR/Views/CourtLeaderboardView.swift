@@ -128,7 +128,7 @@ struct CourtLeaderboardView: View {
     private var leaderboardHeader: some View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
-                LucideIcon("home", size: 13)
+                LucideIcon("house", size: 13)
                     .foregroundStyle(NETRTheme.neonGreen)
                 Text("HOME COURT LEADERBOARD")
                     .font(.system(size: 10, weight: .bold))

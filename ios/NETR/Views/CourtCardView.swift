@@ -42,7 +42,7 @@ struct CourtCardView: View {
                     .lineLimit(1)
 
                 if isHomeCourt {
-                    LucideIcon("home", size: 12)
+                    LucideIcon("house", size: 12)
                         .foregroundStyle(NETRTheme.neonGreen)
                 }
 

@@ -376,7 +376,7 @@ struct CourtMapPin: View {
                 .frame(width: 28, height: 28)
 
             if isHomeCourt {
-                LucideIcon("home", size: 12)
+                LucideIcon("house", size: 12)
                     .foregroundStyle(.white)
             } else {
                 LucideIcon("circle-dot", size: 12)

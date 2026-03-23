@@ -62,11 +62,12 @@ struct CrewMemberProfile: Identifiable {
     let avatarUrl: String?
     let netrScore: Double?
     let catShooting: Double?
+    let catFinishing: Double?
     let catDribbling: Double?
     let catPassing: Double?
     let catDefense: Double?
-    let catHustle: Double?
-    let catSportsmanship: Double?
+    let catRebounding: Double?
+    let catBasketballIq: Double?
     let reviewCount: Int?
     let isPrimary: Bool
     let joinedAt: String?
@@ -82,13 +83,14 @@ struct CrewMemberProfile: Identifiable {
 
     func score(for filter: CrewLeaderboardFilter) -> Double? {
         switch filter {
-        case .overall:       return netrScore
-        case .shooting:      return catShooting
-        case .handles:       return catDribbling
-        case .playmaking:    return catPassing
-        case .defense:       return catDefense
-        case .hustle:        return catHustle
-        case .sportsmanship: return catSportsmanship
+        case .overall:    return netrScore
+        case .shooting:   return catShooting
+        case .finishing:  return catFinishing
+        case .handles:    return catDribbling
+        case .playmaking: return catPassing
+        case .defense:    return catDefense
+        case .rebounding: return catRebounding
+        case .iq:         return catBasketballIq
         }
     }
 }
@@ -162,23 +164,39 @@ nonisolated struct CrewMessagePayload: Encodable, Sendable {
 // MARK: - Leaderboard Filter
 
 enum CrewLeaderboardFilter: String, CaseIterable {
-    case overall       = "Overall"
-    case shooting      = "Shooting"
-    case handles       = "Handles"
-    case playmaking    = "Playmaking"
-    case defense       = "Defense"
-    case hustle        = "Hustle"
-    case sportsmanship = "Sportsmanship"
+    case overall    = "Overall"
+    case shooting   = "Shooting"
+    case finishing  = "Finishing"
+    case handles    = "Handles"
+    case playmaking = "Playmaking"
+    case defense    = "Defense"
+    case rebounding = "Rebounding"
+    case iq         = "IQ"
 
     var icon: String {
         switch self {
-        case .overall:       return "trophy"
-        case .shooting:      return "crosshair"
-        case .handles:       return "dumbbell"
-        case .playmaking:    return "route"
-        case .defense:       return "shield"
-        case .hustle:        return "zap"
-        case .sportsmanship: return "handshake"
+        case .overall:    return "trophy"
+        case .shooting:   return "crosshair"
+        case .finishing:  return "flame"
+        case .handles:    return "dumbbell"
+        case .playmaking: return "route"
+        case .defense:    return "shield"
+        case .rebounding: return "arrow-up-from-line"
+        case .iq:         return "brain"
+        }
+    }
+
+    /// Matches the accent colors from skillCategories in RatingModels
+    var colorHex: String {
+        switch self {
+        case .overall:    return "#39FF14"
+        case .shooting:   return "#39FF14"
+        case .finishing:  return "#FF7A00"
+        case .handles:    return "#FFC247"
+        case .playmaking: return "#2ECC71"
+        case .defense:    return "#FF3B30"
+        case .rebounding: return "#2DA8FF"
+        case .iq:         return "#9B8BFF"
         }
     }
 }

@@ -234,6 +234,7 @@ struct CrewDetailView: View {
                     HStack(spacing: 6) {
                         ForEach(CrewLeaderboardFilter.allCases, id: \.self) { filter in
                             let isSelected = selectedFilter == filter
+                            let accentColor = Color(hex: filter.colorHex)
                             Button {
                                 selectedFilter = filter
                                 viewModel.leaderboardFilter = filter
@@ -246,7 +247,7 @@ struct CrewDetailView: View {
                                 .foregroundStyle(isSelected ? NETRTheme.background : NETRTheme.subtext)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
-                                .background(isSelected ? NETRTheme.neonGreen : NETRTheme.card, in: Capsule())
+                                .background(isSelected ? accentColor : NETRTheme.card, in: Capsule())
                                 .overlay(Capsule().stroke(isSelected ? Color.clear : NETRTheme.border, lineWidth: 1))
                             }
                             .buttonStyle(PressButtonStyle())

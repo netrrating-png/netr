@@ -456,7 +456,7 @@ struct ProfileView: View {
                         .foregroundStyle(NETRTheme.muted)
                     Button { showCourtLeaderboard = true } label: {
                         HStack(spacing: 3) {
-                            LucideIcon("home", size: 11)
+                            LucideIcon("house", size: 11)
                                 .foregroundStyle(NETRTheme.neonGreen)
                             Text(viewModel.homeCourt!.name)
                                 .font(.system(size: 12))
@@ -1013,16 +1013,16 @@ struct ProfileView: View {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(accentColor.opacity(0.15))
+                        .fill(NETRTheme.neonGreen.opacity(0.15))
                         .frame(width: 36, height: 36)
-                    LucideIcon("home", size: 15)
-                        .foregroundStyle(accentColor)
+                    LucideIcon("house", size: 15)
+                        .foregroundStyle(NETRTheme.neonGreen)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(court.name)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(NETRTheme.text)
+                        .foregroundStyle(NETRTheme.neonGreen)
                     Text(court.neighborhood)
                         .font(.system(size: 11))
                         .foregroundStyle(NETRTheme.subtext)
