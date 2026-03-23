@@ -38,6 +38,10 @@ struct ComposePostView: View {
                 .scrollIndicators(.hidden)
                 .dismissKeyboardOnScroll()
 
+                if viewModel.showMentionResults && !viewModel.mentionResults.isEmpty {
+                    mentionSuggestions
+                }
+
                 Divider().background(NETRTheme.border)
 
                 bottomBar
@@ -141,7 +145,95 @@ struct ComposePostView: View {
                 .foregroundStyle(NETRTheme.text)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 120)
+                .onChange(of: postText) { _, newValue in
+                    viewModel.searchMentions(text: newValue, cursorPosition: newValue.count)
+                }
         }
+    }
+
+    private var mentionSuggestions: some View {
+        VStack(spacing: 0) {
+            ForEach(viewModel.mentionResults) { user in
+                Button {
+                    insertMention(user: user)
+                } label: {
+                    HStack(spacing: 10) {
+                        if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 28, height: 28)
+                                        .clipShape(Circle())
+                                } else {
+                                    mentionInitials(name: user.fullName)
+                                }
+                            }
+                        } else {
+                            mentionInitials(name: user.fullName)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(user.fullName ?? "Player")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(NETRTheme.text)
+                                .lineLimit(1)
+                            if let username = user.username {
+                                Text("@\(username)")
+                                    .font(.caption2)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer()
+
+                        if let score = user.netrScore {
+                            Text(String(format: "%.1f", score))
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundStyle(NETRRating.color(for: score))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 4))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+
+                if user.id != viewModel.mentionResults.last?.id {
+                    Divider().background(NETRTheme.border)
+                }
+            }
+        }
+        .background(NETRTheme.surface)
+    }
+
+    private func mentionInitials(name: String?) -> some View {
+        let initials: String = {
+            guard let name = name else { return "?" }
+            let parts = name.split(separator: " ")
+            if parts.count >= 2 {
+                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
+            }
+            return String(name.prefix(2)).uppercased()
+        }()
+        return Text(initials)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(NETRTheme.subtext)
+            .frame(width: 28, height: 28)
+            .background(NETRTheme.card, in: Circle())
+    }
+
+    private func insertMention(user: UserSearchResult) {
+        guard let username = user.username else { return }
+        let query = viewModel.activeMentionQuery
+        // Replace the @query with @username
+        if let range = postText.range(of: "@\(query)", options: .backwards) {
+            postText.replaceSubrange(range, with: "@\(username) ")
+        }
+        viewModel.dismissMentionSearch()
     }
 
     private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
@@ -230,7 +322,7 @@ struct CourtSearchSheet: View {
                     Task { await viewModel.searchCourts(query: newValue) }
                 }
 
-                if viewModel.courtResults.isEmpty && searchText.count >= 2 {
+                if viewModel.courtResults.isEmpty && searchText.count >= 1 {
                     VStack(spacing: 8) {
                         LucideIcon("map-pin-off", size: 22)
                             .foregroundStyle(NETRTheme.subtext)

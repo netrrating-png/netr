@@ -262,6 +262,9 @@ class ProfileViewModel {
                 .from("avatars")
                 .getPublicURL(path: path)
 
+            // Append timestamp to bust AsyncImage cache
+            let cacheBustedUrl = publicURL.absoluteString + "?t=\(Int(Date().timeIntervalSince1970))"
+
             nonisolated struct AvatarUpdate: Encodable, Sendable {
                 let avatarUrl: String
                 nonisolated enum CodingKeys: String, CodingKey {
@@ -271,7 +274,7 @@ class ProfileViewModel {
 
             try await client
                 .from("profiles")
-                .update(AvatarUpdate(avatarUrl: publicURL.absoluteString))
+                .update(AvatarUpdate(avatarUrl: cacheBustedUrl))
                 .eq("id", value: userId)
                 .execute()
 
@@ -416,6 +419,9 @@ class ProfileViewModel {
                 .from("profile-backgrounds")
                 .getPublicURL(path: path)
 
+            // Append timestamp to bust AsyncImage cache
+            let cacheBustedUrl = publicURL.absoluteString + "?t=\(Int(Date().timeIntervalSince1970))"
+
             nonisolated struct BannerUpdate: Encodable, Sendable {
                 let backgroundImageUrl: String
                 nonisolated enum CodingKeys: String, CodingKey {
@@ -425,11 +431,14 @@ class ProfileViewModel {
 
             try await client
                 .from("profiles")
-                .update(BannerUpdate(backgroundImageUrl: publicURL.absoluteString))
+                .update(BannerUpdate(backgroundImageUrl: cacheBustedUrl))
                 .eq("id", value: userId)
                 .execute()
 
-            return publicURL.absoluteString
+            await SupabaseManager.shared.loadProfile(userId: userId)
+            await loadProfile()
+
+            return cacheBustedUrl
         } catch {
             print("Banner upload error: \(error)")
             return nil

@@ -26,6 +26,11 @@ class FeedViewModel {
     var isSearching: Bool = false
     var showSearchResults: Bool = false
 
+    // Mention autocomplete
+    var mentionResults: [UserSearchResult] = []
+    var showMentionResults: Bool = false
+    var activeMentionQuery: String = ""
+
     // Public profile navigation
     var selectedProfileUserId: String? = nil
 
@@ -33,6 +38,7 @@ class FeedViewModel {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
+    private var mentionSearchTask: Task<Void, Never>?
 
     private let selectQuery = """
         id, author_id, content, hashtags, mentioned_user_ids,
@@ -178,6 +184,63 @@ class FeedViewModel {
         }
     }
 
+    // MARK: - Mention Search
+
+    func searchMentions(text: String, cursorPosition: Int) {
+        mentionSearchTask?.cancel()
+
+        // Find the @mention being typed at cursor position
+        let prefixText = String(text.prefix(cursorPosition))
+        guard let atIndex = prefixText.lastIndex(of: "@") else {
+            mentionResults = []
+            showMentionResults = false
+            activeMentionQuery = ""
+            return
+        }
+
+        let queryStart = prefixText.index(after: atIndex)
+        let query = String(prefixText[queryStart...])
+
+        // Don't show if there's a space in the query (mention ended)
+        if query.contains(" ") || query.isEmpty {
+            mentionResults = []
+            showMentionResults = false
+            activeMentionQuery = ""
+            return
+        }
+
+        activeMentionQuery = query
+        showMentionResults = true
+
+        mentionSearchTask = Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+
+            do {
+                let results: [UserSearchResult] = try await client
+                    .from("profiles")
+                    .select("id, username, full_name, avatar_url, netr_score")
+                    .ilike("username", pattern: "\(query)%")
+                    .limit(5)
+                    .execute()
+                    .value
+
+                guard !Task.isCancelled else { return }
+                mentionResults = results
+            } catch {
+                guard !Task.isCancelled else { return }
+                mentionResults = []
+            }
+        }
+    }
+
+    func dismissMentionSearch() {
+        mentionResults = []
+        showMentionResults = false
+        activeMentionQuery = ""
+        mentionSearchTask?.cancel()
+    }
+
     // MARK: - Create Post
 
     func createPost(
@@ -258,34 +321,56 @@ class FeedViewModel {
 
     func repost(post: SupabaseFeedPost) async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
 
-        let repostFeedPayload = CreateFeedPostPayload(
-            authorId: userId,
-            content: "",
-            hashtags: [],
-            mentionedUserIds: [],
-            courtId: nil,
-            gameId: nil,
-            quoteOfId: nil,
-            repostOfId: post.id,
-            photoUrl: nil
-        )
+        let wasReposted = posts[i].isReposted
+
+        // Optimistic update
+        posts[i].isReposted = !wasReposted
+        posts[i].repostCount += wasReposted ? -1 : 1
 
         do {
-            try await client
-                .from("post_reposts")
-                .insert(FeedRepostPayload(postId: post.id, userId: userId))
-                .execute()
-            try await client
-                .from("feed_posts")
-                .insert(repostFeedPayload)
-                .execute()
-
-            if let i = posts.firstIndex(where: { $0.id == post.id }) {
-                posts[i].isReposted = true
-                posts[i].repostCount += 1
+            if wasReposted {
+                // Undo repost
+                try await client
+                    .from("post_reposts")
+                    .delete()
+                    .eq("post_id", value: post.id)
+                    .eq("user_id", value: userId)
+                    .execute()
+                try await client
+                    .from("feed_posts")
+                    .delete()
+                    .eq("repost_of_id", value: post.id)
+                    .eq("author_id", value: userId)
+                    .execute()
+            } else {
+                // Create repost
+                try await client
+                    .from("post_reposts")
+                    .insert(FeedRepostPayload(postId: post.id, userId: userId))
+                    .execute()
+                try await client
+                    .from("feed_posts")
+                    .insert(CreateFeedPostPayload(
+                        authorId: userId,
+                        content: "",
+                        hashtags: [],
+                        mentionedUserIds: [],
+                        courtId: nil,
+                        gameId: nil,
+                        quoteOfId: nil,
+                        repostOfId: post.id,
+                        photoUrl: nil
+                    ))
+                    .execute()
             }
         } catch {
+            // Revert on failure
+            if let j = posts.firstIndex(where: { $0.id == post.id }) {
+                posts[j].isReposted = wasReposted
+                posts[j].repostCount = post.repostCount
+            }
             print("Repost error: \(error)")
         }
     }
@@ -314,7 +399,7 @@ class FeedViewModel {
     // MARK: - Court Search
 
     func searchCourts(query: String) async {
-        guard query.count >= 2 else {
+        guard query.count >= 1 else {
             courtResults = []
             return
         }
@@ -323,8 +408,8 @@ class FeedViewModel {
             let results: [FeedCourtSearchResult] = try await client
                 .from("courts")
                 .select("id, name, neighborhood, verified")
-                .ilike("name", pattern: "%\(query)%")
-                .limit(8)
+                .or("name.ilike.%\(query)%,neighborhood.ilike.%\(query)%")
+                .limit(10)
                 .execute()
                 .value
 
@@ -373,8 +458,12 @@ class FeedViewModel {
                     }
                 }
                 group.addTask {
-                    for await _ in commentChanges {
-                        await self.fetchFeed(tab: self.activeTab)
+                    for await change in commentChanges {
+                        // Only update comment count locally instead of refetching entire feed
+                        if let postId = change.record["post_id"]?.stringValue,
+                           let idx = self.posts.firstIndex(where: { $0.id == postId }) {
+                            self.posts[idx].commentCount += 1
+                        }
                     }
                 }
             }
