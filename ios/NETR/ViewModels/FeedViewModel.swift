@@ -147,36 +147,38 @@ class FeedViewModel {
                 if followingIds.isEmpty {
                     fetched = []
                 } else {
-                    var query = client
+                    var filterQuery = client
                         .from("feed_posts")
                         .select(selectQuery)
                         .in("author_id", values: Array(followingIds))
-                        .order("created_at", ascending: false)
-                        .limit(pageSize)
 
                     if loadMore, let lastPost = posts.last {
-                        query = query.lt("created_at", value: lastPost.createdAt)
+                        filterQuery = filterQuery.filter("created_at", operator: .lt, value: lastPost.createdAt)
                     }
 
-                    fetched = try await query.execute().value
+                    fetched = try await filterQuery
+                        .order("created_at", ascending: false)
+                        .limit(pageSize)
+                        .execute().value
                 }
 
             case .live:
                 let twentyFourHoursAgo = ISO8601DateFormatter().string(
                     from: Date().addingTimeInterval(-86400)
                 )
-                var query = client
+                var filterQuery = client
                     .from("feed_posts")
                     .select(selectQuery)
                     .gte("created_at", value: twentyFourHoursAgo)
-                    .order("created_at", ascending: false)
-                    .limit(pageSize)
 
                 if loadMore, let lastPost = posts.last {
-                    query = query.lt("created_at", value: lastPost.createdAt)
+                    filterQuery = filterQuery.filter("created_at", operator: .lt, value: lastPost.createdAt)
                 }
 
-                fetched = try await query.execute().value
+                fetched = try await filterQuery
+                    .order("created_at", ascending: false)
+                    .limit(pageSize)
+                    .execute().value
 
             case .dm:
                 fetched = []
