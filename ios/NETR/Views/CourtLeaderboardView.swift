@@ -13,7 +13,7 @@ nonisolated struct LeaderboardEntry: Identifiable, Decodable, Sendable {
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id
-        case fullName = "full_name"
+        case fullName = "display_name"
         case username
         case avatarUrl = "avatar_url"
         case netrScore = "netr_score"
@@ -45,7 +45,7 @@ nonisolated struct LeaderboardEntry: Identifiable, Decodable, Sendable {
 
             let entries: [LeaderboardEntry] = try await client
                 .from("profiles")
-                .select("id, full_name, username, avatar_url, netr_score, position, vibe_score")
+                .select("id, display_name, username, avatar_url, netr_score, position, vibe_score")
                 .in("id", values: userIds)
                 .order("netr_score", ascending: false)
                 .limit(20)

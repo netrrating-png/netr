@@ -112,7 +112,7 @@ class GameViewModel {
         do {
             let result: [LobbyPlayer] = try await client
                 .from("game_players")
-                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
+                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, display_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
                 .eq("game_id", value: gameId)
                 .order("created_at", ascending: true)
                 .execute()

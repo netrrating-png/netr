@@ -1057,14 +1057,12 @@ struct ProfileFollowListSheet: View {
             let username: String?
             let avatarUrl: String?
             let netrScore: Double?
-            let vibeScore: Double?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case fullName = "full_name"
+                case fullName = "display_name"
                 case username
                 case avatarUrl = "avatar_url"
                 case netrScore = "netr_score"
-                case vibeScore = "vibe_score"
             }
         }
 
@@ -1072,7 +1070,7 @@ struct ProfileFollowListSheet: View {
         do {
             profiles = try await client
                 .from("profiles")
-                .select("id, full_name, username, avatar_url, netr_score, vibe_score")
+                .select("id, display_name, username, avatar_url, netr_score")
                 .in("id", values: targetIds)
                 .execute()
                 .value
@@ -1110,7 +1108,7 @@ struct ProfileFollowListSheet: View {
                 username: p.username,
                 avatarUrl: p.avatarUrl,
                 netrScore: p.netrScore,
-                vibeScore: p.vibeScore,
+                vibeScore: nil,
                 isFollowing: viewerFollowingSet.contains(p.id)
             )
         }

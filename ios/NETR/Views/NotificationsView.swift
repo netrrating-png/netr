@@ -206,7 +206,7 @@ struct NotificationsView: View {
 
     private func initialsCircle(_ sender: FeedAuthor?) -> some View {
         let initials = sender.map { author in
-            let parts = (author.fullName ?? "").split(separator: " ")
+            let parts = (author.displayName ?? "").split(separator: " ")
             if parts.count >= 2 {
                 return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
             } else if let first = parts.first {

@@ -23,7 +23,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         let lng: Double?
     }
     nonisolated struct HostRef: Decodable, Sendable {
-        let full_name: String?
+        let display_name: String?
         let username: String?
     }
     nonisolated struct GamePlayerIdRow: Decodable, Sendable {
@@ -43,7 +43,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     var courtName: String { courts?.name ?? "Unknown Court" }
     var neighborhood: String { courts?.neighborhood ?? "" }
     var hostName: String {
-        if let name = host?.full_name, !name.isEmpty { return name }
+        if let name = host?.display_name, !name.isEmpty { return name }
         if let username = host?.username { return "@\(username)" }
         return "Unknown"
     }
@@ -146,7 +146,7 @@ class JoinGameViewModel {
                 """
                 id, join_code, created_at, format, max_players, scheduled_at, status,
                 courts(name, neighborhood, lat, lng),
-                host:profiles!host_id(full_name, username),
+                host:profiles!host_id(display_name, username),
                 game_players(id)
                 """,
                 // Level 2: courts name only

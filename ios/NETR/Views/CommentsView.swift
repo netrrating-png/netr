@@ -8,14 +8,16 @@ struct CommentsView: View {
     @State private var isLoading: Bool = true
     @State private var commentText: String = ""
     @State private var isSubmitting: Bool = false
-    @State private var submitError: String?
-    @State private var showSubmitError: Bool = false
+    @State private var replyingTo: PostComment? = nil
+    @State private var likedCommentIds: Set<String> = []
+    @State private var realtimeChannel: RealtimeChannelV2?
+    @State private var realtimeTask: Task<Void, Never>?
 
     @Environment(\.dismiss) private var dismiss
 
     private let client = SupabaseManager.shared.client
 
-    private let commentSelectQuery = "id, post_id, author_id, content, created_at, profiles(id, full_name, username, avatar_url, netr_score, vibe_score)"
+    private let commentSelectQuery = "id, post_id, author_id, content, like_count, parent_comment_id, created_at, profiles(id, display_name, username, avatar_url, netr_score)"
 
     var body: some View {
         NavigationStack {
@@ -33,25 +35,9 @@ struct CommentsView: View {
                             }
                             .frame(maxWidth: .infinity)
                         } else if comments.isEmpty {
-                            VStack(spacing: 12) {
-                                LucideIcon("message-circle", size: 32)
-                                    .foregroundStyle(NETRTheme.muted)
-                                Text("No comments yet")
-                                    .font(.subheadline)
-                                    .foregroundStyle(NETRTheme.subtext)
-                                Text("Be the first to reply")
-                                    .font(.caption)
-                                    .foregroundStyle(NETRTheme.muted)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 40)
+                            emptyState
                         } else {
-                            LazyVStack(spacing: 0) {
-                                ForEach(comments) { comment in
-                                    CommentRow(comment: comment)
-                                    Divider().background(NETRTheme.border)
-                                }
-                            }
+                            commentsList
                         }
                     }
                     .padding(.bottom, 80)
@@ -75,22 +61,29 @@ struct CommentsView: View {
             }
             .task {
                 await loadComments()
+                await loadLikedCommentIds()
+                await subscribeToComments()
             }
-            .alert("Error", isPresented: $showSubmitError) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(submitError ?? "Something went wrong.")
+            .onDisappear {
+                realtimeTask?.cancel()
+                Task {
+                    if let channel = realtimeChannel {
+                        await client.realtimeV2.removeChannel(channel)
+                    }
+                }
             }
         }
     }
 
+    // MARK: - Original Post
+
     private var originalPost: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                feedAvatar(name: post.author?.displayName ?? "?", url: post.author?.avatarUrl, size: 36)
+                feedAvatar(name: post.author?.name ?? "?", url: post.author?.avatarUrl, size: 36)
 
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(post.author?.displayName ?? "Player")
+                    Text(post.author?.name ?? "Player")
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(NETRTheme.text)
                     Text(post.author?.handle ?? "")
@@ -128,8 +121,82 @@ struct CommentsView: View {
         .padding(16)
     }
 
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Text("🏀")
+                .font(.system(size: 40))
+            Text("No comments yet")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(NETRTheme.text)
+            Text("Be the first to reply.")
+                .font(.caption)
+                .foregroundStyle(NETRTheme.subtext)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+    }
+
+    // MARK: - Comments List (threaded)
+
+    private var commentsList: some View {
+        LazyVStack(spacing: 0) {
+            let topLevel = comments.filter { $0.parentCommentId == nil }
+            ForEach(topLevel) { comment in
+                CommentRow(
+                    comment: comment,
+                    isLiked: likedCommentIds.contains(comment.id),
+                    onLike: { Task { await toggleCommentLike(comment) } },
+                    onReply: { startReply(to: comment) }
+                )
+                Divider().background(NETRTheme.border)
+
+                // Replies (1 level deep)
+                let replies = comments.filter { $0.parentCommentId == comment.id }
+                ForEach(replies) { reply in
+                    HStack(spacing: 0) {
+                        Rectangle()
+                            .fill(NETRTheme.border)
+                            .frame(width: 2)
+                            .padding(.leading, 36)
+                        CommentRow(
+                            comment: reply,
+                            isLiked: likedCommentIds.contains(reply.id),
+                            onLike: { Task { await toggleCommentLike(reply) } },
+                            onReply: { startReply(to: reply) },
+                            isReply: true
+                        )
+                    }
+                    Divider().background(NETRTheme.border)
+                }
+            }
+        }
+    }
+
+    // MARK: - Comment Input
+
     private var commentInput: some View {
         VStack(spacing: 0) {
+            if let replyTo = replyingTo {
+                HStack(spacing: 6) {
+                    Text("Replying to \(replyTo.author?.handle ?? "comment")")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.blue)
+                    Spacer()
+                    Button {
+                        replyingTo = nil
+                        commentText = ""
+                    } label: {
+                        LucideIcon("x", size: 10)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(NETRTheme.surface)
+            }
+
             Divider().background(NETRTheme.border)
 
             HStack(spacing: 8) {
@@ -172,6 +239,8 @@ struct CommentsView: View {
         !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    // MARK: - Helpers
+
     private func feedAvatar(name: String, url: String?, size: CGFloat) -> some View {
         Group {
             if let url, let imageUrl = URL(string: url) {
@@ -199,6 +268,8 @@ struct CommentsView: View {
         }
     }
 
+    // MARK: - Data
+
     private func loadComments() async {
         do {
             let result: [PostComment] = try await client
@@ -217,6 +288,17 @@ struct CommentsView: View {
         }
     }
 
+    private func loadLikedCommentIds() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        let rows: [CommentLikeRow]? = try? await client
+            .from("comment_likes")
+            .select("comment_id")
+            .eq("user_id", value: userId)
+            .execute()
+            .value
+        likedCommentIds = Set(rows?.map { $0.commentId } ?? [])
+    }
+
     private func submitComment() async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let text = commentText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -228,7 +310,8 @@ struct CommentsView: View {
             let payload = CreateCommentPayload(
                 postId: post.id,
                 authorId: userId,
-                content: text
+                content: text,
+                parentCommentId: replyingTo?.id
             )
             let created: PostComment = try await client
                 .from("comments")
@@ -240,19 +323,96 @@ struct CommentsView: View {
 
             comments.append(created)
             commentText = ""
+            replyingTo = nil
             isSubmitting = false
             onCommentAdded?()
         } catch {
             isSubmitting = false
-            submitError = "Failed to post comment: \(error.localizedDescription)"
-            showSubmitError = true
             print("Submit comment error: \(error)")
+        }
+    }
+
+    private func toggleCommentLike(_ comment: PostComment) async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let i = comments.firstIndex(where: { $0.id == comment.id }) else { return }
+
+        let wasLiked = likedCommentIds.contains(comment.id)
+        comments[i].likeCount += wasLiked ? -1 : 1
+
+        if wasLiked {
+            likedCommentIds.remove(comment.id)
+        } else {
+            likedCommentIds.insert(comment.id)
+        }
+
+        do {
+            if wasLiked {
+                try await client
+                    .from("comment_likes")
+                    .delete()
+                    .eq("comment_id", value: comment.id)
+                    .eq("user_id", value: userId)
+                    .execute()
+            } else {
+                try await client
+                    .from("comment_likes")
+                    .insert(CommentLikePayload(commentId: comment.id, userId: userId))
+                    .execute()
+            }
+        } catch {
+            // Revert
+            if let j = comments.firstIndex(where: { $0.id == comment.id }) {
+                comments[j].likeCount = comment.likeCount
+            }
+            if wasLiked { likedCommentIds.insert(comment.id) } else { likedCommentIds.remove(comment.id) }
+            print("Comment like error: \(error)")
+        }
+    }
+
+    private func startReply(to comment: PostComment) {
+        replyingTo = comment
+        if let username = comment.author?.username {
+            commentText = "@\(username) "
+        }
+    }
+
+    // MARK: - Realtime
+
+    private func subscribeToComments() async {
+        let channel = client.realtimeV2.channel("comments-\(post.id)")
+        realtimeChannel = channel
+
+        let changes = channel.postgresChange(
+            InsertAction.self,
+            schema: "public",
+            table: "comments",
+            filter: "post_id=eq.\(post.id)"
+        )
+
+        await channel.subscribe()
+
+        realtimeTask = Task {
+            for await change in changes {
+                // Only add if we don't already have it (from our own submit)
+                if let newId = change.record["id"]?.stringValue,
+                   !comments.contains(where: { $0.id == newId }) {
+                    await loadComments()
+                }
+            }
         }
     }
 }
 
+// MARK: - Comment Row
+
 struct CommentRow: View {
     let comment: PostComment
+    var isLiked: Bool = false
+    let onLike: () -> Void
+    let onReply: () -> Void
+    var isReply: Bool = false
+
+    @State private var likeScale: CGFloat = 1.0
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -260,9 +420,19 @@ struct CommentRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
-                    Text(comment.author?.displayName ?? "Player")
+                    Text(comment.author?.name ?? "Player")
                         .font(.caption.weight(.bold))
                         .foregroundStyle(NETRTheme.text)
+
+                    if let netr = comment.author?.netrScore {
+                        Text(String(format: "%.1f", netr))
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(NETRRating.color(for: netr))
+                            .padding(.horizontal, 3)
+                            .padding(.vertical, 1)
+                            .background(NETRRating.color(for: netr).opacity(0.12), in: .rect(cornerRadius: 3))
+                    }
+
                     Text(comment.author?.handle ?? "")
                         .font(.caption2)
                         .foregroundStyle(NETRTheme.subtext)
@@ -279,6 +449,42 @@ struct CommentRow: View {
                         .foregroundStyle(NETRTheme.text)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                HStack(spacing: 16) {
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            likeScale = 1.3
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                likeScale = 1.0
+                            }
+                        }
+                        onLike()
+                    } label: {
+                        HStack(spacing: 3) {
+                            LucideIcon("heart", size: 11)
+                            if comment.likeCount > 0 {
+                                Text("\(comment.likeCount)")
+                                    .font(.system(size: 10))
+                            }
+                        }
+                        .foregroundStyle(isLiked ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        .scaleEffect(likeScale)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button(action: onReply) {
+                        HStack(spacing: 3) {
+                            LucideIcon("reply", size: 11)
+                            Text("Reply")
+                                .font(.system(size: 10))
+                        }
+                        .foregroundStyle(NETRTheme.subtext)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 2)
             }
 
             Spacer(minLength: 0)
@@ -289,9 +495,10 @@ struct CommentRow: View {
 
     private var commentAvatar: some View {
         Group {
+            let size: CGFloat = isReply ? 24 : 28
             if let url = comment.author?.avatarUrl, let imageUrl = URL(string: url) {
                 NETRTheme.card
-                    .frame(width: 28, height: 28)
+                    .frame(width: size, height: size)
                     .overlay {
                         AsyncImage(url: imageUrl) { phase in
                             if let image = phase.image {
@@ -301,15 +508,15 @@ struct CommentRow: View {
                     }
                     .clipShape(Circle())
             } else {
-                let name = comment.author?.displayName ?? "?"
+                let name = comment.author?.name ?? "?"
                 let parts = name.split(separator: " ")
                 let initials = parts.count >= 2
                     ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
                     : String(name.prefix(2)).uppercased()
                 Text(initials)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: size * 0.32, weight: .bold))
                     .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: 28, height: 28)
+                    .frame(width: size, height: size)
                     .background(NETRTheme.card, in: Circle())
             }
         }

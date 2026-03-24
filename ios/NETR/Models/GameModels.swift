@@ -89,13 +89,14 @@ nonisolated struct LobbyPlayerProfile: Sendable {
 extension LobbyPlayerProfile: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
         case id
-        case fullName = "full_name"
+        case fullName = "display_name"
         case username
         case position
         case avatarUrl = "avatar_url"
         case netrScore = "netr_score"
         case vibeScore = "vibe_score"
         case totalRatings = "total_ratings"
+        // Note: fullName maps to display_name in the DB
     }
 }
 
@@ -195,7 +196,7 @@ nonisolated struct DiscoverableGameHost: Decodable, Sendable {
     let username: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
-        case fullName = "full_name"
+        case fullName = "display_name"
         case username
     }
 }

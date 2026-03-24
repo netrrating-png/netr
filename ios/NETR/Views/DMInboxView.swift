@@ -331,7 +331,7 @@ struct NewDMSheet: View {
                     .clipShape(Circle())
             } else {
                 let initials = {
-                    guard let name = user.fullName else { return "?" }
+                    guard let name = user.displayName else { return "?" }
                     let parts = name.split(separator: " ")
                     return parts.count >= 2
                         ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
@@ -345,7 +345,7 @@ struct NewDMSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(user.fullName ?? "Player")
+                Text(user.displayName ?? "Player")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NETRTheme.text)
                     .lineLimit(1)
@@ -374,11 +374,10 @@ struct NewDMSheet: View {
     private func startConversation(with user: UserSearchResult) {
         let profile = FeedAuthor(
             id: user.id,
-            fullName: user.fullName,
+            displayName: user.displayName,
             username: user.username,
             avatarUrl: user.avatarUrl,
-            netrScore: user.netrScore,
-            vibeScore: nil
+            netrScore: user.netrScore
         )
         var convo = viewModel.findOrCreateConversation(with: user.id) ?? DMConversation(otherUserId: user.id)
         convo.otherUser = profile

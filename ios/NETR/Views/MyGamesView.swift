@@ -52,7 +52,7 @@ class MyGamesViewModel {
                 """
                 id, court_id, host_id, join_code, format, skill_level, status, max_players, created_at, scheduled_at,
                 courts(name),
-                host:profiles!games_host_id_fkey(full_name, username),
+                host:profiles!games_host_id_fkey(display_name, username),
                 game_players(count)
                 """,
                 // Level 2: courts only (requires court_id→courts FK)

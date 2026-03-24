@@ -7,6 +7,9 @@ struct ComposePostView: View {
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtSearch: Bool = false
 
+    // Quote post support
+    var quotePost: SupabaseFeedPost? = nil
+
     private let maxChars = 280
 
     private var charCount: Int { postText.count }
@@ -31,6 +34,11 @@ struct ComposePostView: View {
 
                         if let court = selectedCourt {
                             selectedCourtChip(court)
+                                .padding(.horizontal, 16)
+                        }
+
+                        if let quote = quotePost {
+                            quotedPostPreview(quote)
                                 .padding(.horizontal, 16)
                         }
                     }
@@ -59,7 +67,8 @@ struct ComposePostView: View {
                         Task {
                             await viewModel.createPost(
                                 content: postText,
-                                courtId: selectedCourt.map { String($0.id) }
+                                courtId: selectedCourt.map { $0.id },
+                                courtName: selectedCourt?.name
                             )
                         }
                     } label: {
@@ -151,6 +160,8 @@ struct ComposePostView: View {
         }
     }
 
+    // MARK: - Mention Suggestions
+
     private var mentionSuggestions: some View {
         VStack(spacing: 0) {
             ForEach(viewModel.mentionResults) { user in
@@ -166,15 +177,15 @@ struct ComposePostView: View {
                                         .frame(width: 28, height: 28)
                                         .clipShape(Circle())
                                 } else {
-                                    mentionInitials(name: user.fullName)
+                                    mentionInitials(name: user.displayName)
                                 }
                             }
                         } else {
-                            mentionInitials(name: user.fullName)
+                            mentionInitials(name: user.displayName)
                         }
 
                         VStack(alignment: .leading, spacing: 1) {
-                            Text(user.fullName ?? "Player")
+                            Text(user.displayName ?? "Player")
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(NETRTheme.text)
                                 .lineLimit(1)
@@ -229,12 +240,13 @@ struct ComposePostView: View {
     private func insertMention(user: UserSearchResult) {
         guard let username = user.username else { return }
         let query = viewModel.activeMentionQuery
-        // Replace the @query with @username
         if let range = postText.range(of: "@\(query)", options: .backwards) {
             postText.replaceSubrange(range, with: "@\(username) ")
         }
         viewModel.dismissMentionSearch()
     }
+
+    // MARK: - Court Chip
 
     private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
         HStack(spacing: 6) {
@@ -243,8 +255,8 @@ struct ComposePostView: View {
             Text(court.name)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(NETRTheme.text)
-            if let hood = court.neighborhood {
-                Text("· \(hood)")
+            if let loc = court.location {
+                Text("· \(loc)")
                     .font(.caption)
                     .foregroundStyle(NETRTheme.subtext)
             }
@@ -260,6 +272,31 @@ struct ComposePostView: View {
         .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.blue.opacity(0.15), lineWidth: 1))
     }
+
+    // MARK: - Quoted Post Preview
+
+    private func quotedPostPreview(_ post: SupabaseFeedPost) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(post.author?.name ?? "Player")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NETRTheme.text)
+                Text(post.author?.handle ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            Text(post.content)
+                .font(.caption)
+                .foregroundStyle(NETRTheme.subtext)
+                .lineLimit(3)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+    }
+
+    // MARK: - Bottom Bar
 
     private var bottomBar: some View {
         HStack(spacing: 16) {
@@ -295,6 +332,8 @@ struct ComposePostView: View {
         .background(NETRTheme.surface)
     }
 }
+
+// MARK: - Court Search Sheet
 
 struct CourtSearchSheet: View {
     @Bindable var viewModel: FeedViewModel
@@ -334,7 +373,7 @@ struct CourtSearchSheet: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 4) {
-                            ForEach(viewModel.courtResults, id: \.id) { court in
+                            ForEach(viewModel.courtResults) { court in
                                 Button {
                                     selectedCourt = court
                                     dismiss()
@@ -343,17 +382,11 @@ struct CourtSearchSheet: View {
                                         LucideIcon("map-pin")
                                             .foregroundStyle(NETRTheme.blue)
                                         VStack(alignment: .leading, spacing: 2) {
-                                            HStack(spacing: 4) {
-                                                Text(court.name)
-                                                    .font(.subheadline.weight(.semibold))
-                                                    .foregroundStyle(NETRTheme.text)
-                                                if court.verified == true {
-                                                    LucideIcon("badge-check", size: 10)
-                                                        .foregroundStyle(NETRTheme.neonGreen)
-                                                }
-                                            }
-                                            if let hood = court.neighborhood {
-                                                Text(hood)
+                                            Text(court.name)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(NETRTheme.text)
+                                            if let loc = court.location {
+                                                Text(loc)
                                                     .font(.caption)
                                                     .foregroundStyle(NETRTheme.subtext)
                                             }
