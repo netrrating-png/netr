@@ -113,7 +113,7 @@ class GameViewModel {
         // Level 1: direct game_players + profile FK join
         if let result: [LobbyPlayer] = try? await client
             .from("game_players")
-            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, display_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
             .eq("game_id", value: gameId)
             .order("created_at", ascending: true)
             .execute()
@@ -152,7 +152,7 @@ class GameViewModel {
         if !userIds.isEmpty,
            let profiles: [LobbyPlayerProfile] = try? await client
                .from("profiles")
-               .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+               .select("id, display_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
                .in("id", values: userIds)
                .execute()
                .value {
@@ -182,7 +182,7 @@ class GameViewModel {
            game?.hostId.lowercased() == userId.lowercased() {
             let hostProfile: LobbyPlayerProfile? = try? await client
                 .from("profiles")
-                .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+                .select("id, display_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
                 .eq("id", value: userId)
                 .single()
                 .execute()

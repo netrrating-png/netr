@@ -93,7 +93,7 @@ class CrewViewModel {
             let reviewCount: Int?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case fullName        = "full_name"
+                case fullName        = "display_name"
                 case username
                 case avatarUrl       = "avatar_url"
                 case netrScore       = "netr_score"
@@ -124,7 +124,7 @@ class CrewViewModel {
             // Fetch profiles
             let profiles: [ProfileRow] = try await client
                 .from("profiles")
-                .select("id, full_name, username, avatar_url, netr_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq, review_count")
+                .select("id, display_name, username, avatar_url, netr_score, cat_shooting, cat_finishing, cat_dribbling, cat_passing, cat_defense, cat_rebounding, cat_basketball_iq, review_count")
                 .in("id", values: userIds)
                 .execute()
                 .value
@@ -385,7 +385,7 @@ class CrewViewModel {
             let avatarUrl: String?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case fullName  = "full_name"
+                case fullName  = "display_name"
                 case username
                 case avatarUrl = "avatar_url"
             }
@@ -393,7 +393,7 @@ class CrewViewModel {
 
         let rows: [SenderRow] = (try? await client
             .from("profiles")
-            .select("id, full_name, username, avatar_url")
+            .select("id, display_name, username, avatar_url")
             .in("id", values: ids)
             .execute()
             .value) ?? []

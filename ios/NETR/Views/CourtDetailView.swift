@@ -665,7 +665,7 @@ struct CourtDetailView: View {
                 let username: String?
                 nonisolated enum CodingKeys: String, CodingKey {
                     case id
-                    case fullName = "full_name"
+                    case fullName = "display_name"
                     case username
                 }
             }
@@ -673,7 +673,7 @@ struct CourtDetailView: View {
             if !hostIds.isEmpty,
                let profiles: [HostProfile] = try? await client
                    .from("profiles")
-                   .select("id, full_name, username")
+                   .select("id, display_name, username")
                    .in("id", values: hostIds)
                    .execute()
                    .value {

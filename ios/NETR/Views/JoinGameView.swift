@@ -46,7 +46,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     var resolvedHostName: String? = nil
     var hostName: String {
         if let name = resolvedHostName, !name.isEmpty { return name }
-        if let name = host?.full_name, !name.isEmpty { return name }
+        if let name = host?.display_name, !name.isEmpty { return name }
         if let username = host?.username, !username.isEmpty { return "@\(username)" }
         return "Unknown"
     }
