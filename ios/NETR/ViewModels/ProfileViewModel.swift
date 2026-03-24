@@ -190,18 +190,15 @@ class ProfileViewModel {
         guard let targetId = profileUserId else { return }
 
         let selectQuery = """
-            id, author_id, content, hashtags, mentioned_user_ids,
-            court_id, game_id, repost_of_id, quote_of_id, photo_url,
-            like_count, comment_count, repost_count, created_at,
-            profiles(id, full_name, username, avatar_url, netr_score, vibe_score),
-            courts(id, name, neighborhood, verified)
+            id, author_id, content, like_count, comment_count, repost_count,
+            repost_of_id, court_tag_id, court_tag_name, created_at,
+            profiles(id, display_name, username, avatar_url, netr_score)
         """
 
         let fetched: [SupabaseFeedPost]? = try? await client
             .from("feed_posts")
             .select(selectQuery)
             .eq("author_id", value: targetId)
-            .is("repost_of_id", value: nil)
             .order("created_at", ascending: false)
             .limit(20)
             .execute()
@@ -276,6 +273,9 @@ class ProfileViewModel {
                 .from("avatars")
                 .getPublicURL(path: path)
 
+            // Append timestamp to bust AsyncImage cache
+            let cacheBustedUrl = publicURL.absoluteString + "?t=\(Int(Date().timeIntervalSince1970))"
+
             nonisolated struct AvatarUpdate: Encodable, Sendable {
                 let avatarUrl: String
                 nonisolated enum CodingKeys: String, CodingKey {
@@ -285,7 +285,7 @@ class ProfileViewModel {
 
             try await client
                 .from("profiles")
-                .update(AvatarUpdate(avatarUrl: publicURL.absoluteString))
+                .update(AvatarUpdate(avatarUrl: cacheBustedUrl))
                 .eq("id", value: userId)
                 .execute()
 
@@ -361,7 +361,7 @@ class ProfileViewModel {
             let username: String
             let bio: String?
             nonisolated enum CodingKeys: String, CodingKey {
-                case fullName = "full_name"
+                case fullName = "display_name"
                 case username
                 case bio
             }
@@ -386,7 +386,7 @@ class ProfileViewModel {
             let city: String?
             let position: String?
             nonisolated enum CodingKeys: String, CodingKey {
-                case fullName = "full_name"
+                case fullName = "display_name"
                 case username
                 case bio
                 case city
@@ -430,6 +430,9 @@ class ProfileViewModel {
                 .from("profile-backgrounds")
                 .getPublicURL(path: path)
 
+            // Append timestamp to bust AsyncImage cache
+            let cacheBustedUrl = publicURL.absoluteString + "?t=\(Int(Date().timeIntervalSince1970))"
+
             nonisolated struct BannerUpdate: Encodable, Sendable {
                 let backgroundImageUrl: String
                 nonisolated enum CodingKeys: String, CodingKey {
@@ -439,11 +442,14 @@ class ProfileViewModel {
 
             try await client
                 .from("profiles")
-                .update(BannerUpdate(backgroundImageUrl: publicURL.absoluteString))
+                .update(BannerUpdate(backgroundImageUrl: cacheBustedUrl))
                 .eq("id", value: userId)
                 .execute()
 
-            return publicURL.absoluteString
+            await SupabaseManager.shared.loadProfile(userId: userId)
+            await loadProfile()
+
+            return cacheBustedUrl
         } catch {
             print("Banner upload error: \(error)")
             return nil

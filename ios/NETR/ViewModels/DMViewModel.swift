@@ -143,7 +143,7 @@ class DMViewModel {
             do {
                 let results: [UserSearchResult] = try await client
                     .from("profiles")
-                    .select("id, username, full_name, avatar_url, netr_score")
+                    .select("id, username, display_name, avatar_url, netr_score")
                     .ilike("username", pattern: "\(query)%")
                     .neq("id", value: currentUserId ?? "")
                     .limit(8)
@@ -196,7 +196,7 @@ class DMViewModel {
     private func loadUserProfile(userId: String) async -> FeedAuthor? {
         try? await client
             .from("profiles")
-            .select("id, full_name, username, avatar_url, netr_score, vibe_score")
+            .select("id, display_name, username, avatar_url, netr_score")
             .eq("id", value: userId)
             .single()
             .execute()

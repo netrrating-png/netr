@@ -24,7 +24,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         let lng: Double?
     }
     nonisolated struct HostRef: Decodable, Sendable {
-        let full_name: String?
+        let display_name: String?
         let username: String?
     }
     nonisolated struct GamePlayerIdRow: Decodable, Sendable {
@@ -152,7 +152,7 @@ class JoinGameViewModel {
                 """
                 id, join_code, created_at, format, max_players, scheduled_at, status,
                 courts(name, neighborhood, lat, lng),
-                host:profiles!host_id(full_name, username),
+                host:profiles!host_id(display_name, username),
                 game_players(id)
                 """,
                 // Level 2: courts name only

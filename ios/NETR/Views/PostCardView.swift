@@ -6,69 +6,128 @@ struct PostCardView: View {
     let onLike: () -> Void
     let onComment: () -> Void
     let onRepost: () -> Void
+    let onBookmark: () -> Void
     let onDelete: () -> Void
     let onBlock: () -> Void
     var onProfileTap: ((String) -> Void)? = nil
+    var onCourtTap: ((String, String) -> Void)? = nil
+    var onQuotePost: (() -> Void)? = nil
 
-    @State private var showFullPhoto: Bool = false
+    @State private var likeScale: CGFloat = 1.0
+    @State private var bookmarkScale: CGFloat = 1.0
+    @State private var showRepostSheet: Bool = false
 
     private var author: FeedAuthor? { post.author }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                Button { onProfileTap?(post.authorId) } label: {
-                    avatarView
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    authorLine
-                    contentView
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            // Repost header
+            if post.repostOfId != nil {
+                repostHeader
             }
 
-            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
-                postPhoto(url: url)
+            // Main content — either original or embedded
+            if let original = post.originalPost, post.repostOfId != nil {
+                embeddedPostCard(original)
+            } else {
+                postContent
             }
-
-            if !post.hashtags.isEmpty {
-                hashtagRow
-            }
-
-            if let court = post.taggedCourt {
-                courtEmbed(court)
-            }
-
-            actionBar
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .contextMenu {
             if isOwnPost {
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
+                Button(role: .destructive) { onDelete() } label: {
                     Label("Delete Post", systemImage: "trash")
                 }
             }
-
             if !isOwnPost {
-                Button(role: .destructive) {
-                    onBlock()
-                } label: {
+                Button(role: .destructive) { onBlock() } label: {
                     Label("Block \(author?.handle ?? "user")", systemImage: "person.slash")
                 }
             }
         }
-        .fullScreenCover(isPresented: $showFullPhoto) {
-            if let photoUrl = post.photoUrl, let url = URL(string: photoUrl) {
-                FullScreenPhotoView(url: url)
+        .confirmationDialog("Repost", isPresented: $showRepostSheet) {
+            if post.isReposted {
+                Button("Undo Repost", role: .destructive) { onRepost() }
+            } else {
+                Button("Repost") { onRepost() }
+                if let onQuotePost {
+                    Button("Quote Post") { onQuotePost() }
+                }
             }
+            Button("Cancel", role: .cancel) {}
         }
     }
 
-    private var avatarView: some View {
+    // MARK: - Repost Header
+
+    private var repostHeader: some View {
+        HStack(spacing: 4) {
+            LucideIcon("repeat", size: 11)
+            Text("reposted by \(author?.handle ?? "someone")")
+                .font(.system(size: 11, weight: .semibold))
+        }
+        .foregroundStyle(NETRTheme.subtext)
+        .padding(.leading, 50)
+        .padding(.bottom, 6)
+    }
+
+    // MARK: - Post Content (original post)
+
+    private var postContent: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Button { onProfileTap?(post.authorId) } label: {
+                    avatarView(author: author)
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    authorLine(author: author, createdAt: post.createdAt)
+                    if !post.content.isEmpty {
+                        contentText(post.content)
+                    }
+                }
+            }
+
+            if let courtName = post.courtTagName, let courtId = post.courtTagId {
+                courtChip(name: courtName, courtId: courtId)
+            }
+
+            actionBar
+        }
+    }
+
+    // MARK: - Embedded Post (for reposts)
+
+    private func embeddedPostCard(_ original: EmbeddedPost) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Button { onProfileTap?(original.authorId) } label: {
+                    avatarView(author: original.author)
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    authorLine(author: original.author, createdAt: original.createdAt)
+                    if !original.content.isEmpty {
+                        contentText(original.content)
+                    }
+                }
+            }
+
+            if let courtName = original.courtTagName {
+                courtChip(name: courtName, courtId: nil)
+            }
+
+            actionBar
+        }
+    }
+
+    // MARK: - Avatar
+
+    private func avatarView(author: FeedAuthor?) -> some View {
         Group {
             if let avatarUrl = author?.avatarUrl, let url = URL(string: avatarUrl) {
                 NETRTheme.card
@@ -83,7 +142,7 @@ struct PostCardView: View {
                     .clipShape(Circle())
                     .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
             } else {
-                Text(initials)
+                Text(initialsFor(author?.name))
                     .font(.caption.weight(.bold))
                     .foregroundStyle(NETRTheme.text)
                     .frame(width: 40, height: 40)
@@ -93,19 +152,12 @@ struct PostCardView: View {
         }
     }
 
-    private var initials: String {
-        let name = author?.displayName ?? "?"
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 {
-            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-        }
-        return String(name.prefix(2)).uppercased()
-    }
+    // MARK: - Author Line
 
-    private var authorLine: some View {
+    private func authorLine(author: FeedAuthor?, createdAt: String) -> some View {
         HStack(spacing: 4) {
-            Button { onProfileTap?(post.authorId) } label: {
-                Text(author?.displayName ?? "Player")
+            Button { if let id = author?.id { onProfileTap?(id) } } label: {
+                Text(author?.name ?? "Player")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(NETRTheme.text)
                     .lineLimit(1)
@@ -121,10 +173,6 @@ struct PostCardView: View {
                     .background(NETRRating.color(for: netr).opacity(0.12), in: .rect(cornerRadius: 4))
             }
 
-            if let vibe = author?.vibeScore {
-                VibeDecalView(vibe: vibe, size: .small)
-            }
-
             Text(author?.handle ?? "")
                 .font(.caption)
                 .foregroundStyle(NETRTheme.subtext)
@@ -133,37 +181,26 @@ struct PostCardView: View {
             Text("·")
                 .foregroundStyle(NETRTheme.muted)
 
-            Text(post.createdAt.relativeTimeFromISO)
+            Text(createdAt.relativeTimeFromISO)
                 .font(.caption)
                 .foregroundStyle(NETRTheme.subtext)
         }
     }
 
-    private var contentView: some View {
-        Text(attributedContent)
+    // MARK: - Content Text (with @mention styling)
+
+    private func contentText(_ text: String) -> some View {
+        Text(styledContent(text))
             .font(.subheadline)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.top, 2)
     }
 
-    private var attributedContent: AttributedString {
-        var result = AttributedString(post.content)
+    private func styledContent(_ text: String) -> AttributedString {
+        var result = AttributedString(text)
         result.foregroundColor = UIColor(NETRTheme.text)
 
-        let text = post.content
-        let hashtagPattern = #"#\w+"#
         let mentionPattern = #"@\w+"#
-
-        if let regex = try? NSRegularExpression(pattern: hashtagPattern) {
-            let range = NSRange(text.startIndex..., in: text)
-            for match in regex.matches(in: text, range: range) {
-                if let swiftRange = Range(match.range, in: text),
-                   let attrRange = Range(swiftRange, in: result) {
-                    result[attrRange].foregroundColor = UIColor(NETRTheme.neonGreen)
-                }
-            }
-        }
-
         if let regex = try? NSRegularExpression(pattern: mentionPattern) {
             let range = NSRange(text.startIndex..., in: text)
             for match in regex.matches(in: text, range: range) {
@@ -177,145 +214,120 @@ struct PostCardView: View {
         return result
     }
 
-    private func postPhoto(url: URL) -> some View {
-        Button { showFullPhoto = true } label: {
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(maxHeight: 260)
-                        .clipShape(.rect(cornerRadius: 12))
-                } else if phase.error != nil {
-                    EmptyView()
-                } else {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(NETRTheme.card)
-                        .frame(height: 180)
-                        .overlay(ProgressView().tint(NETRTheme.neonGreen))
-                }
+    // MARK: - Court Chip
+
+    private func courtChip(name: String, courtId: String?) -> some View {
+        Button {
+            if let courtId { onCourtTap?(courtId, name) }
+        } label: {
+            HStack(spacing: 8) {
+                LucideIcon("map-pin", size: 14)
+                    .foregroundStyle(NETRTheme.blue)
+                Text(name)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NETRTheme.text)
+                Spacer()
             }
+            .padding(10)
+            .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.blue.opacity(0.15), lineWidth: 1))
         }
         .buttonStyle(.plain)
         .padding(.leading, 50)
     }
 
-    private var hashtagRow: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 6) {
-                ForEach(post.hashtags, id: \.self) { tag in
-                    Text("#\(tag)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
-        .padding(.leading, 50)
-    }
-
-    private func courtEmbed(_ court: FeedCourt) -> some View {
-        HStack(spacing: 8) {
-            LucideIcon("map-pin", size: 14)
-                .foregroundStyle(NETRTheme.blue)
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    Text(court.name)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(NETRTheme.text)
-                    if court.verified == true {
-                        LucideIcon("badge-check", size: 9)
-                            .foregroundStyle(NETRTheme.neonGreen)
-                    }
-                }
-                if let hood = court.neighborhood {
-                    Text(hood)
-                        .font(.system(size: 10))
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-            }
-            Spacer()
-        }
-        .padding(10)
-        .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.blue.opacity(0.15), lineWidth: 1))
-        .padding(.leading, 50)
-    }
+    // MARK: - Action Bar
 
     private var actionBar: some View {
         HStack(spacing: 0) {
-            FeedActionButton(
-                icon: "heart",
-                count: post.likeCount,
-                color: post.isLiked ? NETRTheme.neonGreen : NETRTheme.subtext,
-                action: onLike
-            )
+            // Like
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    likeScale = 1.3
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        likeScale = 1.0
+                    }
+                }
+                onLike()
+            } label: {
+                HStack(spacing: 4) {
+                    LucideIcon("heart", size: 12)
+                    if post.likeCount > 0 {
+                        Text("\(post.likeCount)")
+                            .font(.caption2)
+                    }
+                }
+                .foregroundStyle(post.isLiked ? NETRTheme.neonGreen : NETRTheme.subtext)
+                .scaleEffect(likeScale)
+                .frame(minWidth: 60, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .sensoryFeedback(.selection, trigger: post.isLiked)
+
+            // Comment
             FeedActionButton(
                 icon: "message-circle",
                 count: post.commentCount,
                 color: NETRTheme.subtext,
                 action: onComment
             )
-            FeedActionButton(
-                icon: "repeat",
-                count: post.repostCount,
-                color: post.isReposted ? NETRTheme.neonGreen : NETRTheme.subtext,
-                action: onRepost
-            )
+
+            // Repost
             Button {
-                sharePost()
+                showRepostSheet = true
             } label: {
-                LucideIcon("share", size: 12)
-                    .foregroundStyle(NETRTheme.subtext)
+                HStack(spacing: 4) {
+                    LucideIcon("repeat", size: 12)
+                    if post.repostCount > 0 {
+                        Text("\(post.repostCount)")
+                            .font(.caption2)
+                    }
+                }
+                .foregroundStyle(post.isReposted ? NETRTheme.neonGreen : NETRTheme.subtext)
+                .frame(minWidth: 60, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            // Bookmark
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    bookmarkScale = 1.3
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        bookmarkScale = 1.0
+                    }
+                }
+                onBookmark()
+            } label: {
+                LucideIcon("bookmark", size: 12)
+                    .foregroundStyle(post.isBookmarked ? NETRTheme.neonGreen : NETRTheme.subtext)
+                    .scaleEffect(bookmarkScale)
                     .frame(minWidth: 40, alignment: .leading)
             }
             .buttonStyle(.plain)
+            .sensoryFeedback(.selection, trigger: post.isBookmarked)
+
             Spacer()
         }
         .padding(.leading, 50)
     }
 
-    private func sharePost() {
-        let text = "\(author?.displayName ?? "Someone") on NETR: \(post.content)"
-        let activityVC = UIActivityViewController(activityItems: [text], applicationActivities: nil)
-        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let root = scene.windows.first?.rootViewController {
-            root.present(activityVC, animated: true)
+    // MARK: - Helpers
+
+    private func initialsFor(_ name: String?) -> String {
+        let name = name ?? "?"
+        let parts = name.split(separator: " ")
+        if parts.count >= 2 {
+            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
         }
+        return String(name.prefix(2)).uppercased()
     }
 }
 
-// MARK: - Full Screen Photo
-
-struct FullScreenPhotoView: View {
-    let url: URL
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-
-            AsyncImage(url: url) { phase in
-                if let image = phase.image {
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } else {
-                    ProgressView().tint(.white)
-                }
-            }
-        }
-        .overlay(alignment: .topTrailing) {
-            Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .padding(16)
-            }
-        }
-        .statusBarHidden()
-    }
-}
+// MARK: - Feed Action Button
 
 struct FeedActionButton: View {
     let icon: String

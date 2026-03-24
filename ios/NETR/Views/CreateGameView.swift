@@ -1327,7 +1327,7 @@ struct GamePlayersPreviewSheet: View {
             let netrScore: Double?
             let vibeScore: Double?
             nonisolated enum CodingKeys: String, CodingKey {
-                case id; case fullName = "full_name"; case username; case position
+                case id; case fullName = "display_name"; case username; case position
                 case avatarUrl = "avatar_url"; case netrScore = "netr_score"
                 case vibeScore = "vibe_score"
             }
@@ -1335,7 +1335,7 @@ struct GamePlayersPreviewSheet: View {
 
         let profiles: [SlimProfile] = (try? await client
             .from("profiles")
-            .select("id, full_name, username, position, avatar_url, netr_score, vibe_score")
+            .select("id, display_name, username, position, avatar_url, netr_score, vibe_score")
             .in("id", values: userIds)
             .execute()
             .value) ?? []

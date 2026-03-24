@@ -110,7 +110,7 @@ class RateTabViewModel {
             // ── Step 4: Load profiles ──
             let profiles: [RateProfileRow] = try await supabase.client
                 .from("profiles")
-                .select("id, full_name, username, netr_score, vibe_score, position")
+                .select("id, display_name, username, netr_score, vibe_score, position")
                 .in("id", values: allPlayerIds)
                 .execute()
                 .value

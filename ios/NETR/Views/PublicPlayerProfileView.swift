@@ -79,11 +79,10 @@ struct PublicPlayerProfileView: View {
             if let player = viewModel.player {
                 let otherUser = FeedAuthor(
                     id: userId,
-                    fullName: player.name,
+                    displayName: player.name,
                     username: player.username.hasPrefix("@") ? String(player.username.dropFirst()) : player.username,
                     avatarUrl: player.avatarUrl,
-                    netrScore: player.rating,
-                    vibeScore: viewModel.vibeScore
+                    netrScore: player.rating
                 )
                 ChatThreadView(otherUserId: userId, otherUser: otherUser)
             }
@@ -432,6 +431,7 @@ struct PublicPlayerProfileView: View {
                         onLike: {},
                         onComment: { commentPost = post },
                         onRepost: {},
+                        onBookmark: {},
                         onDelete: {},
                         onBlock: {}
                     )

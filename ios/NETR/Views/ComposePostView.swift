@@ -7,6 +7,9 @@ struct ComposePostView: View {
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtSearch: Bool = false
 
+    // Quote post support
+    var quotePost: SupabaseFeedPost? = nil
+
     private let maxChars = 280
 
     private var charCount: Int { postText.count }
@@ -33,10 +36,19 @@ struct ComposePostView: View {
                             selectedCourtChip(court)
                                 .padding(.horizontal, 16)
                         }
+
+                        if let quote = quotePost {
+                            quotedPostPreview(quote)
+                                .padding(.horizontal, 16)
+                        }
                     }
                 }
                 .scrollIndicators(.hidden)
                 .dismissKeyboardOnScroll()
+
+                if viewModel.showMentionResults && !viewModel.mentionResults.isEmpty {
+                    mentionSuggestions
+                }
 
                 Divider().background(NETRTheme.border)
 
@@ -55,7 +67,8 @@ struct ComposePostView: View {
                         Task {
                             await viewModel.createPost(
                                 content: postText,
-                                courtId: selectedCourt.map { String($0.id) }
+                                courtId: selectedCourt.map { $0.id },
+                                courtName: selectedCourt?.name
                             )
                         }
                     } label: {
@@ -141,8 +154,99 @@ struct ComposePostView: View {
                 .foregroundStyle(NETRTheme.text)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 120)
+                .onChange(of: postText) { _, newValue in
+                    viewModel.searchMentions(text: newValue, cursorPosition: newValue.count)
+                }
         }
     }
+
+    // MARK: - Mention Suggestions
+
+    private var mentionSuggestions: some View {
+        VStack(spacing: 0) {
+            ForEach(viewModel.mentionResults) { user in
+                Button {
+                    insertMention(user: user)
+                } label: {
+                    HStack(spacing: 10) {
+                        if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 28, height: 28)
+                                        .clipShape(Circle())
+                                } else {
+                                    mentionInitials(name: user.displayName)
+                                }
+                            }
+                        } else {
+                            mentionInitials(name: user.displayName)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(user.displayName ?? "Player")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(NETRTheme.text)
+                                .lineLimit(1)
+                            if let username = user.username {
+                                Text("@\(username)")
+                                    .font(.caption2)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer()
+
+                        if let score = user.netrScore {
+                            Text(String(format: "%.1f", score))
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundStyle(NETRRating.color(for: score))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 4))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+
+                if user.id != viewModel.mentionResults.last?.id {
+                    Divider().background(NETRTheme.border)
+                }
+            }
+        }
+        .background(NETRTheme.surface)
+    }
+
+    private func mentionInitials(name: String?) -> some View {
+        let initials: String = {
+            guard let name = name else { return "?" }
+            let parts = name.split(separator: " ")
+            if parts.count >= 2 {
+                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
+            }
+            return String(name.prefix(2)).uppercased()
+        }()
+        return Text(initials)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(NETRTheme.subtext)
+            .frame(width: 28, height: 28)
+            .background(NETRTheme.card, in: Circle())
+    }
+
+    private func insertMention(user: UserSearchResult) {
+        guard let username = user.username else { return }
+        let query = viewModel.activeMentionQuery
+        if let range = postText.range(of: "@\(query)", options: .backwards) {
+            postText.replaceSubrange(range, with: "@\(username) ")
+        }
+        viewModel.dismissMentionSearch()
+    }
+
+    // MARK: - Court Chip
 
     private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
         HStack(spacing: 6) {
@@ -151,8 +255,8 @@ struct ComposePostView: View {
             Text(court.name)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(NETRTheme.text)
-            if let hood = court.neighborhood {
-                Text("· \(hood)")
+            if let loc = court.location {
+                Text("· \(loc)")
                     .font(.caption)
                     .foregroundStyle(NETRTheme.subtext)
             }
@@ -168,6 +272,31 @@ struct ComposePostView: View {
         .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.blue.opacity(0.15), lineWidth: 1))
     }
+
+    // MARK: - Quoted Post Preview
+
+    private func quotedPostPreview(_ post: SupabaseFeedPost) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(post.author?.name ?? "Player")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NETRTheme.text)
+                Text(post.author?.handle ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            Text(post.content)
+                .font(.caption)
+                .foregroundStyle(NETRTheme.subtext)
+                .lineLimit(3)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+    }
+
+    // MARK: - Bottom Bar
 
     private var bottomBar: some View {
         HStack(spacing: 16) {
@@ -204,6 +333,8 @@ struct ComposePostView: View {
     }
 }
 
+// MARK: - Court Search Sheet
+
 struct CourtSearchSheet: View {
     @Bindable var viewModel: FeedViewModel
     @Binding var selectedCourt: FeedCourtSearchResult?
@@ -230,7 +361,7 @@ struct CourtSearchSheet: View {
                     Task { await viewModel.searchCourts(query: newValue) }
                 }
 
-                if viewModel.courtResults.isEmpty && searchText.count >= 2 {
+                if viewModel.courtResults.isEmpty && searchText.count >= 1 {
                     VStack(spacing: 8) {
                         LucideIcon("map-pin-off", size: 22)
                             .foregroundStyle(NETRTheme.subtext)
@@ -242,7 +373,7 @@ struct CourtSearchSheet: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 4) {
-                            ForEach(viewModel.courtResults, id: \.id) { court in
+                            ForEach(viewModel.courtResults) { court in
                                 Button {
                                     selectedCourt = court
                                     dismiss()
@@ -251,17 +382,11 @@ struct CourtSearchSheet: View {
                                         LucideIcon("map-pin")
                                             .foregroundStyle(NETRTheme.blue)
                                         VStack(alignment: .leading, spacing: 2) {
-                                            HStack(spacing: 4) {
-                                                Text(court.name)
-                                                    .font(.subheadline.weight(.semibold))
-                                                    .foregroundStyle(NETRTheme.text)
-                                                if court.verified == true {
-                                                    LucideIcon("badge-check", size: 10)
-                                                        .foregroundStyle(NETRTheme.neonGreen)
-                                                }
-                                            }
-                                            if let hood = court.neighborhood {
-                                                Text(hood)
+                                            Text(court.name)
+                                                .font(.subheadline.weight(.semibold))
+                                                .foregroundStyle(NETRTheme.text)
+                                            if let loc = court.location {
+                                                Text(loc)
                                                     .font(.caption)
                                                     .foregroundStyle(NETRTheme.subtext)
                                             }

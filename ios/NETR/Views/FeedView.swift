@@ -5,6 +5,8 @@ struct FeedView: View {
     @State private var dmViewModel = DMViewModel()
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
+    @State private var quotePost: SupabaseFeedPost?
+    @State private var suggestedPlayers: [UserSearchResult] = []
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -28,17 +30,29 @@ struct FeedView: View {
             if viewModel.activeTab != .dm {
                 composeButton
             }
+
+            // New posts pill (Live tab)
+            if viewModel.pendingNewPosts > 0 && viewModel.activeTab == .live {
+                newPostsPill
+            }
         }
         .overlay {
             if viewModel.showSearchResults {
                 searchOverlay
             }
         }
+        // Error toast
+        .overlay(alignment: .bottom) {
+            if let toast = viewModel.toastMessage {
+                toastView(toast)
+            }
+        }
         .sheet(isPresented: $viewModel.showCompose) {
-            ComposePostView(viewModel: viewModel)
+            ComposePostView(viewModel: viewModel, quotePost: quotePost)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
+                .onDisappear { quotePost = nil }
         }
         .fullScreenCover(item: $viewModel.selectedProfileUserId) { userId in
             PublicPlayerProfileView(userId: userId) {
@@ -55,7 +69,6 @@ struct FeedView: View {
         }) {
             if let post = commentPost {
                 CommentsView(post: post, onCommentAdded: {
-                    // Increment local comment count so it updates immediately in the feed
                     if let idx = viewModel.posts.firstIndex(where: { $0.id == post.id }) {
                         viewModel.posts[idx].commentCount += 1
                     }
@@ -68,6 +81,9 @@ struct FeedView: View {
         .task {
             await viewModel.fetchFeed(tab: viewModel.activeTab)
             await viewModel.subscribeToFeed()
+        }
+        .onDisappear {
+            Task { await viewModel.unsubscribe() }
         }
     }
 
@@ -140,7 +156,6 @@ struct FeedView: View {
                 }
 
             VStack(spacing: 0) {
-                // offset to position dropdown below search bar
                 Spacer().frame(height: 108)
 
                 VStack(spacing: 0) {
@@ -199,15 +214,15 @@ struct FeedView: View {
                             .frame(width: 36, height: 36)
                             .clipShape(Circle())
                     } else {
-                        searchInitialsAvatar(name: user.fullName)
+                        searchInitialsAvatar(name: user.displayName)
                     }
                 }
             } else {
-                searchInitialsAvatar(name: user.fullName)
+                searchInitialsAvatar(name: user.displayName)
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(user.fullName ?? "Player")
+                Text(user.displayName ?? "Player")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(NETRTheme.text)
                     .lineLimit(1)
@@ -327,29 +342,17 @@ struct FeedView: View {
                     } else {
                         LazyVStack(spacing: 0) {
                             ForEach(viewModel.posts) { post in
-                                PostCardView(
-                                    post: post,
-                                    isOwnPost: viewModel.isOwnPost(post),
-                                    onLike: {
-                                        Task { await viewModel.toggleLike(post: post) }
-                                    },
-                                    onComment: {
-                                        commentPost = post
-                                    },
-                                    onRepost: {
-                                        Task { await viewModel.repost(post: post) }
-                                    },
-                                    onDelete: {
-                                        Task { await viewModel.deletePost(post) }
-                                    },
-                                    onBlock: {
-                                        Task { await viewModel.blockUser(userId: post.authorId) }
-                                    },
-                                    onProfileTap: { authorId in
-                                        viewModel.selectedProfileUserId = authorId
-                                    }
-                                )
+                                postCard(for: post)
                                 Divider().background(NETRTheme.border)
+                                    .onAppear {
+                                        Task { await viewModel.loadMoreIfNeeded(currentPost: post) }
+                                    }
+                            }
+
+                            if viewModel.isLoading && viewModel.hasLoadedOnce {
+                                ProgressView()
+                                    .tint(NETRTheme.neonGreen)
+                                    .padding(.vertical, 20)
                             }
                         }
                     }
@@ -364,22 +367,120 @@ struct FeedView: View {
         }
     }
 
+    private func postCard(for post: SupabaseFeedPost) -> some View {
+        PostCardView(
+            post: post,
+            isOwnPost: viewModel.isOwnPost(post),
+            onLike: {
+                Task { await viewModel.toggleLike(post: post) }
+            },
+            onComment: {
+                commentPost = post
+            },
+            onRepost: {
+                Task { await viewModel.repost(post: post) }
+            },
+            onBookmark: {
+                Task { await viewModel.toggleBookmark(post: post) }
+            },
+            onDelete: {
+                Task { await viewModel.deletePost(post) }
+            },
+            onBlock: {
+                Task { await viewModel.blockUser(userId: post.authorId) }
+            },
+            onProfileTap: { authorId in
+                viewModel.selectedProfileUserId = authorId
+            },
+            onQuotePost: {
+                quotePost = post
+                viewModel.showCompose = true
+            }
+        )
+    }
+
     // MARK: - Empty States
 
     private var forYouEmptyState: some View {
-        VStack(spacing: 16) {
-            LucideIcon("users", size: 44)
-                .foregroundStyle(NETRTheme.muted)
-            Text("Your feed is empty")
-                .font(.headline)
-                .foregroundStyle(NETRTheme.text)
-            Text("Follow players to see their posts here.")
-                .font(.subheadline)
-                .foregroundStyle(NETRTheme.subtext)
-                .multilineTextAlignment(.center)
+        VStack(spacing: 20) {
+            VStack(spacing: 12) {
+                LucideIcon("users", size: 44)
+                    .foregroundStyle(NETRTheme.muted)
+                Text("Your feed is empty")
+                    .font(.headline)
+                    .foregroundStyle(NETRTheme.text)
+                Text("Follow players to see their posts here.")
+                    .font(.subheadline)
+                    .foregroundStyle(NETRTheme.subtext)
+                    .multilineTextAlignment(.center)
+            }
+
+            if !suggestedPlayers.isEmpty {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("DISCOVER PLAYERS")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .tracking(1.5)
+                        .padding(.horizontal, 20)
+
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 12) {
+                            ForEach(suggestedPlayers) { player in
+                                suggestedPlayerCard(player)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                    }
+                    .scrollIndicators(.hidden)
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 60)
+        .task {
+            suggestedPlayers = await viewModel.fetchSuggestedPlayers()
+        }
+    }
+
+    private func suggestedPlayerCard(_ player: UserSearchResult) -> some View {
+        Button {
+            viewModel.selectedProfileUserId = player.id
+        } label: {
+            VStack(spacing: 8) {
+                if let avatarUrl = player.avatarUrl, let url = URL(string: avatarUrl) {
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image.resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 56, height: 56)
+                                .clipShape(Circle())
+                        } else {
+                            searchInitialsAvatar(name: player.displayName)
+                                .frame(width: 56, height: 56)
+                        }
+                    }
+                } else {
+                    searchInitialsAvatar(name: player.displayName)
+                        .frame(width: 56, height: 56)
+                }
+
+                Text(player.displayName ?? "Player")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(NETRTheme.text)
+                    .lineLimit(1)
+
+                if let score = player.netrScore {
+                    Text(String(format: "%.1f", score))
+                        .font(.system(size: 10, weight: .black))
+                        .foregroundStyle(NETRRating.color(for: score))
+                }
+            }
+            .frame(width: 90)
+            .padding(.vertical, 12)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     private var emptyFeedState: some View {
@@ -397,10 +498,38 @@ struct FeedView: View {
         .padding(.top, 60)
     }
 
+    // MARK: - New Posts Pill
+
+    private var newPostsPill: some View {
+        VStack {
+            Button {
+                Task { await viewModel.fetchFeed(tab: .live) }
+            } label: {
+                HStack(spacing: 6) {
+                    LucideIcon("arrow-up", size: 12)
+                    Text("\(viewModel.pendingNewPosts) new post\(viewModel.pendingNewPosts == 1 ? "" : "s")")
+                        .font(.caption.weight(.bold))
+                }
+                .foregroundStyle(NETRTheme.background)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(NETRTheme.neonGreen, in: Capsule())
+                .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
+            }
+            .buttonStyle(PressButtonStyle())
+            .padding(.bottom, 16)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 180)
+    }
+
     // MARK: - Compose
 
     private var composeButton: some View {
         Button {
+            quotePost = nil
             viewModel.showCompose = true
         } label: {
             LucideIcon("plus", size: 20)
@@ -412,6 +541,23 @@ struct FeedView: View {
         .buttonStyle(PressButtonStyle())
         .padding(.trailing, 16)
         .padding(.bottom, 96)
+    }
+
+    // MARK: - Toast
+
+    private func toastView(_ message: String) -> some View {
+        Text(message)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(NETRTheme.text)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(NETRTheme.card, in: Capsule())
+            .overlay(Capsule().stroke(NETRTheme.border, lineWidth: 1))
+            .shadow(color: .black.opacity(0.3), radius: 10)
+            .padding(.bottom, 100)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+            .animation(.spring(response: 0.3), value: viewModel.toastMessage)
+            .onTapGesture { viewModel.toastMessage = nil }
     }
 }
 

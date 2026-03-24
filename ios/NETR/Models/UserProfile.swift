@@ -33,7 +33,7 @@ nonisolated struct UserProfile: Codable, Sendable {
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id
-        case fullName = "full_name"
+        case fullName = "display_name"
         case username
         case position
         case dateOfBirth = "date_of_birth"
