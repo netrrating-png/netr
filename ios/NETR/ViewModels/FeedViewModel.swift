@@ -147,18 +147,15 @@ class FeedViewModel {
                 if followingIds.isEmpty {
                     fetched = []
                 } else {
-                    var filterQuery = client
+                    let filterQuery = client
                         .from("feed_posts")
                         .select(selectQuery)
                         .in("author_id", values: Array(followingIds))
 
-                    if loadMore, let lastPost = posts.last {
-                        filterQuery = filterQuery.filter("created_at", operator: .lt, value: lastPost.createdAt)
-                    }
-
+                    let offset = loadMore ? posts.count : 0
                     fetched = try await filterQuery
                         .order("created_at", ascending: false)
-                        .limit(pageSize)
+                        .range(from: offset, to: offset + pageSize - 1)
                         .execute().value
                 }
 
@@ -166,18 +163,15 @@ class FeedViewModel {
                 let twentyFourHoursAgo = ISO8601DateFormatter().string(
                     from: Date().addingTimeInterval(-86400)
                 )
-                var filterQuery = client
+                let filterQuery = client
                     .from("feed_posts")
                     .select(selectQuery)
                     .gte("created_at", value: twentyFourHoursAgo)
 
-                if loadMore, let lastPost = posts.last {
-                    filterQuery = filterQuery.filter("created_at", operator: .lt, value: lastPost.createdAt)
-                }
-
+                let offset = loadMore ? posts.count : 0
                 fetched = try await filterQuery
                     .order("created_at", ascending: false)
-                    .limit(pageSize)
+                    .range(from: offset, to: offset + pageSize - 1)
                     .execute().value
 
             case .dm:
