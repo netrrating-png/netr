@@ -19,7 +19,7 @@ class DMViewModel {
     private var searchTask: Task<Void, Never>?
 
     private var currentUserId: String? {
-        SupabaseManager.shared.session?.user.id.uuidString
+        SupabaseManager.shared.session?.user.id.uuidString.lowercased()
     }
 
     // MARK: - Load Conversations (grouped from direct_messages)
@@ -224,7 +224,7 @@ class ChatViewModel {
     private let maxChars = 500
 
     var currentUserId: String? {
-        SupabaseManager.shared.session?.user.id.uuidString
+        SupabaseManager.shared.session?.user.id.uuidString.lowercased()
     }
 
     var canSend: Bool {

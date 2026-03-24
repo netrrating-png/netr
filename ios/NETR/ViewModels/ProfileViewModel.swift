@@ -6,6 +6,7 @@ import Auth
 class ProfileViewModel {
 
     var player: Player?
+    var userProfile: UserProfile?
     var isLoading: Bool = false
     var isSaving: Bool = false
     var error: String?
@@ -25,6 +26,7 @@ class ProfileViewModel {
     var bio: String?
     var userPosts: [SupabaseFeedPost] = []
     var homeCourt: Court?
+    var milestones: [PlayerMilestone] = []
 
     func loadProfile(userId: String? = nil) async {
         isLoading = true
@@ -56,12 +58,14 @@ class ProfileViewModel {
             }
 
             player = bridgedPlayer
+            userProfile = profile
             vibeScore = profile.vibeScore
             bio = profile.bio
             isLoading = false
 
             await loadSocialCounts(targetId: targetId)
             await loadHomeCourt(userId: targetId)
+            await loadMilestones(userId: targetId)
         } catch {
             if isCurrentUser {
                 let fallback = buildLocalOnlyPlayer()
@@ -75,6 +79,16 @@ class ProfileViewModel {
             isLoading = false
             print("Profile load error: \(error)")
         }
+    }
+
+    func loadMilestones(userId: String) async {
+        milestones = (try? await client
+            .from("player_milestones")
+            .select()
+            .eq("user_id", value: userId)
+            .order("created_at", ascending: false)
+            .execute()
+            .value) ?? []
     }
 
     func loadHomeCourt(userId: String) async {

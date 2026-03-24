@@ -11,6 +11,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let max_players: Int?
     let scheduled_at: String?
     let status: String?
+    let host_id: String?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -35,18 +36,23 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         case id, format, courts, host, status
         case join_code, created_at, max_players, scheduled_at
         case game_players
+        case host_id
     }
 
-    // game_players rows don't carry removed status in the card select, so count is total active slots
-    var joinedCount: Int { game_players?.count ?? 0 }
+    // playerCount and resolvedHostName are set separately via direct queries (no FK joins needed)
+    var playerCount: Int? = nil
+    var joinedCount: Int { playerCount ?? game_players?.count ?? 0 }
+
+    var resolvedHostName: String? = nil
+    var hostName: String {
+        if let name = resolvedHostName, !name.isEmpty { return name }
+        if let name = host?.full_name, !name.isEmpty { return name }
+        if let username = host?.username, !username.isEmpty { return "@\(username)" }
+        return "Unknown"
+    }
 
     var courtName: String { courts?.name ?? "Unknown Court" }
     var neighborhood: String { courts?.neighborhood ?? "" }
-    var hostName: String {
-        if let name = host?.display_name, !name.isEmpty { return name }
-        if let username = host?.username { return "@\(username)" }
-        return "Unknown"
-    }
     var isScheduled: Bool { scheduled_at != nil }
     var scheduledDate: Date? {
         guard let str = scheduled_at else { return nil }
@@ -225,9 +231,10 @@ class JoinGameViewModel {
         nowFmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         do {
+            let now = nowFmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: game.id, userId: userId, checkedInAt: nowFmt.string(from: Date())))
+                .insert(GamePlayerPayload(gameId: game.id, userId: userId, joinedAt: now, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client

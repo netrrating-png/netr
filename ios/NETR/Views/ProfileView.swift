@@ -20,7 +20,11 @@ struct ProfileView: View {
     @State private var showCourtLeaderboard: Bool = false
     @State private var showInvite: Bool = false
     @State private var showBioEdit: Bool = false
+    @State private var showEditMilestones: Bool = false
+    @State private var scrollToMilestones: Bool = false
     @State private var localCourtsVM = CourtsViewModel()
+    @State private var crewViewModel = CrewViewModel()
+    @State private var showMyCrews: Bool = false
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -43,6 +47,7 @@ struct ProfileView: View {
                 }
             } else if let user = viewModel.player {
                 ScrollView(showsIndicators: false) {
+                    ScrollViewReader { proxy in
                     VStack(spacing: 0) {
                         profileHeaderGradient(user: user)
 
@@ -94,6 +99,19 @@ struct ProfileView: View {
 
                             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
 
+                            crewRepRow
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 24)
+
+                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
+
+                            milestonesSection(user: user)
+                                .padding(.horizontal, 20)
+                                .padding(.bottom, 24)
+                                .id("milestonesSection")
+
+                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
+
                             if let court = viewModel.homeCourt {
                                 homeCourtRow(court: court, accentColor: ratingColor(for: user))
                                     .padding(.horizontal, 20)
@@ -105,6 +123,12 @@ struct ProfileView: View {
                         }
                         .background(NETRTheme.background)
                     }
+                    .onChange(of: scrollToMilestones) { _, _ in
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            proxy.scrollTo("milestonesSection", anchor: .top)
+                        }
+                    }
+                    } // ScrollViewReader
                 }
             } else if viewModel.error != nil {
                 VStack(spacing: 16) {
@@ -167,6 +191,12 @@ struct ProfileView: View {
                 )
             }
         }
+        .sheet(isPresented: $showEditMilestones) {
+            if let uid = profileUserId ?? SupabaseManager.shared.session?.user.id.uuidString {
+                EditMilestonesView(userId: uid, milestones: $viewModel.milestones)
+                    .presentationDetents([.medium, .large])
+            }
+        }
         .sheet(isPresented: $showBioEdit) {
             ProfileBioEditSheet()
                 .onDisappear { Task { await viewModel.loadProfile(userId: profileUserId) } }
@@ -188,6 +218,14 @@ struct ProfileView: View {
                     .presentationDragIndicator(.visible)
                     .presentationBackground(NETRTheme.background)
             }
+        }
+        .sheet(isPresented: $showMyCrews) {
+            NavigationStack {
+                MyCrewsView(viewModel: crewViewModel)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
         }
     }
 
@@ -389,6 +427,12 @@ struct ProfileView: View {
                         .overlay(RoundedRectangle(cornerRadius: 5).stroke(NETRTheme.purple.opacity(0.4), lineWidth: 1))
                         .clipShape(.rect(cornerRadius: 5))
                 }
+
+                if !viewModel.milestones.isEmpty {
+                    MilestoneProfileBadge(milestones: viewModel.milestones) {
+                        scrollToMilestones.toggle()
+                    }
+                }
             }
 
             HStack(spacing: 6) {
@@ -412,7 +456,7 @@ struct ProfileView: View {
                         .foregroundStyle(NETRTheme.muted)
                     Button { showCourtLeaderboard = true } label: {
                         HStack(spacing: 3) {
-                            LucideIcon("home", size: 11)
+                            LucideIcon("house", size: 11)
                                 .foregroundStyle(NETRTheme.neonGreen)
                             Text(viewModel.homeCourt!.name)
                                 .font(.system(size: 12))
@@ -779,6 +823,173 @@ struct ProfileView: View {
         }
     }
 
+    // MARK: - Milestones
+
+    private func milestonesSection(user: Player) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("MILESTONES")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .tracking(1.5)
+                Spacer()
+                if viewModel.isCurrentUser {
+                    Button {
+                        showEditMilestones = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: viewModel.milestones.isEmpty ? "plus" : "pencil")
+                                .font(.system(size: 11))
+                            Text(viewModel.milestones.isEmpty ? "Add" : "Edit")
+                                .font(.system(size: 12, weight: .medium))
+                        }
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    }
+                }
+            }
+
+            if viewModel.milestones.isEmpty {
+                Text(viewModel.isCurrentUser
+                     ? "Add your basketball achievements — school team, AAU, college, and more."
+                     : "No milestones added yet.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                let sorted = viewModel.milestones.sorted { $0.milestoneType.prestige > $1.milestoneType.prestige }
+                VStack(spacing: 10) {
+                    ForEach(sorted) { milestone in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(milestone.milestoneType.badgeColor.opacity(0.15))
+                                    .frame(width: 38, height: 38)
+                                Image(systemName: milestone.milestoneType.sfSymbol)
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(milestone.milestoneType.badgeColor)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(milestone.milestoneType.displayName)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(milestone.milestoneType.badgeColor)
+                                if let sub = milestone.subtitle {
+                                    Text(sub)
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(NETRTheme.subtext)
+                                }
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(milestone.milestoneType.badgeColor.opacity(0.06))
+                        .clipShape(.rect(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(milestone.milestoneType.badgeColor.opacity(0.25), lineWidth: 1)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Crew Rep
+
+    @ViewBuilder
+    private var crewRepRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("MY CREW")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .tracking(1.5)
+                Spacer()
+                Button {
+                    showMyCrews = true
+                } label: {
+                    HStack(spacing: 4) {
+                        LucideIcon("users", size: 11)
+                        Text(crewViewModel.myCrews.isEmpty ? "Join a Crew" : "Manage")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+                    .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+            }
+
+            if let primary = crewViewModel.primaryCrew {
+                Button { showMyCrews = true } label: {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.neonGreen.opacity(0.12))
+                                .frame(width: 48, height: 48)
+                            LucideIcon(primary.icon, size: 22)
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Text(primary.name)
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundStyle(NETRTheme.text)
+                                Text("PRIMARY")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .tracking(0.8)
+                                    .foregroundStyle(NETRTheme.gold)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(NETRTheme.gold.opacity(0.12), in: .rect(cornerRadius: 4))
+                            }
+                            Text("\(crewViewModel.myCrews.count) crew\(crewViewModel.myCrews.count == 1 ? "" : "s") total")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                        Spacer()
+                        LucideIcon("chevron-right", size: 14)
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    .padding(14)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+            } else {
+                Button { showMyCrews = true } label: {
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.card)
+                                .frame(width: 44, height: 44)
+                            LucideIcon("users", size: 20)
+                                .foregroundStyle(NETRTheme.muted)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("No crew yet")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(NETRTheme.subtext)
+                            Text("Create or join a crew with your ballers")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.muted)
+                        }
+                        Spacer()
+                        LucideIcon("chevron-right", size: 14)
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    .padding(14)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+            }
+        }
+        .task { await crewViewModel.loadMyCrews() }
+    }
+
     // MARK: - Home Court
 
     private func homeCourtRow(court: Court, accentColor: Color) -> some View {
@@ -802,16 +1013,16 @@ struct ProfileView: View {
             HStack(spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(accentColor.opacity(0.15))
+                        .fill(NETRTheme.neonGreen.opacity(0.15))
                         .frame(width: 36, height: 36)
-                    LucideIcon("home", size: 15)
-                        .foregroundStyle(accentColor)
+                    LucideIcon("house", size: 15)
+                        .foregroundStyle(NETRTheme.neonGreen)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(court.name)
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(NETRTheme.text)
+                        .foregroundStyle(NETRTheme.neonGreen)
                     Text(court.neighborhood)
                         .font(.system(size: 11))
                         .foregroundStyle(NETRTheme.subtext)

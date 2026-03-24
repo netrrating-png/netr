@@ -135,8 +135,6 @@
 		ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerCardView.swift; sourceTree = "<group>"; };
 		ADB4D3C12F64A815001D0E5F /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardView.swift; sourceTree = "<group>"; };
 		ADB4D3C22F64A815001D0E5F /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
-		CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicPlayerProfileView.swift; sourceTree = "<group>"; };
-		CL00D41B2F77B001001FEED1 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 		ADB4D3C32F64A815001D0E5F /* RateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateView.swift; sourceTree = "<group>"; };
 		ADB4D3C42F64A815001D0E5F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentDisclaimerView.swift; sourceTree = "<group>"; };
@@ -152,6 +150,8 @@
 		ADB4D3D12F64A815001D0E5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		ADB4D3D22F64A815001D0E5F /* NETRApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRApp.swift; sourceTree = "<group>"; };
 		ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentFlow.swift; sourceTree = "<group>"; };
+		CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicPlayerProfileView.swift; sourceTree = "<group>"; };
+		CL00D41B2F77B001001FEED1 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -711,8 +711,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "NETR uses your contacts to help you invite friends to the app.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -750,8 +750,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
-				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "NETR uses your contacts to help you invite friends to the app.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

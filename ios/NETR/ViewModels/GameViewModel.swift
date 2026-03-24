@@ -102,25 +102,104 @@ class GameViewModel {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let now = fmt.string(from: Date())
         try await client
             .from("game_players")
-            .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: fmt.string(from: Date())))
+            .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
             .execute()
     }
 
     func loadPlayers(gameId: String) async {
-        do {
-            let result: [LobbyPlayer] = try await client
-                .from("game_players")
-                .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, display_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
-                .eq("game_id", value: gameId)
-                .order("created_at", ascending: true)
+        // Level 1: direct game_players + profile FK join
+        if let result: [LobbyPlayer] = try? await client
+            .from("game_players")
+            .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
+            .eq("game_id", value: gameId)
+            .order("created_at", ascending: true)
+            .execute()
+            .value, !result.isEmpty {
+            players = result.filter { !$0.isRemoved }
+            return
+        }
+
+        // Level 2: bare direct query — no FK joins, no profiles join, just the raw rows
+        nonisolated struct BarePlayerRow: Decodable, Sendable {
+            let id: String
+            let userId: String
+            let checkedInAt: String?
+            let checkedOutAt: String?
+            let removed: Bool?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id
+                case userId       = "user_id"
+                case checkedInAt  = "checked_in_at"
+                case checkedOutAt = "checked_out_at"
+                case removed
+            }
+        }
+
+        let bareRows: [BarePlayerRow] = (try? await client
+            .from("game_players")
+            .select("id, user_id, checked_in_at, checked_out_at, removed")
+            .eq("game_id", value: gameId)
+            .execute()
+            .value) ?? []
+
+        let activeRows = bareRows.filter { !($0.removed ?? false) }
+        let userIds = activeRows.map { $0.userId }
+
+        var profileMap: [String: LobbyPlayerProfile] = [:]
+        if !userIds.isEmpty,
+           let profiles: [LobbyPlayerProfile] = try? await client
+               .from("profiles")
+               .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+               .in("id", values: userIds)
+               .execute()
+               .value {
+            profileMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+        }
+
+        players = activeRows.map { row in
+            LobbyPlayer(
+                id: row.id,
+                userId: row.userId,
+                gameId: gameId,
+                checkedInAt: row.checkedInAt,
+                checkedOutAt: row.checkedOutAt,
+                removed: row.removed,
+                profile: profileMap[row.userId] ?? LobbyPlayerProfile(
+                    id: row.userId,
+                    fullName: nil, username: nil, position: nil,
+                    avatarUrl: nil, netrScore: nil, vibeScore: nil, totalRatings: nil
+                )
+            )
+        }
+
+        // Level 3: If still empty, the host is always in the game — synthesize their entry
+        // from their profile so the count is never 0 when you're the host.
+        if players.isEmpty,
+           let userId = SupabaseManager.shared.session?.user.id.uuidString,
+           game?.hostId.lowercased() == userId.lowercased() {
+            let hostProfile: LobbyPlayerProfile? = try? await client
+                .from("profiles")
+                .select("id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings")
+                .eq("id", value: userId)
+                .single()
                 .execute()
                 .value
-
-            players = result.filter { !$0.isRemoved }
-        } catch {
-            print("Load players error: \(error)")
+            players = [LobbyPlayer(
+                id: "host-\(userId)",
+                userId: userId,
+                gameId: gameId,
+                checkedInAt: nil,
+                checkedOutAt: nil,
+                removed: false,
+                profile: hostProfile ?? LobbyPlayerProfile(
+                    id: userId,
+                    fullName: nil, username: nil, position: nil,
+                    avatarUrl: nil, netrScore: nil, vibeScore: nil, totalRatings: nil
+                )
+            )]
         }
     }
 
@@ -154,10 +233,23 @@ class GameViewModel {
     func endGame() async {
         guard let gameId = game?.id else { return }
 
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let nowStr = fmt.string(from: Date())
+
+        nonisolated struct EndGamePayload: Encodable, Sendable {
+            let status: String
+            let completedAt: String
+            nonisolated enum CodingKeys: String, CodingKey {
+                case status
+                case completedAt = "completed_at"
+            }
+        }
+
         do {
             try await client
                 .from("games")
-                .update(GameStatusUpdate(status: "completed"))
+                .update(EndGamePayload(status: "completed", completedAt: nowStr))
                 .eq("id", value: gameId)
                 .execute()
 
@@ -166,6 +258,38 @@ class GameViewModel {
             showRateScreen = true
         } catch {
             print("End game error: \(error)")
+        }
+    }
+
+    func updateFormat(_ format: GameFormat) async {
+        guard let gameId = game?.id, isHost, game?.status == "waiting" else { return }
+
+        nonisolated struct FormatUpdate: Encodable, Sendable {
+            let format: String
+            let maxPlayers: Int
+            nonisolated enum CodingKeys: String, CodingKey {
+                case format
+                case maxPlayers = "max_players"
+            }
+        }
+
+        do {
+            try await client
+                .from("games")
+                .update(FormatUpdate(format: format.rawValue, maxPlayers: format.maxPlayers))
+                .eq("id", value: gameId)
+                .execute()
+
+            let updated: SupabaseGame = try await client
+                .from("games")
+                .select()
+                .eq("id", value: gameId)
+                .single()
+                .execute()
+                .value
+            game = updated
+        } catch {
+            print("Update format error: \(error)")
         }
     }
 
@@ -275,9 +399,10 @@ class GameViewModel {
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         do {
+            let now = fmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: fmt.string(from: Date())))
+                .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client
@@ -411,7 +536,8 @@ class GameViewModel {
         guard let hostId = game?.hostId,
               let userId = SupabaseManager.shared.session?.user.id.uuidString
         else { return false }
-        return hostId == userId
+        // Postgres returns UUIDs lowercase; Swift's uuidString is uppercase — compare case-insensitively
+        return hostId.lowercased() == userId.lowercased()
     }
 
     var isFull: Bool {

@@ -47,7 +47,7 @@ nonisolated struct LeaderboardEntry: Identifiable, Decodable, Sendable {
                 .from("profiles")
                 .select("id, display_name, username, avatar_url, netr_score, position, vibe_score")
                 .in("id", values: userIds)
-                .order("netr_score", ascending: false)
+                .order("netr_score", ascending: false, nullsFirst: false)
                 .limit(20)
                 .execute()
                 .value
@@ -128,7 +128,7 @@ struct CourtLeaderboardView: View {
     private var leaderboardHeader: some View {
         VStack(spacing: 6) {
             HStack(spacing: 6) {
-                LucideIcon("home", size: 13)
+                LucideIcon("house", size: 13)
                     .foregroundStyle(NETRTheme.neonGreen)
                 Text("HOME COURT LEADERBOARD")
                     .font(.system(size: 10, weight: .bold))

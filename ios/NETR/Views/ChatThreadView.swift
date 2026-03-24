@@ -284,7 +284,7 @@ struct MessageBubble: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(
-                        isCurrentUser ? Color(red: 0.78, green: 1.0, blue: 0.0) : NETRTheme.card,
+                        isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
                         in: BubbleShape(isCurrentUser: isCurrentUser)
                     )
 

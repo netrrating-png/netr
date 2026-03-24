@@ -1,4 +1,6 @@
 import SwiftUI
+import Supabase
+import Auth
 
 struct ContentView: View {
     @Environment(MockDataStore.self) private var store
@@ -12,17 +14,22 @@ struct ContentView: View {
     @State private var showSettings: Bool = false
     @Namespace private var tabBarNamespace
 
+    // Active game banner
+    @State private var hostActiveGame: SupabaseGame? = nil
+    @State private var activeGameLobbyVM = GameViewModel()
+    @State private var showActiveGameSheet: Bool = false
+
     private var isUnrated: Bool {
         guard let profile = supabase.currentProfile else { return false }
         return profile.netrScore == nil && SelfAssessmentStore.savedScore == nil
     }
 
     enum Tab: String, CaseIterable {
-        case feed = "Feed"
         case courts = "Courts"
         case rate = "Rate"
-        case notifications = "Alerts"
+        case feed = "Feed"
         case profile = "Profile"
+        case notifications = "Alerts"
 
         var icon: String {
             switch self {
@@ -35,8 +42,6 @@ struct ContentView: View {
         }
     }
 
-    private let limeGreen = Color(red: 0.784, green: 1.0, blue: 0.0)
-
     var body: some View {
         ZStack(alignment: .bottom) {
             Color.black.ignoresSafeArea()
@@ -44,6 +49,10 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 if isUnrated && !dismissedAssessmentBanner {
                     assessmentBanner
+                }
+
+                if let game = hostActiveGame, !showActiveGameSheet {
+                    activeGameBanner(game: game)
                 }
 
                 ZStack {
@@ -91,6 +100,16 @@ struct ContentView: View {
         .task {
             await notificationViewModel.fetchNotifications()
             await notificationViewModel.subscribeToNotifications()
+            await checkForHostActiveGame()
+        }
+        .sheet(isPresented: $showActiveGameSheet, onDismiss: {
+            Task { await checkForHostActiveGame() }
+        }) {
+            GameLobbyView(viewModel: activeGameLobbyVM, onDismiss: {
+                showActiveGameSheet = false
+                hostActiveGame = nil
+                Task { await checkForHostActiveGame() }
+            })
         }
     }
 
@@ -140,6 +159,79 @@ struct ContentView: View {
         .blur(radius: isActive ? 0 : 2)
         .animation(.easeInOut(duration: 0.25), value: selectedTab)
         .allowsHitTesting(isActive)
+    }
+
+    // MARK: - Active Game Banner
+
+    private func checkForHostActiveGame() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        let games: [SupabaseGame] = (try? await SupabaseManager.shared.client
+            .from("games")
+            .select()
+            .eq("host_id", value: userId)
+            .in("status", values: ["active", "waiting"])
+            .order("created_at", ascending: false)
+            .limit(1)
+            .execute()
+            .value) ?? []
+        hostActiveGame = games.first
+    }
+
+    @ViewBuilder
+    private func activeGameBanner(game: SupabaseGame) -> some View {
+        let isActive = game.status == "active"
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+                    .frame(width: 8, height: 8)
+                if isActive {
+                    Circle()
+                        .fill(NETRTheme.neonGreen.opacity(0.3))
+                        .frame(width: 14, height: 14)
+                }
+            }
+
+            Text(isActive ? "GAME IN PROGRESS" : "LOBBY OPEN")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+                .tracking(0.8)
+
+            if let fmt = GameFormat(rawValue: game.format) {
+                Text("·")
+                    .foregroundStyle(NETRTheme.muted)
+                Text(fmt.displayName)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            Spacer(minLength: 4)
+
+            Text(isActive ? "Manage" : "Open")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(isActive ? NETRTheme.neonGreen : NETRTheme.gold)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+        .background((isActive ? NETRTheme.neonGreen : NETRTheme.gold).opacity(0.07))
+        .overlay(
+            Rectangle()
+                .fill((isActive ? NETRTheme.neonGreen : NETRTheme.gold).opacity(0.25))
+                .frame(height: 1),
+            alignment: .bottom
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            Task {
+                activeGameLobbyVM.game = game
+                await activeGameLobbyVM.loadPlayers(gameId: game.id)
+                await activeGameLobbyVM.subscribeToLobby(gameId: game.id)
+                showActiveGameSheet = true
+            }
+        }
     }
 
     // MARK: - Assessment Banner
@@ -224,7 +316,7 @@ struct ContentView: View {
 
                                 // Lime green soft glow underneath
                                 Circle()
-                                    .fill(limeGreen.opacity(0.30))
+                                    .fill(NETRTheme.neonGreen.opacity(0.30))
                                     .frame(width: 40, height: 40)
                                     .blur(radius: 20)
                                     .offset(y: 4)
@@ -235,7 +327,7 @@ struct ContentView: View {
                                 LucideIcon(tab.icon, size: 18)
                                     .foregroundStyle(
                                         isSelected
-                                            ? limeGreen
+                                            ? NETRTheme.neonGreen
                                             : Color.white.opacity(0.40)
                                     )
                                     .scaleEffect(isSelected ? 1.15 : 1.0)
@@ -248,7 +340,7 @@ struct ContentView: View {
                                         .foregroundStyle(Color.black)
                                         .padding(.horizontal, 4)
                                         .padding(.vertical, 1)
-                                        .background(limeGreen, in: Capsule())
+                                        .background(NETRTheme.neonGreen, in: Capsule())
                                         .offset(x: 10, y: -8)
                                 }
                             }
@@ -259,7 +351,7 @@ struct ContentView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(
                                 isSelected
-                                    ? limeGreen
+                                    ? NETRTheme.neonGreen
                                     : Color.white.opacity(0.40)
                             )
                             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)

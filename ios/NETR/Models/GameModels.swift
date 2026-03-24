@@ -11,6 +11,7 @@ nonisolated struct SupabaseGame: Identifiable, Sendable {
     let maxPlayers: Int
     let createdAt: String?
     let scheduledAt: String?
+    let completedAt: String?
 }
 
 extension SupabaseGame: Decodable {
@@ -25,6 +26,7 @@ extension SupabaseGame: Decodable {
         case maxPlayers = "max_players"
         case createdAt = "created_at"
         case scheduledAt = "scheduled_at"
+        case completedAt = "completed_at"
     }
 }
 
@@ -103,11 +105,13 @@ extension LobbyPlayerProfile: Decodable {
 nonisolated struct GamePlayerPayload: Encodable, Sendable {
     let gameId: String
     let userId: String
+    let joinedAt: String?
     let checkedInAt: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case gameId = "game_id"
         case userId = "user_id"
+        case joinedAt = "joined_at"
         case checkedInAt = "checked_in_at"
     }
 }

@@ -4,15 +4,17 @@ struct DMInboxView: View {
     @Bindable var viewModel: DMViewModel
     @State private var selectedConversation: DMConversation?
     @State private var showChat: Bool = false
+    @State private var crewViewModel = CrewViewModel()
+    @State private var selectedCrew: MyCrew? = nil
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider().background(NETRTheme.border)
 
-            if viewModel.isLoading && viewModel.conversations.isEmpty {
+            if viewModel.isLoading && viewModel.conversations.isEmpty && crewViewModel.myCrews.isEmpty {
                 loadingState
-            } else if viewModel.conversations.isEmpty {
+            } else if viewModel.conversations.isEmpty && crewViewModel.myCrews.isEmpty {
                 emptyState
             } else {
                 conversationList
@@ -43,9 +45,13 @@ struct DMInboxView: View {
                 )
             }
         }
+        .fullScreenCover(item: $selectedCrew) { crew in
+            CrewChatView(viewModel: crewViewModel, crew: crew)
+        }
         .task {
             await viewModel.loadConversations()
             await viewModel.subscribeToConversations()
+            await crewViewModel.loadMyCrews()
         }
     }
 
@@ -77,6 +83,49 @@ struct DMInboxView: View {
     private var conversationList: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
+                // Crew group chats section
+                if !crewViewModel.myCrews.isEmpty {
+                    HStack {
+                        LucideIcon("users", size: 11)
+                            .foregroundStyle(NETRTheme.neonGreen)
+                        Text("CREWS")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(NETRTheme.subtext)
+                            .tracking(1.3)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                    .padding(.bottom, 6)
+
+                    ForEach(crewViewModel.myCrews) { myCrew in
+                        Button {
+                            crewViewModel.messages = []
+                            selectedCrew = myCrew
+                        } label: {
+                            CrewConversationRow(crew: myCrew)
+                        }
+                        .buttonStyle(.plain)
+                        if myCrew.id != crewViewModel.myCrews.last?.id {
+                            Divider().background(NETRTheme.border).padding(.leading, 72)
+                        }
+                    }
+
+                    Divider().background(NETRTheme.border).padding(.top, 8)
+
+                    HStack {
+                        Text("DIRECT MESSAGES")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(NETRTheme.subtext)
+                            .tracking(1.3)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 14)
+                    .padding(.bottom, 6)
+                }
+
+                // 1:1 DMs
                 ForEach(viewModel.conversations) { convo in
                     Button {
                         selectedConversation = convo
@@ -92,6 +141,7 @@ struct DMInboxView: View {
         .scrollIndicators(.hidden)
         .refreshable {
             await viewModel.loadConversations()
+            await crewViewModel.loadMyCrews()
         }
     }
 
@@ -233,6 +283,46 @@ struct ConversationRow: View {
                     .background(NETRTheme.card, in: Circle())
             }
         }
+    }
+}
+
+// MARK: - Crew Conversation Row
+
+struct CrewConversationRow: View {
+    let crew: MyCrew
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(NETRTheme.neonGreen.opacity(0.12))
+                    .frame(width: 48, height: 48)
+                LucideIcon(crew.icon, size: 22)
+                    .foregroundStyle(NETRTheme.neonGreen)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(crew.name)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(NETRTheme.text)
+                        .lineLimit(1)
+                    Spacer()
+                    Text("Group")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+                }
+                Text("Tap to open crew chat")
+                    .font(.caption)
+                    .foregroundStyle(NETRTheme.muted)
+                    .lineLimit(1)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 

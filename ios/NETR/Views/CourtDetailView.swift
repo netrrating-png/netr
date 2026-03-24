@@ -146,7 +146,7 @@ struct CourtDetailView: View {
 
                 if isHome {
                     VStack(spacing: 2) {
-                        LucideIcon("home")
+                        LucideIcon("house")
                             .foregroundStyle(NETRTheme.neonGreen)
                         Text("HOME")
                             .font(.system(size: 8, weight: .bold))
@@ -434,7 +434,13 @@ struct CourtDetailView: View {
 
     private func courtGameCard(_ game: NearbyGame) -> some View {
         VStack(spacing: 0) {
-            Button { previewGameId = game.id } label: {
+            Button {
+                if courtJoinedGameIds.contains(game.id) {
+                    Task { await openCourtLobby(game.id) }
+                } else {
+                    previewGameId = game.id
+                }
+            } label: {
                 HStack(spacing: 14) {
                     ZStack {
                         Circle()
@@ -505,18 +511,30 @@ struct CourtDetailView: View {
             }
             .buttonStyle(.plain)
 
-            if courtJoinedGameIds.contains(game.id) {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 15))
-                    Text("JOINED")
-                        .font(.system(size: 14, weight: .bold))
+            let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+            let isMyGame = courtJoinedGameIds.contains(game.id)
+                || (game.host_id?.lowercased() == currentUserId?.lowercased())
+
+            if isMyGame {
+                Button {
+                    Task { await openCourtLobby(game.id) }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: game.status == "active" ? "play.circle.fill" : "checkmark.circle.fill")
+                            .font(.system(size: 15))
+                        Text(game.status == "active" ? "OPEN GAME" : "OPEN LOBBY")
+                            .font(.system(size: 14, weight: .bold))
+                        Spacer()
+                        LucideIcon("chevron-right", size: 12)
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 42)
+                    .padding(.horizontal, 12)
+                    .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
                 }
-                .foregroundStyle(NETRTheme.neonGreen)
-                .frame(maxWidth: .infinity)
-                .frame(height: 42)
-                .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+                .buttonStyle(PressButtonStyle())
                 .padding(.horizontal, 14)
                 .padding(.bottom, 14)
             } else {
@@ -551,6 +569,23 @@ struct CourtDetailView: View {
         .clipShape(.rect(cornerRadius: 14))
     }
 
+    // Open the full GameLobbyView for a game the user is already in
+    private func openCourtLobby(_ gameId: String) async {
+        do {
+            let found: SupabaseGame = try await SupabaseManager.shared.client
+                .from("games")
+                .select()
+                .eq("id", value: gameId)
+                .single()
+                .execute()
+                .value
+            courtLobbyVM.game = found
+        } catch { return }
+        await courtLobbyVM.subscribeToLobby(gameId: gameId)
+        await courtLobbyVM.loadPlayers(gameId: gameId)
+        showCourtLobby = true
+    }
+
     private func loadCourtGames() async {
         isLoadingGames = true
         gamesLoadError = nil
@@ -568,26 +603,28 @@ struct CourtDetailView: View {
         let selects = [
             // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
             """
-            id, join_code, created_at, format, max_players, scheduled_at, status,
+            id, host_id, join_code, created_at, format, max_players, scheduled_at, status,
             courts(name, neighborhood, lat, lng),
             host:profiles!host_id(display_name, username),
             game_players(id)
             """,
             // Level 2: courts name only
-            "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
+            "id, host_id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
             // Level 3: bare — no FK joins needed at all
-            "id, join_code, created_at, format, max_players, scheduled_at, status",
+            "id, host_id, join_code, created_at, format, max_players, scheduled_at, status",
         ]
 
         var loadError: Error?
+        var live: [NearbyGame] = []
+        var scheduled: [NearbyGame] = []
         for (i, select) in selects.enumerated() {
             do {
-                let (live, scheduled) = try await fetchCourtGames(
+                let result = try await fetchCourtGames(
                     client: client, select: select,
                     courtId: court.id, cutoff: cutoff, twoHoursAgo: twoHoursAgo
                 )
-                courtLiveGames = live
-                courtScheduledGames = scheduled
+                live = result.live
+                scheduled = result.scheduled
                 print("[CourtGames] level \(i+1) select: \(live.count) live, \(scheduled.count) scheduled")
                 loadError = nil
                 break
@@ -599,6 +636,70 @@ struct CourtDetailView: View {
         if let err = loadError {
             gamesLoadError = err.localizedDescription
         }
+
+        // Fetch player counts + host names directly — no FK joins needed
+        let allGameIds = (live + scheduled).map { $0.id }
+        if !allGameIds.isEmpty {
+            // Player counts
+            nonisolated struct GameIdRow: Decodable, Sendable {
+                let gameId: String
+                nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+            }
+            // game_players.game_id is UUID — fetch all rows and filter client-side
+            // to avoid PostgREST text-vs-uuid cast issues with .in()
+            let allPlayerRows: [GameIdRow] = (try? await client
+                .from("game_players")
+                .select("game_id")
+                .execute()
+                .value) ?? []
+            let gameIdSet = Set(allGameIds)
+            let playerRows = allPlayerRows.filter { gameIdSet.contains($0.gameId) }
+            let countMap = Dictionary(grouping: playerRows, by: { $0.gameId })
+                .mapValues { $0.count }
+
+            // Host names
+            let hostIds = Array(Set((live + scheduled).compactMap { $0.host_id }))
+            nonisolated struct HostProfile: Decodable, Sendable {
+                let id: String
+                let fullName: String?
+                let username: String?
+                nonisolated enum CodingKeys: String, CodingKey {
+                    case id
+                    case fullName = "full_name"
+                    case username
+                }
+            }
+            var hostMap: [String: HostProfile] = [:]
+            if !hostIds.isEmpty,
+               let profiles: [HostProfile] = try? await client
+                   .from("profiles")
+                   .select("id, full_name, username")
+                   .in("id", values: hostIds)
+                   .execute()
+                   .value {
+                hostMap = Dictionary(uniqueKeysWithValues: profiles.map { ($0.id, $0) })
+            }
+
+            let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+
+            func applyMeta(_ g: NearbyGame) -> NearbyGame {
+                var g = g
+                let dbCount = countMap[g.id] ?? g.joinedCount
+                // Host is always at least 1 player even if game_players row hasn't synced yet
+                let isHostGame = g.host_id?.lowercased() == currentUserId?.lowercased()
+                g.playerCount = dbCount > 0 ? dbCount : (isHostGame ? 1 : 0)
+                if let p = hostMap[g.host_id ?? ""] {
+                    let name = p.fullName?.isEmpty == false ? p.fullName! : (p.username.map { "@\($0)" } ?? "")
+                    if !name.isEmpty { g.resolvedHostName = name }
+                }
+                return g
+            }
+            live      = live.map      { applyMeta($0) }
+            scheduled = scheduled.map { applyMeta($0) }
+        }
+
+        courtLiveGames = live
+        courtScheduledGames = scheduled
 
         if let userId = SupabaseManager.shared.session?.user.id.uuidString {
             do {
