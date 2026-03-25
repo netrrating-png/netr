@@ -494,7 +494,7 @@ struct SkillRatingScreen: View {
             .background(NETRTheme.neonGreen.opacity(0.05))
 
             ScrollView {
-                VStack(spacing: 7) {
+                VStack(spacing: 9) {
                     ForEach(skillCategories) { cat in
                         SkillSliderRow(
                             category: cat,
@@ -704,7 +704,7 @@ struct SkillSliderRow: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 11)
+        .padding(.vertical, 13)
         .background(value != nil ? thumbColor.opacity(0.04) : NETRTheme.card, in: .rect(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
