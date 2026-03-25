@@ -34,12 +34,13 @@ struct ContentView: View {
         var icon: String {
             switch self {
             case .feed: return "messages-square"
-            case .courts: return "map"
+            case .courts: return "target"
             case .rate: return "star"
             case .dm: return "mail"
             case .profile: return "user"
             }
         }
+
     }
 
     var body: some View {
