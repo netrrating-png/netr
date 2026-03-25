@@ -8,9 +8,6 @@ struct ComposePostView: View {
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtSearch: Bool = false
 
-    // Quote post support
-    var quotePost: SupabaseFeedPost? = nil
-
     private let maxChars = 280
 
     private var charCount: Int { postText.count }
@@ -38,10 +35,6 @@ struct ComposePostView: View {
                                 .padding(.horizontal, 16)
                         }
 
-                        if let quote = quotePost {
-                            quotedPostPreview(quote)
-                                .padding(.horizontal, 16)
-                        }
                     }
                 }
                 .scrollIndicators(.hidden)
@@ -272,29 +265,6 @@ struct ComposePostView: View {
         .padding(10)
         .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.blue.opacity(0.15), lineWidth: 1))
-    }
-
-    // MARK: - Quoted Post Preview
-
-    private func quotedPostPreview(_ post: SupabaseFeedPost) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text(post.author?.name ?? "Player")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(NETRTheme.text)
-                Text(post.author?.handle ?? "")
-                    .font(.caption2)
-                    .foregroundStyle(NETRTheme.subtext)
-            }
-            Text(post.content)
-                .font(.caption)
-                .foregroundStyle(NETRTheme.subtext)
-                .lineLimit(3)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(NETRTheme.card, in: .rect(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
     }
 
     // MARK: - Bottom Bar

@@ -8,22 +8,15 @@ nonisolated struct SupabaseFeedPost: Identifiable, Sendable, Equatable {
     let content: String
     var likeCount: Int
     var commentCount: Int
-    var repostCount: Int
-    let repostOfId: String?
     let courtTagId: String?
     let courtTagName: String?
     let createdAt: String
     var author: FeedAuthor?
-    // Embedded original post for reposts
-    var originalPost: EmbeddedPost?
     // Local UI state
     var isLiked: Bool = false
-    var isReposted: Bool = false
-    var isBookmarked: Bool = false
 
     static func == (lhs: SupabaseFeedPost, rhs: SupabaseFeedPost) -> Bool {
         lhs.id == rhs.id && lhs.isLiked == rhs.isLiked && lhs.likeCount == rhs.likeCount
-        && lhs.isReposted == rhs.isReposted && lhs.isBookmarked == rhs.isBookmarked
     }
 }
 
@@ -34,31 +27,7 @@ extension SupabaseFeedPost: Decodable {
         case content
         case likeCount = "like_count"
         case commentCount = "comment_count"
-        case repostCount = "repost_count"
-        case repostOfId = "repost_of_id"
         case courtTagId = "court_tag_id"
-        case courtTagName = "court_tag_name"
-        case createdAt = "created_at"
-        case author = "profiles"
-    }
-}
-
-// MARK: - Embedded Post (for repost display — fetched separately)
-
-nonisolated struct EmbeddedPost: Sendable, Equatable {
-    let id: String
-    let authorId: String
-    let content: String
-    let courtTagName: String?
-    let createdAt: String
-    var author: FeedAuthor?
-}
-
-extension EmbeddedPost: Decodable {
-    nonisolated enum CodingKeys: String, CodingKey {
-        case id
-        case authorId = "author_id"
-        case content
         case courtTagName = "court_tag_name"
         case createdAt = "created_at"
         case author = "profiles"
@@ -125,14 +94,12 @@ nonisolated struct CreateFeedPostPayload: Encodable, Sendable {
     let content: String
     let courtTagId: String?
     let courtTagName: String?
-    let repostOfId: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case authorId = "author_id"
         case content
         case courtTagId = "court_tag_id"
         case courtTagName = "court_tag_name"
-        case repostOfId = "repost_of_id"
     }
 }
 
@@ -170,24 +137,9 @@ nonisolated struct CommentLikePayload: Encodable, Sendable {
     }
 }
 
-nonisolated struct BookmarkPayload: Encodable, Sendable {
-    let postId: String
-    let userId: String
-
-    nonisolated enum CodingKeys: String, CodingKey {
-        case postId = "post_id"
-        case userId = "user_id"
-    }
-}
-
 // MARK: - Helper Row Types
 
 nonisolated struct FeedLikeRow: Decodable, Sendable {
-    let postId: String
-    nonisolated enum CodingKeys: String, CodingKey { case postId = "post_id" }
-}
-
-nonisolated struct BookmarkRow: Decodable, Sendable {
     let postId: String
     nonisolated enum CodingKeys: String, CodingKey { case postId = "post_id" }
 }

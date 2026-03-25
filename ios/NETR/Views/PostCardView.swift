@@ -5,33 +5,18 @@ struct PostCardView: View {
     var isOwnPost: Bool = false
     let onLike: () -> Void
     let onComment: () -> Void
-    let onRepost: () -> Void
-    let onBookmark: () -> Void
     let onDelete: () -> Void
     let onBlock: () -> Void
     var onProfileTap: ((String) -> Void)? = nil
     var onCourtTap: ((String, String) -> Void)? = nil
-    var onQuotePost: (() -> Void)? = nil
 
     @State private var likeScale: CGFloat = 1.0
-    @State private var bookmarkScale: CGFloat = 1.0
-    @State private var showRepostSheet: Bool = false
 
     private var author: FeedAuthor? { post.author }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Repost header
-            if post.repostOfId != nil {
-                repostHeader
-            }
-
-            // Main content — either original or embedded
-            if let original = post.originalPost, post.repostOfId != nil {
-                embeddedPostCard(original)
-            } else {
-                postContent
-            }
+            postContent
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -47,30 +32,6 @@ struct PostCardView: View {
                 }
             }
         }
-        .confirmationDialog("Repost", isPresented: $showRepostSheet) {
-            if post.isReposted {
-                Button("Undo Repost", role: .destructive) { onRepost() }
-            } else {
-                Button("Repost") { onRepost() }
-                if let onQuotePost {
-                    Button("Quote Post") { onQuotePost() }
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        }
-    }
-
-    // MARK: - Repost Header
-
-    private var repostHeader: some View {
-        HStack(spacing: 4) {
-            LucideIcon("repeat", size: 11)
-            Text("reposted by \(author?.handle ?? "someone")")
-                .font(.system(size: 11, weight: .semibold))
-        }
-        .foregroundStyle(NETRTheme.subtext)
-        .padding(.leading, 50)
-        .padding(.bottom, 6)
     }
 
     // MARK: - Post Content (original post)
@@ -93,32 +54,6 @@ struct PostCardView: View {
 
             if let courtName = post.courtTagName, let courtId = post.courtTagId {
                 courtChip(name: courtName, courtId: courtId)
-            }
-
-            actionBar
-        }
-    }
-
-    // MARK: - Embedded Post (for reposts)
-
-    private func embeddedPostCard(_ original: EmbeddedPost) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                Button { onProfileTap?(original.authorId) } label: {
-                    avatarView(author: original.author)
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    authorLine(author: original.author, createdAt: original.createdAt)
-                    if !original.content.isEmpty {
-                        contentText(original.content)
-                    }
-                }
-            }
-
-            if let courtName = original.courtTagName {
-                courtChip(name: courtName, courtId: nil)
             }
 
             actionBar
@@ -273,42 +208,6 @@ struct PostCardView: View {
                 color: NETRTheme.subtext,
                 action: onComment
             )
-
-            // Repost
-            Button {
-                showRepostSheet = true
-            } label: {
-                HStack(spacing: 4) {
-                    LucideIcon("repeat", size: 12)
-                    if post.repostCount > 0 {
-                        Text("\(post.repostCount)")
-                            .font(.caption2)
-                    }
-                }
-                .foregroundStyle(post.isReposted ? NETRTheme.neonGreen : NETRTheme.subtext)
-                .frame(minWidth: 60, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-
-            // Bookmark
-            Button {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    bookmarkScale = 1.3
-                }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        bookmarkScale = 1.0
-                    }
-                }
-                onBookmark()
-            } label: {
-                LucideIcon("bookmark", size: 12)
-                    .foregroundStyle(post.isBookmarked ? NETRTheme.neonGreen : NETRTheme.subtext)
-                    .scaleEffect(bookmarkScale)
-                    .frame(minWidth: 40, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-            .sensoryFeedback(.selection, trigger: post.isBookmarked)
 
             Spacer()
         }
