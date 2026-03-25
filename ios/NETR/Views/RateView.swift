@@ -483,18 +483,18 @@ struct SkillRatingScreen: View {
 
             // Comparative framing banner
             HStack(spacing: 8) {
-                LucideIcon("user", size: 13).foregroundStyle(NETRTheme.neonGreen)
+                LucideIcon("user", size: 12).foregroundStyle(NETRTheme.neonGreen)
                 Text("Compare each skill to **your own** — center = same as you")
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundStyle(NETRTheme.subtext)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(NETRTheme.neonGreen.opacity(0.05))
 
             ScrollView {
-                VStack(spacing: 8) {
+                VStack(spacing: 5) {
                     ForEach(skillCategories) { cat in
                         SkillSliderRow(
                             category: cat,
@@ -503,10 +503,10 @@ struct SkillRatingScreen: View {
                             rateVM.setSkillRating(playerIndex: 0, key: cat.id, value: val)
                         }
                     }
-                    Color.clear.frame(height: 16)
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 12)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
             }
             .scrollIndicators(.hidden)
 
@@ -573,20 +573,20 @@ struct SkillSliderRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
 
             // Icon circle
             ZStack {
                 Circle()
                     .fill(value != nil ? thumbColor.opacity(0.15) : NETRTheme.muted.opacity(0.08))
-                    .frame(width: 36, height: 36)
-                LucideIcon(category.icon, size: 15)
+                    .frame(width: 30, height: 30)
+                LucideIcon(category.icon, size: 13)
                     .foregroundStyle(value != nil ? thumbColor : NETRTheme.subtext)
             }
             .scaleEffect(isDragging ? 1.15 : 1.0)
             .animation(.spring(response: 0.2), value: isDragging)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
 
                 // Label row
                 HStack {
@@ -700,27 +700,12 @@ struct SkillSliderRow: View {
                             }
                     )
                 }
-                .frame(height: 22)
-
-                // Anchor labels below track
-                HStack {
-                    Text("I'm Better")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(NETRTheme.muted)
-                    Spacer()
-                    Text("Dead Even")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(value == 3 ? NETRTheme.text : NETRTheme.muted)
-                    Spacer()
-                    Text("They're Better")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(NETRTheme.muted)
-                }
+                .frame(height: 18)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(value != nil ? thumbColor.opacity(0.04) : NETRTheme.card, in: .rect(cornerRadius: 14))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(value != nil ? thumbColor.opacity(0.04) : NETRTheme.card, in: .rect(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
                 .stroke(value != nil ? thumbColor.opacity(0.25) : NETRTheme.border, lineWidth: 1)
