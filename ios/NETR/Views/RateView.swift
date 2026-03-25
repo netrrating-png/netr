@@ -565,7 +565,7 @@ struct SkillSliderRow: View {
     }
 
     // Comparative labels — indexed 0…5 (0 unused)
-    private let labels = ["", "Far Below", "Below Me", "On Par", "Above Me", "Far Above"]
+    private let labels = ["", "I'm Better", "Slight Edge to Me", "Dead Even", "Slight Edge to Them", "They're Better"]
 
     // Maps value 1–5 → 0%–100% of track width (v=3 lands at 50%)
     private func trackFraction(_ v: Int) -> CGFloat {
@@ -704,15 +704,15 @@ struct SkillSliderRow: View {
 
                 // Anchor labels below track
                 HStack {
-                    Text("Far Below")
+                    Text("I'm Better")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(NETRTheme.muted)
                     Spacer()
-                    Text("On Par")
+                    Text("Dead Even")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(value == 3 ? NETRTheme.text : NETRTheme.muted)
                     Spacer()
-                    Text("Far Above")
+                    Text("They're Better")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(NETRTheme.muted)
                 }
