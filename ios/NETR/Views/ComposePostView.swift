@@ -255,8 +255,8 @@ struct ComposePostView: View {
             Text(court.name)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(NETRTheme.text)
-            if let loc = court.location {
-                Text("· \(loc)")
+            if !court.locationLabel.isEmpty {
+                Text("· \(court.locationLabel)")
                     .font(.caption)
                     .foregroundStyle(NETRTheme.subtext)
             }
@@ -385,8 +385,8 @@ struct CourtSearchSheet: View {
                                             Text(court.name)
                                                 .font(.subheadline.weight(.semibold))
                                                 .foregroundStyle(NETRTheme.text)
-                                            if let loc = court.location {
-                                                Text(loc)
+                                            if !court.locationLabel.isEmpty {
+                                                Text(court.locationLabel)
                                                     .font(.caption)
                                                     .foregroundStyle(NETRTheme.subtext)
                                             }

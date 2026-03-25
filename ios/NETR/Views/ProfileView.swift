@@ -1270,7 +1270,7 @@ struct ProfileFollowListSheet: View {
             let netrScore: Double?
             nonisolated enum CodingKeys: String, CodingKey {
                 case id
-                case fullName = "display_name"
+                case fullName = "full_name"
                 case username
                 case avatarUrl = "avatar_url"
                 case netrScore = "netr_score"
@@ -1281,7 +1281,7 @@ struct ProfileFollowListSheet: View {
         do {
             profiles = try await client
                 .from("profiles")
-                .select("id, display_name, username, avatar_url, netr_score")
+                .select("id, full_name, username, avatar_url, netr_score")
                 .in("id", values: targetIds)
                 .execute()
                 .value

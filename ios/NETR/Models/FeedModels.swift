@@ -81,7 +81,7 @@ nonisolated struct FeedAuthor: Sendable, Equatable {
 extension FeedAuthor: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
         case id
-        case displayName = "display_name"
+        case displayName = "full_name"
         case username
         case avatarUrl = "avatar_url"
         case netrScore = "netr_score"
@@ -207,12 +207,17 @@ nonisolated struct FollowingIdRow: Decodable, Sendable {
 nonisolated struct FeedCourtSearchResult: Identifiable, Sendable {
     let id: String
     let name: String
-    let location: String?
+    let neighborhood: String?
+    let city: String?
+
+    var locationLabel: String {
+        [neighborhood, city].compactMap { $0 }.joined(separator: ", ")
+    }
 }
 
 extension FeedCourtSearchResult: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
-        case id, name, location
+        case id, name, neighborhood, city
     }
 }
 
@@ -238,7 +243,7 @@ extension UserSearchResult: Decodable {
     nonisolated enum CodingKeys: String, CodingKey {
         case id
         case username
-        case displayName = "display_name"
+        case displayName = "full_name"
         case avatarUrl = "avatar_url"
         case netrScore = "netr_score"
     }

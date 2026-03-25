@@ -43,7 +43,7 @@ class NotificationViewModel {
             for senderId in senderIds {
                 if let author: FeedAuthor = try? await client
                     .from("profiles")
-                    .select("id, display_name, username, avatar_url, netr_score")
+                    .select("id, full_name, username, avatar_url, netr_score")
                     .eq("id", value: senderId)
                     .single()
                     .execute()

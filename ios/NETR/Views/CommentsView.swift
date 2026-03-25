@@ -17,7 +17,7 @@ struct CommentsView: View {
 
     private let client = SupabaseManager.shared.client
 
-    private let commentSelectQuery = "id, post_id, author_id, content, like_count, parent_comment_id, created_at, profiles(id, display_name, username, avatar_url, netr_score)"
+    private let commentSelectQuery = "id, post_id, author_id, content, like_count, parent_comment_id, created_at, profiles(id, full_name, username, avatar_url, netr_score)"
 
     var body: some View {
         NavigationStack {
