@@ -1,11 +1,13 @@
 import SwiftUI
+import Auth
+import Supabase
+import PostgREST
 
 struct FeedView: View {
     @State private var viewModel = FeedViewModel()
     @State private var dmViewModel = DMViewModel()
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
-    @State private var quotePost: SupabaseFeedPost?
     @State private var suggestedPlayers: [UserSearchResult] = []
     @State private var selectedCourtResult: FeedCourtSearchResult?
     @State private var selectedCourtFull: Court?
@@ -51,11 +53,10 @@ struct FeedView: View {
             }
         }
         .sheet(isPresented: $viewModel.showCompose) {
-            ComposePostView(viewModel: viewModel, quotePost: quotePost)
+            ComposePostView(viewModel: viewModel)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
-                .onDisappear { quotePost = nil }
         }
         .fullScreenCover(item: $viewModel.selectedProfileUserId) { userId in
             PublicPlayerProfileView(userId: userId) {
@@ -534,12 +535,6 @@ struct FeedView: View {
             onComment: {
                 commentPost = post
             },
-            onRepost: {
-                Task { await viewModel.repost(post: post) }
-            },
-            onBookmark: {
-                Task { await viewModel.toggleBookmark(post: post) }
-            },
             onDelete: {
                 Task { await viewModel.deletePost(post) }
             },
@@ -548,10 +543,6 @@ struct FeedView: View {
             },
             onProfileTap: { authorId in
                 viewModel.selectedProfileUserId = authorId
-            },
-            onQuotePost: {
-                quotePost = post
-                viewModel.showCompose = true
             }
         )
     }
@@ -686,7 +677,6 @@ struct FeedView: View {
 
     private var composeButton: some View {
         Button {
-            quotePost = nil
             viewModel.showCompose = true
         } label: {
             LucideIcon("plus", size: 20)

@@ -24,8 +24,6 @@ class FeedViewModel {
 
     // Interaction sets for instant UI state
     var likedPostIds: Set<String> = []
-    var repostedPostIds: Set<String> = []
-    var bookmarkedPostIds: Set<String> = []
 
     // Search
     enum SearchMode: String, CaseIterable { case players = "Players"; case courts = "Courts" }
@@ -58,8 +56,8 @@ class FeedViewModel {
     private let pageSize = 20
 
     private let selectQuery = """
-        id, author_id, content, like_count, comment_count, repost_count,
-        repost_of_id, court_tag_id, court_tag_name, created_at,
+        id, author_id, content, like_count, comment_count,
+        court_tag_id, court_tag_name, created_at,
         profiles(id, full_name, username, avatar_url, netr_score)
     """
 
@@ -84,46 +82,19 @@ class FeedViewModel {
     private func loadInteractionState() async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
 
-        async let liked: [FeedLikeRow]? = try? client
+        let likedRows: [FeedLikeRow]? = try? await client
             .from("likes")
             .select("post_id")
             .eq("user_id", value: userId)
             .execute()
             .value
 
-        async let bookmarked: [BookmarkRow]? = try? client
-            .from("bookmarks")
-            .select("post_id")
-            .eq("user_id", value: userId)
-            .execute()
-            .value
-
-        let likedRows = await liked
-        let bookmarkedRows = await bookmarked
-
         likedPostIds = Set(likedRows?.map { $0.postId } ?? [])
-        bookmarkedPostIds = Set(bookmarkedRows?.map { $0.postId } ?? [])
-
-        // Reposted = any feed_posts by me with repost_of_id set
-        nonisolated struct RepostOfRow: Decodable, Sendable {
-            let repostOfId: String
-            nonisolated enum CodingKeys: String, CodingKey { case repostOfId = "repost_of_id" }
-        }
-        let repostRows: [RepostOfRow]? = try? await client
-            .from("feed_posts")
-            .select("repost_of_id")
-            .eq("author_id", value: userId)
-            .not("repost_of_id", operator: .is, value: "null")
-            .execute()
-            .value
-        repostedPostIds = Set(repostRows?.map { $0.repostOfId } ?? [])
     }
 
     private func applyInteractionState(_ posts: inout [SupabaseFeedPost]) {
         for i in posts.indices {
             posts[i].isLiked = likedPostIds.contains(posts[i].id)
-            posts[i].isReposted = repostedPostIds.contains(posts[i].id)
-            posts[i].isBookmarked = bookmarkedPostIds.contains(posts[i].id)
         }
     }
 
@@ -138,7 +109,7 @@ class FeedViewModel {
             await loadFollowingIds()
         }
 
-        if likedPostIds.isEmpty && bookmarkedPostIds.isEmpty {
+        if likedPostIds.isEmpty {
             await loadInteractionState()
         }
 
@@ -183,9 +154,6 @@ class FeedViewModel {
 
             applyInteractionState(&fetched)
 
-            // Resolve original posts for reposts
-            await resolveReposts(&fetched)
-
             if loadMore {
                 posts.append(contentsOf: fetched)
             } else {
@@ -210,29 +178,6 @@ class FeedViewModel {
         if let index = posts.firstIndex(where: { $0.id == currentPost.id }),
            index >= thresholdIndex {
             await fetchFeed(tab: activeTab, loadMore: true)
-        }
-    }
-
-    // MARK: - Resolve Reposts
-
-    private func resolveReposts(_ posts: inout [SupabaseFeedPost]) async {
-        let repostIds = posts.compactMap { $0.repostOfId }
-        guard !repostIds.isEmpty else { return }
-
-        let originals: [EmbeddedPost]? = try? await client
-            .from("feed_posts")
-            .select("id, author_id, content, court_tag_name, created_at, profiles(id, full_name, username, avatar_url, netr_score)")
-            .in("id", values: repostIds)
-            .execute()
-            .value
-
-        guard let originals else { return }
-        let lookup = Dictionary(uniqueKeysWithValues: originals.map { ($0.id, $0) })
-
-        for i in posts.indices {
-            if let repostOfId = posts[i].repostOfId {
-                posts[i].originalPost = lookup[repostOfId]
-            }
         }
     }
 
@@ -394,8 +339,7 @@ class FeedViewModel {
             authorId: userId,
             content: content,
             courtTagId: courtId,
-            courtTagName: courtName,
-            repostOfId: nil
+            courtTagName: courtName
         )
 
         do {
@@ -462,93 +406,6 @@ class FeedViewModel {
         }
     }
 
-    // MARK: - Repost
-
-    func repost(post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
-        guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
-
-        let wasReposted = posts[i].isReposted
-        posts[i].isReposted = !wasReposted
-        posts[i].repostCount += wasReposted ? -1 : 1
-
-        if wasReposted {
-            repostedPostIds.remove(post.id)
-        } else {
-            repostedPostIds.insert(post.id)
-        }
-
-        do {
-            if wasReposted {
-                // Undo repost — delete the feed_post row with repost_of_id
-                try await client
-                    .from("feed_posts")
-                    .delete()
-                    .eq("repost_of_id", value: post.id)
-                    .eq("author_id", value: userId)
-                    .execute()
-            } else {
-                try await client
-                    .from("feed_posts")
-                    .insert(CreateFeedPostPayload(
-                        authorId: userId,
-                        content: "",
-                        courtTagId: nil,
-                        courtTagName: nil,
-                        repostOfId: post.id
-                    ))
-                    .execute()
-            }
-        } catch {
-            if let j = posts.firstIndex(where: { $0.id == post.id }) {
-                posts[j].isReposted = wasReposted
-                posts[j].repostCount = post.repostCount
-            }
-            if wasReposted { repostedPostIds.insert(post.id) } else { repostedPostIds.remove(post.id) }
-            showToast("Failed to update repost")
-            print("Repost error: \(error)")
-        }
-    }
-
-    // MARK: - Bookmark
-
-    func toggleBookmark(post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
-        guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
-
-        let wasBookmarked = posts[i].isBookmarked
-        posts[i].isBookmarked = !wasBookmarked
-
-        if wasBookmarked {
-            bookmarkedPostIds.remove(post.id)
-        } else {
-            bookmarkedPostIds.insert(post.id)
-        }
-
-        do {
-            if wasBookmarked {
-                try await client
-                    .from("bookmarks")
-                    .delete()
-                    .eq("post_id", value: post.id)
-                    .eq("user_id", value: userId)
-                    .execute()
-            } else {
-                try await client
-                    .from("bookmarks")
-                    .insert(BookmarkPayload(postId: post.id, userId: userId))
-                    .execute()
-            }
-        } catch {
-            if let j = posts.firstIndex(where: { $0.id == post.id }) {
-                posts[j].isBookmarked = wasBookmarked
-            }
-            if wasBookmarked { bookmarkedPostIds.insert(post.id) } else { bookmarkedPostIds.remove(post.id) }
-            showToast("Failed to update bookmark")
-            print("Bookmark error: \(error)")
-        }
-    }
-
     // MARK: - Delete
 
     func deletePost(_ post: SupabaseFeedPost) async {
@@ -594,40 +451,6 @@ class FeedViewModel {
         } catch {
             print("[NETR] Court search error: \(error)")
         }
-    }
-
-    // MARK: - Bookmarked Posts (for profile saved tab)
-
-    func fetchBookmarkedPosts() async -> [SupabaseFeedPost] {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return [] }
-
-        nonisolated struct BookmarkWithPost: Decodable, Sendable {
-            let postId: String
-            nonisolated enum CodingKeys: String, CodingKey { case postId = "post_id" }
-        }
-
-        let bookmarkRows: [BookmarkWithPost]? = try? await client
-            .from("bookmarks")
-            .select("post_id")
-            .eq("user_id", value: userId)
-            .order("created_at", ascending: false)
-            .execute()
-            .value
-
-        guard let ids = bookmarkRows?.map({ $0.postId }), !ids.isEmpty else { return [] }
-
-        var posts: [SupabaseFeedPost] = (try? await client
-            .from("feed_posts")
-            .select(selectQuery)
-            .in("id", values: ids)
-            .execute()
-            .value) ?? []
-
-        applyInteractionState(&posts)
-        // Sort to match bookmark order
-        let idOrder = Dictionary(uniqueKeysWithValues: ids.enumerated().map { ($0.element, $0.offset) })
-        posts.sort { (idOrder[$0.id] ?? 0) < (idOrder[$1.id] ?? 0) }
-        return posts
     }
 
     // MARK: - Realtime

@@ -190,8 +190,8 @@ class ProfileViewModel {
         guard let targetId = profileUserId else { return }
 
         let selectQuery = """
-            id, author_id, content, like_count, comment_count, repost_count,
-            repost_of_id, court_tag_id, court_tag_name, created_at,
+            id, author_id, content, like_count, comment_count,
+            court_tag_id, court_tag_name, created_at,
             profiles(id, full_name, username, avatar_url, netr_score)
         """
 

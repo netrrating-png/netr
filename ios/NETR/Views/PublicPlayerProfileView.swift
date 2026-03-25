@@ -430,8 +430,6 @@ struct PublicPlayerProfileView: View {
                         isOwnPost: false,
                         onLike: {},
                         onComment: { commentPost = post },
-                        onRepost: {},
-                        onBookmark: {},
                         onDelete: {},
                         onBlock: {}
                     )

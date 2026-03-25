@@ -110,10 +110,6 @@ struct CommentsView: View {
                     LucideIcon("message-circle", size: 12)
                     Text("\(post.commentCount)")
                 }
-                HStack(spacing: 4) {
-                    LucideIcon("repeat", size: 12)
-                    Text("\(post.repostCount)")
-                }
             }
             .font(.caption)
             .foregroundStyle(NETRTheme.subtext)
