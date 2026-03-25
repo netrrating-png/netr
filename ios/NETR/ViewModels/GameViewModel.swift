@@ -532,6 +532,22 @@ class GameViewModel {
         realtimeChannel = nil
     }
 
+    // MARK: - Make Teams
+    var teams: TeamBalancer.BalancedTeams? = nil
+
+    var isTeamFormat: Bool {
+        guard let format = GameFormat(rawValue: game?.format ?? "") else { return false }
+        return format != .oneVOne && format != .run
+    }
+
+    var canMakeTeams: Bool {
+        isHost && isFull && isTeamFormat && game?.status == "waiting"
+    }
+
+    func makeTeams() {
+        teams = TeamBalancer.balance(players: players)
+    }
+
     var isHost: Bool {
         guard let hostId = game?.hostId,
               let userId = SupabaseManager.shared.session?.user.id.uuidString

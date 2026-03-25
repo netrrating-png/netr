@@ -817,11 +817,41 @@ struct GameLobbyView: View {
                 }
                 .padding(.horizontal, 16)
 
+                // ── Teams Result ───────────────────────────────────────────
+                if let teams = viewModel.teams {
+                    TeamsResultView(teams: teams) {
+                        viewModel.makeTeams()
+                    }
+                }
+
                 Spacer(minLength: 40)
 
                 VStack(spacing: 12) {
                     if viewModel.game?.status == "waiting" {
                         VStack(spacing: 6) {
+                            // ── Make Teams button (host, full game, team format) ──
+                            if viewModel.canMakeTeams || viewModel.teams != nil {
+                                Button {
+                                    viewModel.makeTeams()
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        LucideIcon("shuffle", size: 15)
+                                        Text(viewModel.teams == nil ? "MAKE TEAMS" : "RESHUFFLE TEAMS")
+                                            .font(.system(.subheadline, design: .default, weight: .bold).width(.compressed))
+                                            .tracking(1)
+                                    }
+                                    .foregroundStyle(NETRTheme.neonGreen)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 14))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(PressButtonStyle())
+                            }
+
                             Button {
                                 Task { await viewModel.startGame() }
                             } label: {
@@ -1062,6 +1092,131 @@ private struct RatingProgressCircle: View {
         }
     }
 }
+
+// MARK: - Teams Result View
+
+struct TeamsResultView: View {
+    let teams: TeamBalancer.BalancedTeams
+    let onReshuffle: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 6) {
+                    LucideIcon("users", size: 12)
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    Text("TEAMS")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .tracking(0.8)
+                }
+                Spacer()
+                Button(action: onReshuffle) {
+                    HStack(spacing: 4) {
+                        LucideIcon("shuffle", size: 12)
+                        Text("Reshuffle")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(alignment: .top, spacing: 10) {
+                teamColumn(label: "TEAM A", players: teams.teamA, accent: NETRTheme.neonGreen)
+                teamColumn(label: "TEAM B", players: teams.teamB, accent: Color(hex: "#2DA8FF"))
+            }
+
+            // Balance indicator
+            HStack(spacing: 5) {
+                let diff = teams.netrDiff
+                Image(systemName: diff < 30 ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                    .font(.system(size: 11))
+                    .foregroundStyle(diff < 30 ? NETRTheme.neonGreen : NETRTheme.gold)
+                Text(diff < 1
+                     ? "Perfectly balanced teams"
+                     : "\(String(format: "%.0f", diff)) avg NETR difference — \(diff < 30 ? "well balanced" : "consider reshuffling")")
+                    .font(.system(size: 11))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+        }
+        .padding(14)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
+    @ViewBuilder
+    private func teamColumn(label: String, players: [LobbyPlayer], accent: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(accent)
+                    .frame(width: 7, height: 7)
+                Text(label)
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(accent)
+                    .tracking(0.5)
+            }
+            .padding(.bottom, 2)
+
+            ForEach(players) { player in
+                HStack(spacing: 7) {
+                    // Avatar / initials
+                    Circle()
+                        .fill(accent.opacity(0.12))
+                        .frame(width: 26, height: 26)
+                        .overlay(
+                            Text(playerInitials(player))
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(accent)
+                        )
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(playerDisplayName(player))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(NETRTheme.text)
+                            .lineLimit(1)
+                        if let pos = player.profile.position, !pos.isEmpty {
+                            Text(pos.uppercased())
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+
+                    Spacer(minLength: 4)
+
+                    if let netr = player.profile.netrScore {
+                        Text(String(format: "%.0f", netr))
+                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                            .foregroundStyle(accent.opacity(0.9))
+                    }
+                }
+                .padding(.horizontal, 7)
+                .padding(.vertical, 5)
+                .background(accent.opacity(0.07), in: .rect(cornerRadius: 8))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func playerInitials(_ player: LobbyPlayer) -> String {
+        let name = player.profile.fullName ?? player.profile.username ?? "?"
+        let parts = name.split(separator: " ")
+        if parts.count >= 2 {
+            return (String(parts[0].prefix(1)) + String(parts[1].prefix(1))).uppercased()
+        }
+        return String(name.prefix(2)).uppercased()
+    }
+
+    private func playerDisplayName(_ player: LobbyPlayer) -> String {
+        if let name = player.profile.fullName, !name.isEmpty { return name }
+        if let username = player.profile.username { return "@\(username)" }
+        return "Player"
+    }
+}
+
+// MARK: - Lobby Player Row
 
 struct LobbyPlayerRow: View {
     let player: LobbyPlayer
