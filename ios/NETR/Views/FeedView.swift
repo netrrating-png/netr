@@ -7,6 +7,9 @@ struct FeedView: View {
     @State private var showComments: Bool = false
     @State private var quotePost: SupabaseFeedPost?
     @State private var suggestedPlayers: [UserSearchResult] = []
+    @State private var selectedCourtResult: FeedCourtSearchResult?
+    @State private var selectedCourtFull: Court?
+    @State private var courtsVMForDetail = CourtsViewModel()
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -78,6 +81,31 @@ struct FeedView: View {
                 .presentationBackground(NETRTheme.surface)
             }
         }
+        .onChange(of: selectedCourtResult) { _, newCourt in
+            guard let court = newCourt else { return }
+            Task {
+                // Fetch full Court object for CourtDetailView
+                let full: Court? = try? await SupabaseManager.shared.client
+                    .from("courts")
+                    .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
+                    .eq("id", value: court.id)
+                    .single()
+                    .execute()
+                    .value
+                if let full {
+                    selectedCourtFull = full
+                }
+                selectedCourtResult = nil
+            }
+        }
+        .sheet(item: $selectedCourtFull) { court in
+            NavigationStack {
+                CourtDetailView(court: court, viewModel: courtsVMForDetail)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
+        }
         .task {
             await viewModel.fetchFeed(tab: viewModel.activeTab)
             await viewModel.subscribeToFeed()
@@ -108,11 +136,15 @@ struct FeedView: View {
     // MARK: - Search Bar
 
     private var searchBar: some View {
-        HStack(spacing: 8) {
-            LucideIcon("search", size: 14)
-                .foregroundStyle(NETRTheme.subtext)
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                LucideIcon("search", size: 14)
+                    .foregroundStyle(NETRTheme.subtext)
 
-            TextField("Search players...", text: $viewModel.userSearchText)
+                TextField(
+                    viewModel.searchMode == .players ? "Search players..." : "Search courts...",
+                    text: $viewModel.userSearchText
+                )
                 .font(.system(size: 14))
                 .foregroundStyle(NETRTheme.text)
                 .focused($searchFocused)
@@ -121,25 +153,53 @@ struct FeedView: View {
                 .submitLabel(.done)
                 .onSubmit { searchFocused = false }
                 .onChange(of: viewModel.userSearchText) { _, newValue in
-                    viewModel.searchUsers(query: newValue)
+                    viewModel.performSearch(query: newValue)
                 }
 
-            if !viewModel.userSearchText.isEmpty {
-                Button {
-                    viewModel.dismissSearch()
-                    searchFocused = false
-                } label: {
-                    LucideIcon("x", size: 12)
-                        .foregroundStyle(NETRTheme.subtext)
-                        .frame(width: 20, height: 20)
-                        .background(NETRTheme.muted, in: Circle())
+                if !viewModel.userSearchText.isEmpty {
+                    Button {
+                        viewModel.dismissSearch()
+                        searchFocused = false
+                    } label: {
+                        LucideIcon("x", size: 12)
+                            .foregroundStyle(NETRTheme.subtext)
+                            .frame(width: 20, height: 20)
+                            .background(NETRTheme.muted, in: Circle())
+                    }
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.border, lineWidth: 1))
+
+            // Players / Courts toggle
+            HStack(spacing: 0) {
+                ForEach(FeedViewModel.SearchMode.allCases, id: \.rawValue) { mode in
+                    Button {
+                        viewModel.searchMode = mode
+                        if !viewModel.userSearchText.isEmpty {
+                            viewModel.performSearch(query: viewModel.userSearchText)
+                        }
+                    } label: {
+                        Text(mode.rawValue.uppercased())
+                            .font(.system(size: 10, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(viewModel.searchMode == mode ? NETRTheme.background : NETRTheme.subtext)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 6)
+                            .background(
+                                viewModel.searchMode == mode ? NETRTheme.neonGreen : Color.clear,
+                                in: .rect(cornerRadius: 6)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(2)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(NETRTheme.card, in: .rect(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.border, lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
     }
@@ -156,7 +216,7 @@ struct FeedView: View {
                 }
 
             VStack(spacing: 0) {
-                Spacer().frame(height: 108)
+                Spacer().frame(height: 140)
 
                 VStack(spacing: 0) {
                     if viewModel.isSearching {
@@ -170,27 +230,55 @@ struct FeedView: View {
                             Spacer()
                         }
                         .padding(12)
-                    } else if viewModel.userSearchResults.isEmpty && !viewModel.userSearchText.isEmpty {
-                        HStack {
-                            Text("No players found")
-                                .font(.system(size: 13))
-                                .foregroundStyle(NETRTheme.subtext)
-                            Spacer()
-                        }
-                        .padding(12)
-                    } else {
-                        ForEach(viewModel.userSearchResults) { user in
-                            Button {
-                                viewModel.dismissSearch()
-                                searchFocused = false
-                                viewModel.selectedProfileUserId = user.id
-                            } label: {
-                                searchResultRow(user: user)
+                    } else if viewModel.searchMode == .players {
+                        if viewModel.userSearchResults.isEmpty && !viewModel.userSearchText.isEmpty {
+                            HStack {
+                                Text("No players found")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(NETRTheme.subtext)
+                                Spacer()
                             }
-                            .buttonStyle(.plain)
+                            .padding(12)
+                        } else {
+                            ForEach(viewModel.userSearchResults) { user in
+                                Button {
+                                    viewModel.dismissSearch()
+                                    searchFocused = false
+                                    viewModel.selectedProfileUserId = user.id
+                                } label: {
+                                    searchResultRow(user: user)
+                                }
+                                .buttonStyle(.plain)
 
-                            if user.id != viewModel.userSearchResults.last?.id {
-                                Divider().background(NETRTheme.border)
+                                if user.id != viewModel.userSearchResults.last?.id {
+                                    Divider().background(NETRTheme.border)
+                                }
+                            }
+                        }
+                    } else {
+                        // Court results
+                        if viewModel.courtSearchResults.isEmpty && !viewModel.userSearchText.isEmpty {
+                            HStack {
+                                Text("No courts found")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(NETRTheme.subtext)
+                                Spacer()
+                            }
+                            .padding(12)
+                        } else {
+                            ForEach(viewModel.courtSearchResults) { court in
+                                Button {
+                                    viewModel.dismissSearch()
+                                    searchFocused = false
+                                    selectedCourtResult = court
+                                } label: {
+                                    courtSearchResultRow(court: court)
+                                }
+                                .buttonStyle(.plain)
+
+                                if court.id != viewModel.courtSearchResults.last?.id {
+                                    Divider().background(NETRTheme.border)
+                                }
                             }
                         }
                     }
@@ -202,6 +290,39 @@ struct FeedView: View {
                 .padding(.horizontal, 16)
             }
         }
+    }
+
+    private func courtSearchResultRow(court: FeedCourtSearchResult) -> some View {
+        HStack(spacing: 12) {
+            LucideIcon("map-pin", size: 16)
+                .foregroundStyle(NETRTheme.neonGreen)
+                .frame(width: 36, height: 36)
+                .background(NETRTheme.neonGreen.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(court.name)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(NETRTheme.text)
+                    .lineLimit(1)
+                if !court.locationLabel.isEmpty {
+                    Text(court.locationLabel)
+                        .font(.system(size: 12))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer()
+
+            Text("View")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(NETRTheme.neonGreen)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(NETRTheme.neonGreen.opacity(0.12), in: Capsule())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
     }
 
     private func searchResultRow(user: UserSearchResult) -> some View {
@@ -243,6 +364,42 @@ struct FeedView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 4))
+            }
+
+            // Follow button (only for non-self users)
+            if user.id != SupabaseManager.shared.session?.user.id.uuidString {
+                let isFollowing = viewModel.followingIds.contains(user.id)
+                Button {
+                    Task {
+                        if isFollowing {
+                            try? await SupabaseManager.shared.client
+                                .from("follows")
+                                .delete()
+                                .eq("follower_id", value: SupabaseManager.shared.session?.user.id.uuidString ?? "")
+                                .eq("following_id", value: user.id)
+                                .execute()
+                            viewModel.followingIds.remove(user.id)
+                        } else {
+                            try? await SupabaseManager.shared.client
+                                .from("follows")
+                                .insert(["follower_id": SupabaseManager.shared.session?.user.id.uuidString ?? "", "following_id": user.id])
+                                .execute()
+                            viewModel.followingIds.insert(user.id)
+                        }
+                    }
+                } label: {
+                    Text(isFollowing ? "Following" : "Follow")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(isFollowing ? NETRTheme.subtext : NETRTheme.background)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            isFollowing ? NETRTheme.card : NETRTheme.neonGreen,
+                            in: Capsule()
+                        )
+                        .overlay(Capsule().stroke(isFollowing ? NETRTheme.border : Color.clear, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 12)

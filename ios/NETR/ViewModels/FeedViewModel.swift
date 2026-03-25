@@ -27,9 +27,12 @@ class FeedViewModel {
     var repostedPostIds: Set<String> = []
     var bookmarkedPostIds: Set<String> = []
 
-    // User search
+    // Search
+    enum SearchMode: String, CaseIterable { case players = "Players"; case courts = "Courts" }
+    var searchMode: SearchMode = .players
     var userSearchText: String = ""
     var userSearchResults: [UserSearchResult] = []
+    var courtSearchResults: [FeedCourtSearchResult] = []
     var isSearching: Bool = false
     var showSearchResults: Bool = false
 
@@ -57,7 +60,7 @@ class FeedViewModel {
     private let selectQuery = """
         id, author_id, content, like_count, comment_count, repost_count,
         repost_of_id, court_tag_id, court_tag_name, created_at,
-        profiles(id, display_name, username, avatar_url, netr_score)
+        profiles(id, full_name, username, avatar_url, netr_score)
     """
 
     // MARK: - Follow IDs
@@ -218,7 +221,7 @@ class FeedViewModel {
 
         let originals: [EmbeddedPost]? = try? await client
             .from("feed_posts")
-            .select("id, author_id, content, court_tag_name, created_at, profiles(id, display_name, username, avatar_url, netr_score)")
+            .select("id, author_id, content, court_tag_name, created_at, profiles(id, full_name, username, avatar_url, netr_score)")
             .in("id", values: repostIds)
             .execute()
             .value
@@ -233,13 +236,14 @@ class FeedViewModel {
         }
     }
 
-    // MARK: - User Search
+    // MARK: - Search (Players & Courts)
 
-    func searchUsers(query: String) {
+    func performSearch(query: String) {
         searchTask?.cancel()
 
         guard query.count >= 1 else {
             userSearchResults = []
+            courtSearchResults = []
             showSearchResults = false
             isSearching = false
             return
@@ -252,29 +256,64 @@ class FeedViewModel {
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
 
-            do {
-                let results: [UserSearchResult] = try await client
-                    .from("profiles")
-                    .select("id, username, display_name, avatar_url, netr_score")
-                    .or("username.ilike.\(query)%,display_name.ilike.%\(query)%")
-                    .limit(8)
-                    .execute()
-                    .value
+            switch searchMode {
+            case .players:
+                do {
+                    let results: [UserSearchResult] = try await client
+                        .from("profiles")
+                        .select("id, username, full_name, avatar_url, netr_score")
+                        .or("username.ilike.\(query)%,full_name.ilike.%\(query)%")
+                        .limit(8)
+                        .execute()
+                        .value
 
-                guard !Task.isCancelled else { return }
-                userSearchResults = results
-                isSearching = false
-            } catch {
-                guard !Task.isCancelled else { return }
-                isSearching = false
-                print("User search error: \(error)")
+                    guard !Task.isCancelled else { return }
+                    userSearchResults = results
+                    isSearching = false
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    isSearching = false
+                    print("[NETR] User search error: \(error)")
+                }
+
+            case .courts:
+                await searchCourtsForFeed(query: query)
             }
         }
+    }
+
+    private func searchCourtsForFeed(query: String) async {
+        do {
+            let results: [FeedCourtSearchResult] = try await client
+                .from("courts")
+                .select("id, name, neighborhood, city")
+                .or("name.ilike.%\(query)%,neighborhood.ilike.%\(query)%,city.ilike.%\(query)%")
+                .limit(10)
+                .execute()
+                .value
+
+            guard !Task.isCancelled else { return }
+            courtSearchResults = results
+            isSearching = false
+        } catch {
+            guard !Task.isCancelled else { return }
+            isSearching = false
+            print("[NETR] Court search error: \(error)")
+        }
+    }
+
+    // Keep for backward compat with ComposePostView
+    func searchUsers(query: String) {
+        let saved = searchMode
+        searchMode = .players
+        performSearch(query: query)
+        searchMode = saved
     }
 
     func dismissSearch() {
         userSearchText = ""
         userSearchResults = []
+        courtSearchResults = []
         showSearchResults = false
         isSearching = false
         searchTask?.cancel()
@@ -323,7 +362,7 @@ class FeedViewModel {
             do {
                 let results: [UserSearchResult] = try await client
                     .from("profiles")
-                    .select("id, username, display_name, avatar_url, netr_score")
+                    .select("id, username, full_name, avatar_url, netr_score")
                     .ilike("username", pattern: "\(query)%")
                     .limit(5)
                     .execute()
@@ -374,7 +413,10 @@ class FeedViewModel {
         } catch {
             isPosting = false
             showToast("Failed to create post")
-            print("Create post error: \(error)")
+            print("[NETR] Create post error: \(error)")
+            if let localizedError = error as? LocalizedError {
+                print("[NETR] Create post detail: \(localizedError.errorDescription ?? "none")")
+            }
         }
     }
 
@@ -542,15 +584,15 @@ class FeedViewModel {
         do {
             let results: [FeedCourtSearchResult] = try await client
                 .from("courts")
-                .select("id, name, location")
-                .or("name.ilike.%\(query)%,location.ilike.%\(query)%")
+                .select("id, name, neighborhood, city")
+                .or("name.ilike.%\(query)%,neighborhood.ilike.%\(query)%,city.ilike.%\(query)%")
                 .limit(10)
                 .execute()
                 .value
 
             courtResults = results
         } catch {
-            print("Court search error: \(error)")
+            print("[NETR] Court search error: \(error)")
         }
     }
 
@@ -662,7 +704,7 @@ class FeedViewModel {
     func fetchSuggestedPlayers() async -> [UserSearchResult] {
         let results: [UserSearchResult]? = try? await client
             .from("profiles")
-            .select("id, username, display_name, avatar_url, netr_score")
+            .select("id, username, full_name, avatar_url, netr_score")
             .not("netr_score", operator: .is, value: "null")
             .order("netr_score", ascending: false)
             .limit(10)

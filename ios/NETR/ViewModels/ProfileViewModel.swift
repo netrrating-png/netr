@@ -192,7 +192,7 @@ class ProfileViewModel {
         let selectQuery = """
             id, author_id, content, like_count, comment_count, repost_count,
             repost_of_id, court_tag_id, court_tag_name, created_at,
-            profiles(id, display_name, username, avatar_url, netr_score)
+            profiles(id, full_name, username, avatar_url, netr_score)
         """
 
         let fetched: [SupabaseFeedPost]? = try? await client
@@ -293,9 +293,10 @@ class ProfileViewModel {
             isUploadingAvatar = false
 
             await SupabaseManager.shared.loadProfile(userId: userId)
+            await loadProfile()
         } catch {
             isUploadingAvatar = false
-            print("Avatar upload error: \(error)")
+            print("[NETR] Avatar upload error: \(error)")
         }
     }
 
@@ -361,7 +362,7 @@ class ProfileViewModel {
             let username: String
             let bio: String?
             nonisolated enum CodingKeys: String, CodingKey {
-                case fullName = "display_name"
+                case fullName = "full_name"
                 case username
                 case bio
             }
@@ -386,7 +387,7 @@ class ProfileViewModel {
             let city: String?
             let position: String?
             nonisolated enum CodingKeys: String, CodingKey {
-                case fullName = "display_name"
+                case fullName = "full_name"
                 case username
                 case bio
                 case city

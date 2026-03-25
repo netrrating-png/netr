@@ -605,7 +605,7 @@ struct CourtDetailView: View {
             """
             id, host_id, join_code, created_at, format, max_players, scheduled_at, status,
             courts(name, neighborhood, lat, lng),
-            host:profiles!host_id(display_name, username),
+            host:profiles!host_id(full_name, username),
             game_players(id)
             """,
             // Level 2: courts name only
@@ -665,7 +665,7 @@ struct CourtDetailView: View {
                 let username: String?
                 nonisolated enum CodingKeys: String, CodingKey {
                     case id
-                    case fullName = "display_name"
+                    case fullName = "full_name"
                     case username
                 }
             }
@@ -673,7 +673,7 @@ struct CourtDetailView: View {
             if !hostIds.isEmpty,
                let profiles: [HostProfile] = try? await client
                    .from("profiles")
-                   .select("id, display_name, username")
+                   .select("id, full_name, username")
                    .in("id", values: hostIds)
                    .execute()
                    .value {
@@ -933,7 +933,7 @@ struct CourtDetailView: View {
         do {
             let photos: [CourtPhoto] = try await client
                 .from("court_photos")
-                .select("id, court_id, user_id, photo_url, created_at, profiles(id, display_name, username, avatar_url, netr_score)")
+                .select("id, court_id, user_id, photo_url, created_at, profiles(id, full_name, username, avatar_url, netr_score)")
                 .eq("court_id", value: court.id)
                 .order("created_at", ascending: false)
                 .limit(20)
@@ -974,7 +974,7 @@ struct CourtDetailView: View {
             let created: CourtPhoto = try await client
                 .from("court_photos")
                 .insert(payload)
-                .select("id, court_id, user_id, photo_url, created_at, profiles(id, display_name, username, avatar_url, netr_score)")
+                .select("id, court_id, user_id, photo_url, created_at, profiles(id, full_name, username, avatar_url, netr_score)")
                 .single()
                 .execute()
                 .value

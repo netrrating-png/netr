@@ -43,7 +43,7 @@ nonisolated struct RateProfileRow: Decodable, Sendable {
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id, position
-        case fullName  = "display_name"
+        case fullName  = "full_name"
         case username
         case netrScore = "netr_score"
         case vibeScore = "vibe_score"

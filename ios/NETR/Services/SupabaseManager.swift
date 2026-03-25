@@ -130,7 +130,7 @@ class SupabaseManager {
     ) async throws {
         var params: [String: AnyJSON] = [
             "id": .string(userId),
-            "display_name": .string(fullName),
+            "full_name": .string(fullName),
             "username": .string(username),
             "position": .string(position)
         ]
