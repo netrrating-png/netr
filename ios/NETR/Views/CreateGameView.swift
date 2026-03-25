@@ -1312,7 +1312,12 @@ struct GamePlayersPreviewSheet: View {
             createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt, completedAt: nil
         )
 
-        let userIds = gwp.gamePlayers.map { $0.userId }
+        // Always include the host — the game card counts them as player #1 even
+        // before a game_players row is written.  De-duplicate in case they appear in both.
+        var userIds = gwp.gamePlayers.map { $0.userId }
+        if !userIds.contains(gwp.hostId) {
+            userIds.insert(gwp.hostId, at: 0)
+        }
         guard !userIds.isEmpty else { return }
 
         // Profile fetch — same minimal column list used by other working queries in the app.
