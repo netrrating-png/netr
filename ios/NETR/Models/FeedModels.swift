@@ -204,7 +204,7 @@ nonisolated struct FollowingIdRow: Decodable, Sendable {
 
 // MARK: - Court Search
 
-nonisolated struct FeedCourtSearchResult: Identifiable, Sendable {
+nonisolated struct FeedCourtSearchResult: Identifiable, Sendable, Equatable {
     let id: String
     let name: String
     let neighborhood: String?

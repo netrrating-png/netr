@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 
 struct ComposePostView: View {
     @Bindable var viewModel: FeedViewModel

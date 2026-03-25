@@ -1,4 +1,7 @@
 import SwiftUI
+import Auth
+import Supabase
+import PostgREST
 
 struct FeedView: View {
     @State private var viewModel = FeedViewModel()
