@@ -1269,9 +1269,10 @@ struct GamePlayersPreviewSheet: View {
         isLoading = true
         defer { isLoading = false }
 
-        // Direct game_players queries are RLS-restricted in this context, so we embed
-        // game_players inside the games query to get user IDs.
-        nonisolated struct GameWithPlayers: Decodable, Sendable {
+        // ── Step 1: Fetch the game record on its own ──────────────────────
+        // Keeping this separate from the game_players join so an RLS failure
+        // on that table can never silently kill the whole load.
+        nonisolated struct SlimGame: Decodable, Sendable {
             let id: String
             let format: String
             let skillLevel: String
@@ -1282,41 +1283,46 @@ struct GamePlayersPreviewSheet: View {
             let createdAt: String?
             let scheduledAt: String?
             let courtId: String?
-            let gamePlayers: [EmbeddedPlayer]
-
-            nonisolated struct EmbeddedPlayer: Decodable, Sendable {
-                let userId: String
-                nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
-            }
             nonisolated enum CodingKeys: String, CodingKey {
                 case id; case format; case skillLevel = "skill_level"; case status
                 case maxPlayers = "max_players"; case joinCode = "join_code"
                 case hostId = "host_id"; case createdAt = "created_at"
                 case scheduledAt = "scheduled_at"; case courtId = "court_id"
-                case gamePlayers = "game_players"
             }
         }
 
-        guard let gwp: GameWithPlayers = try? await client
+        guard let g: SlimGame = try? await client
             .from("games")
-            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id, game_players(user_id)")
+            .select("id, format, skill_level, status, max_players, join_code, host_id, created_at, scheduled_at, court_id")
             .eq("id", value: gameId)
             .single()
             .execute()
             .value else { return }
 
         game = SupabaseGame(
-            id: gwp.id, courtId: gwp.courtId, hostId: gwp.hostId,
-            joinCode: gwp.joinCode, format: gwp.format, skillLevel: gwp.skillLevel,
-            status: gwp.status, maxPlayers: gwp.maxPlayers,
-            createdAt: gwp.createdAt, scheduledAt: gwp.scheduledAt, completedAt: nil
+            id: g.id, courtId: g.courtId, hostId: g.hostId,
+            joinCode: g.joinCode, format: g.format, skillLevel: g.skillLevel,
+            status: g.status, maxPlayers: g.maxPlayers,
+            createdAt: g.createdAt, scheduledAt: g.scheduledAt, completedAt: nil
         )
 
-        // Always include the host — the game card counts them as player #1 even
-        // before a game_players row is written.  De-duplicate in case they appear in both.
-        var userIds = gwp.gamePlayers.map { $0.userId }
-        if !userIds.contains(gwp.hostId) {
-            userIds.insert(gwp.hostId, at: 0)
+        // ── Step 2: Fetch game_players separately (may be RLS-restricted) ─
+        nonisolated struct EmbeddedPlayer: Decodable, Sendable {
+            let userId: String
+            nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
+        }
+        let joinedPlayers: [EmbeddedPlayer] = (try? await client
+            .from("game_players")
+            .select("user_id")
+            .eq("game_id", value: gameId)
+            .execute()
+            .value) ?? []
+
+        // Always include the host — the game card counts them as player #1
+        // even before a game_players row is written. De-duplicate if already present.
+        var userIds = joinedPlayers.map { $0.userId }
+        if !userIds.contains(g.hostId) {
+            userIds.insert(g.hostId, at: 0)
         }
         guard !userIds.isEmpty else { return }
 
