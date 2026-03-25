@@ -481,6 +481,18 @@ struct SkillRatingScreen: View {
 
             Rectangle().fill(NETRTheme.border).frame(height: 0.5)
 
+            // Comparative framing banner
+            HStack(spacing: 8) {
+                LucideIcon("user", size: 13).foregroundStyle(NETRTheme.neonGreen)
+                Text("Compare each skill to **your own** — center = same as you")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(NETRTheme.neonGreen.opacity(0.05))
+
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(skillCategories) { cat in
@@ -528,7 +540,14 @@ struct SkillRatingScreen: View {
     }
 }
 
-// MARK: - Skill Slider Row
+// MARK: - Skill Slider Row (Comparative — center-anchored)
+//
+// Scale:  1=Far Below  2=Below  3=On Par  4=Above  5=Far Above
+// The thumb position maps v=1→0%, v=3→50%, v=5→100%
+// Fill radiates outward from the center mark:
+//   v < 3 → muted fill from thumb to center (they're behind you)
+//   v > 3 → accent fill from center to thumb (they're ahead of you)
+//   v = 3 → just a glowing center tick
 
 struct SkillSliderRow: View {
     let category: SkillCategory
@@ -536,90 +555,130 @@ struct SkillSliderRow: View {
     let onSelect: (Int) -> Void
 
     @State private var isDragging = false
-    private var color: Color { category.accentColor }
-    private let labels = ["", "Weak", "Below Avg", "Solid", "Strong", "Elite"]
+
+    // Accent color at normal strength (ahead) or muted (behind/unset)
+    private var thumbColor: Color {
+        guard let v = value else { return NETRTheme.muted }
+        if v > 3 { return category.accentColor }
+        if v == 3 { return NETRTheme.text }
+        return Color(hex: "#4A90D9") // cool blue for "below me"
+    }
+
+    // Comparative labels — indexed 0…5 (0 unused)
+    private let labels = ["", "Far Below", "Below Me", "On Par", "Above Me", "Far Above"]
+
+    // Maps value 1–5 → 0%–100% of track width (v=3 lands at 50%)
+    private func trackFraction(_ v: Int) -> CGFloat {
+        CGFloat(v - 1) / 4.0
+    }
 
     var body: some View {
         HStack(spacing: 12) {
+
             // Icon circle
             ZStack {
                 Circle()
-                    .fill(value != nil ? color.opacity(0.15) : NETRTheme.muted.opacity(0.08))
+                    .fill(value != nil ? thumbColor.opacity(0.15) : NETRTheme.muted.opacity(0.08))
                     .frame(width: 36, height: 36)
                 LucideIcon(category.icon, size: 15)
-                    .foregroundStyle(value != nil ? color : NETRTheme.subtext)
+                    .foregroundStyle(value != nil ? thumbColor : NETRTheme.subtext)
             }
             .scaleEffect(isDragging ? 1.15 : 1.0)
             .animation(.spring(response: 0.2), value: isDragging)
 
             VStack(alignment: .leading, spacing: 6) {
+
+                // Label row
                 HStack {
                     Text(category.label.uppercased())
                         .font(.system(size: 11, weight: .black)).tracking(0.8)
-                        .foregroundStyle(value != nil ? color : NETRTheme.text)
+                        .foregroundStyle(value != nil ? thumbColor : NETRTheme.text)
                     Spacer()
                     if let v = value {
-                        HStack(spacing: 4) {
-                            Text(labels[v])
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(color.opacity(0.8))
-                            Text("\(v)")
-                                .font(.system(size: 15, weight: .black))
-                                .foregroundStyle(color)
-                                .frame(width: 22, height: 22)
-                                .background(color.opacity(0.15), in: Circle())
-                        }
-                        .transition(.scale(scale: 0.8).combined(with: .opacity))
+                        Text(labels[v])
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(thumbColor)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(thumbColor.opacity(0.12), in: Capsule())
+                            .transition(.scale(scale: 0.85).combined(with: .opacity))
                     } else {
-                        Text("Slide →")
+                        Text("← Slide →")
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(NETRTheme.muted)
                     }
                 }
 
-                // Drag track
+                // Track
                 GeometryReader { geo in
+                    let w = geo.size.width
+                    let center: CGFloat = w / 2
+
                     ZStack(alignment: .leading) {
+
                         // Background track
                         RoundedRectangle(cornerRadius: 4)
                             .fill(NETRTheme.muted.opacity(0.15))
                             .frame(height: 8)
 
-                        // Filled portion
-                        if let v = value {
+                        // Center-anchored fill
+                        if let v = value, v != 3 {
+                            let vPos = w * trackFraction(v)
+                            let fillX     = v < 3 ? vPos   : center
+                            let fillWidth = v < 3 ? center - vPos : vPos - center
+                            let fillColor: Color = v > 3 ? category.accentColor : Color(hex: "#4A90D9")
+
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(
                                     LinearGradient(
-                                        colors: [color.opacity(0.6), color],
+                                        colors: v > 3
+                                            ? [fillColor.opacity(0.5), fillColor]
+                                            : [fillColor, fillColor.opacity(0.5)],
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
                                 )
-                                .frame(width: geo.size.width * CGFloat(v) / 5.0, height: 8)
+                                .frame(width: max(fillWidth, 0), height: 8)
+                                .offset(x: fillX)
                                 .animation(.spring(response: 0.25), value: v)
+                        }
 
-                            // Thumb
+                        // Center reference tick (always visible)
+                        RoundedRectangle(cornerRadius: 1.5)
+                            .fill(
+                                value == 3
+                                    ? NETRTheme.text
+                                    : NETRTheme.border.opacity(0.8)
+                            )
+                            .frame(width: 3, height: value == 3 ? 14 : 10)
+                            .offset(x: center - 1.5)
+                            .animation(.spring(response: 0.2), value: value == 3)
+
+                        // Five position ticks (at 0, 25, 50, 75, 100%)
+                        ForEach([1, 2, 3, 4, 5], id: \.self) { i in
+                            let tickX = w * trackFraction(i)
+                            let isActive = (value ?? 0) == i
                             Circle()
-                                .fill(color)
-                                .frame(width: isDragging ? 20 : 16, height: isDragging ? 20 : 16)
-                                .shadow(color: color.opacity(0.5), radius: isDragging ? 8 : 4)
-                                .offset(x: geo.size.width * CGFloat(v) / 5.0 - (isDragging ? 10 : 8))
+                                .fill(isActive ? thumbColor : NETRTheme.muted.opacity(0.25))
+                                .frame(width: isActive ? 5 : 4, height: isActive ? 5 : 4)
+                                .offset(x: tickX - (isActive ? 2.5 : 2))
+                        }
+
+                        // Thumb
+                        if let v = value {
+                            let thumbW: CGFloat = isDragging ? 20 : 16
+                            Circle()
+                                .fill(thumbColor)
+                                .frame(width: thumbW, height: thumbW)
+                                .shadow(color: thumbColor.opacity(0.55), radius: isDragging ? 10 : 4)
+                                .overlay(
+                                    Circle().stroke(Color.white.opacity(0.25), lineWidth: 1)
+                                )
+                                .offset(x: w * trackFraction(v) - thumbW / 2)
                                 .animation(.spring(response: 0.2), value: isDragging)
                                 .animation(.spring(response: 0.25), value: v)
                         }
-
-                        // Segment ticks
-                        HStack(spacing: 0) {
-                            ForEach(1...5, id: \.self) { i in
-                                Spacer()
-                                Circle()
-                                    .fill((value ?? 0) >= i ? color : NETRTheme.muted.opacity(0.3))
-                                    .frame(width: 4, height: 4)
-                                if i == 5 { Spacer() }
-                            }
-                        }
                     }
-                    .contentShape(Rectangle().size(CGSize(width: geo.size.width, height: 44)).offset(CGPoint(x: 0, y: -18)))
+                    .contentShape(Rectangle().size(CGSize(width: w, height: 44)).offset(CGPoint(x: 0, y: -18)))
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { drag in
@@ -627,9 +686,10 @@ struct SkillSliderRow: View {
                                     withAnimation(.spring(response: 0.2)) { isDragging = true }
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                 }
-                                let x = min(max(drag.location.x, 0), geo.size.width)
-                                let raw = x / geo.size.width * 5
-                                let snapped = min(max(Int(raw.rounded()), 1), 5)
+                                let x = min(max(drag.location.x, 0), w)
+                                // Map 0…w → 1…5 (v=3 at center)
+                                let raw = x / w * 4.0
+                                let snapped = min(max(Int(raw.rounded()) + 1, 1), 5)
                                 if snapped != (value ?? 0) {
                                     withAnimation(.spring(response: 0.15)) { onSelect(snapped) }
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -640,17 +700,32 @@ struct SkillSliderRow: View {
                             }
                     )
                 }
-                .frame(height: 20)
+                .frame(height: 22)
+
+                // Anchor labels below track
+                HStack {
+                    Text("Far Below")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(NETRTheme.muted)
+                    Spacer()
+                    Text("On Par")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(value == 3 ? NETRTheme.text : NETRTheme.muted)
+                    Spacer()
+                    Text("Far Above")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(NETRTheme.muted)
+                }
             }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .background(value != nil ? color.opacity(0.05) : NETRTheme.card, in: .rect(cornerRadius: 14))
+        .background(value != nil ? thumbColor.opacity(0.04) : NETRTheme.card, in: .rect(cornerRadius: 14))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
-                .stroke(value != nil ? color.opacity(0.3) : NETRTheme.border, lineWidth: 1)
+                .stroke(value != nil ? thumbColor.opacity(0.25) : NETRTheme.border, lineWidth: 1)
         )
-        .animation(.spring(response: 0.3), value: value != nil)
+        .animation(.spring(response: 0.3), value: value)
     }
 }
 

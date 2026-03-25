@@ -87,11 +87,11 @@ let skillCategories: [SkillCategory] = [
 ]
 
 let peerRatingLabels: [Int: String] = [
-    5: "Elite — one of the best I've played with",
-    4: "Stood out — real game, real impact",
-    3: "Held their own — competed, contributed",
-    2: "Below this level — struggled to keep up",
-    1: "Clearly out of place at this level",
+    5: "Far above my level — I was looking up",
+    4: "A step above me — noticeably better",
+    3: "On my level — we matched up well",
+    2: "A step below me — I had the edge",
+    1: "Well below my level — big gap",
 ]
 
 // ─── VIBE: SINGLE "RUN AGAIN?" QUESTION ──────────────────────
