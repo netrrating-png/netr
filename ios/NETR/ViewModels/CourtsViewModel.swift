@@ -18,6 +18,21 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     var selectedFilter: String = "All"
     var selectedNeighborhood: String?
     var liveCourtIds: Set<String> = []
+    /// Set to true when the user explicitly wants to browse all courts
+    var isExploring: Bool = false
+
+    // ── Advanced filter state (set via CourtFilterSheet) ──────────────────
+    /// Maximum distance in miles. nil = no limit.
+    var filterMaxDistance: Double? = nil
+    /// Surface types to include. Empty = any surface.
+    var filterSurfaces: Set<SurfaceType> = []
+    /// nil = any, true = full court only, false = half court only
+    var filterCourtType: Bool? = nil
+
+    /// True when at least one advanced filter is active.
+    var hasActiveFilters: Bool {
+        filterMaxDistance != nil || !filterSurfaces.isEmpty || filterCourtType != nil
+    }
 
     var userLocation: CLLocationCoordinate2D?
 
@@ -31,7 +46,31 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         return hoods.filter { !$0.isEmpty }
     }
 
+    /// True when showing the personalised default (home + favourites only).
+    var isDefaultView: Bool { !isExploring && searchText.isEmpty && selectedFilter == "All" }
+
     var filteredCourts: [Court] {
+        // ── Default: home court + favourites only ──────────────────────────
+        if isDefaultView {
+            let myCourts = courts.filter {
+                favoriteCourtIds.contains($0.id) || $0.id == homeCourtId
+            }
+            return myCourts.sorted { a, b in
+                let aHome = a.id == homeCourtId
+                let bHome = b.id == homeCourtId
+                if aHome != bHome { return aHome }
+                if let loc = userLocation {
+                    let distA = CLLocation(latitude: a.lat, longitude: a.lng)
+                        .distance(from: CLLocation(latitude: loc.latitude, longitude: loc.longitude))
+                    let distB = CLLocation(latitude: b.lat, longitude: b.lng)
+                        .distance(from: CLLocation(latitude: loc.latitude, longitude: loc.longitude))
+                    return distA < distB
+                }
+                return a.name < b.name
+            }
+        }
+
+        // ── Search / filter mode: full results ─────────────────────────────
         var results = courts
 
         if !searchText.isEmpty {
@@ -54,12 +93,27 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         switch selectedFilter {
-        case "Live Now": results = results.filter { liveCourtIds.contains($0.id) }
+        case "Live Now":  results = results.filter { liveCourtIds.contains($0.id) }
         case "Favorites": results = results.filter { favoriteCourtIds.contains($0.id) }
-        case "Lights": results = results.filter { $0.lights }
-        case "Indoor": results = results.filter { $0.indoor }
-        case "Verified": results = results.filter { $0.verified }
+        case "Lights":    results = results.filter { $0.lights }
+        case "Indoor":    results = results.filter { $0.indoor }
+        case "Verified":  results = results.filter { $0.verified }
         default: break
+        }
+
+        // ── Advanced filters ──────────────────────────────────────────────
+        if !filterSurfaces.isEmpty {
+            results = results.filter { filterSurfaces.contains($0.surfaceType) }
+        }
+        if let courtType = filterCourtType {
+            results = results.filter { $0.fullCourt == courtType }
+        }
+        if let maxMiles = filterMaxDistance, let loc = userLocation {
+            let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
+            let maxMeters = maxMiles * 1609.34
+            results = results.filter {
+                CLLocation(latitude: $0.lat, longitude: $0.lng).distance(from: origin) <= maxMeters
+            }
         }
 
         results.sort { a, b in
@@ -80,6 +134,16 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         return results
+    }
+
+    /// Call when the user explicitly resets to the my-courts default view.
+    func resetToDefaultView() {
+        searchText = ""
+        selectedFilter = "All"
+        isExploring = false
+        filterMaxDistance = nil
+        filterSurfaces = []
+        filterCourtType = nil
     }
 
     var totalCourtCount: Int { courts.count }

@@ -5,7 +5,7 @@ import PostgREST
 
 struct FeedView: View {
     @State private var viewModel = FeedViewModel()
-    @State private var dmViewModel = DMViewModel()
+    @State private var showNotifications: Bool = false
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
     @State private var suggestedPlayers: [UserSearchResult] = []
@@ -19,22 +19,13 @@ struct FeedView: View {
             NETRTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if viewModel.activeTab != .dm {
-                    feedHeader
-                }
+                feedHeader
                 tabBar
-
-                if viewModel.activeTab == .dm {
-                    DMInboxView(viewModel: dmViewModel)
-                } else {
-                    searchBar
-                    feedContent
-                }
+                searchBar
+                feedContent
             }
 
-            if viewModel.activeTab != .dm {
-                composeButton
-            }
+            composeButton
 
             // New posts pill (Live tab)
             if viewModel.pendingNewPosts > 0 && viewModel.activeTab == .live {
@@ -111,6 +102,12 @@ struct FeedView: View {
             await viewModel.fetchFeed(tab: viewModel.activeTab)
             await viewModel.subscribeToFeed()
         }
+        .sheet(isPresented: $showNotifications) {
+            NotificationsView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.background)
+        }
         .onDisappear {
             Task { await viewModel.unsubscribe() }
         }
@@ -124,7 +121,9 @@ struct FeedView: View {
                 .font(NETRTheme.headingFont(size: .title2))
                 .foregroundStyle(NETRTheme.text)
             Spacer()
-            Button {} label: {
+            Button {
+                showNotifications = true
+            } label: {
                 LucideIcon("bell")
                     .foregroundStyle(NETRTheme.subtext)
             }
@@ -433,9 +432,7 @@ struct FeedView: View {
                     withAnimation(.spring(response: 0.3)) {
                         viewModel.activeTab = tab
                     }
-                    if tab != .dm {
-                        Task { await viewModel.fetchFeed(tab: tab) }
-                    }
+                    Task { await viewModel.fetchFeed(tab: tab) }
                 } label: {
                     VStack(spacing: 6) {
                         HStack(spacing: 4) {
@@ -448,13 +445,6 @@ struct FeedView: View {
                                     : NETRTheme.subtext
                                 )
 
-                            if tab == .dm && dmViewModel.totalUnread > 0 {
-                                Text("\(dmViewModel.totalUnread)")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(NETRTheme.background)
-                                    .frame(minWidth: 16, minHeight: 16)
-                                    .background(NETRTheme.neonGreen, in: Circle())
-                            }
                         }
                         Rectangle()
                             .fill(

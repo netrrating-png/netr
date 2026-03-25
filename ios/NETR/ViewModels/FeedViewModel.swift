@@ -148,8 +148,6 @@ class FeedViewModel {
                     .range(from: offset, to: offset + pageSize - 1)
                     .execute().value
 
-            case .dm:
-                fetched = []
             }
 
             applyInteractionState(&fetched)

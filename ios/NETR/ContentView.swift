@@ -8,7 +8,7 @@ struct ContentView: View {
     @Environment(SupabaseManager.self) private var supabase
     @State private var selectedTab: Tab = .feed
     @State private var courtsViewModel = CourtsViewModel()
-    @State private var notificationViewModel = NotificationViewModel()
+    @State private var dmViewModel = DMViewModel()
     @State private var showSelfAssessment: Bool = false
     @State private var dismissedAssessmentBanner: Bool = false
     @State private var showSettings: Bool = false
@@ -28,15 +28,15 @@ struct ContentView: View {
         case courts = "Courts"
         case rate = "Rate"
         case feed = "Feed"
+        case dm = "DMs"
         case profile = "Profile"
-        case notifications = "Alerts"
 
         var icon: String {
             switch self {
             case .feed: return "messages-square"
             case .courts: return "map"
             case .rate: return "star"
-            case .notifications: return "bell"
+            case .dm: return "mail"
             case .profile: return "user"
             }
         }
@@ -65,8 +65,8 @@ struct ContentView: View {
                     tabContent(for: .rate)
                         .zIndex(selectedTab == .rate ? 1 : 0)
 
-                    tabContent(for: .notifications)
-                        .zIndex(selectedTab == .notifications ? 1 : 0)
+                    tabContent(for: .dm)
+                        .zIndex(selectedTab == .dm ? 1 : 0)
 
                     tabContent(for: .profile)
                         .zIndex(selectedTab == .profile ? 1 : 0)
@@ -98,8 +98,6 @@ struct ContentView: View {
             }
         }
         .task {
-            await notificationViewModel.fetchNotifications()
-            await notificationViewModel.subscribeToNotifications()
             await checkForHostActiveGame()
         }
         .sheet(isPresented: $showActiveGameSheet, onDismiss: {
@@ -127,8 +125,8 @@ struct ContentView: View {
                 CourtsView(viewModel: courtsViewModel)
             case .rate:
                 RateView()
-            case .notifications:
-                NotificationsView()
+            case .dm:
+                DMInboxView(viewModel: dmViewModel)
             case .profile:
                 ZStack(alignment: .topTrailing) {
                     ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
@@ -333,9 +331,9 @@ struct ContentView: View {
                                     .scaleEffect(isSelected ? 1.15 : 1.0)
                                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
 
-                                // Unread badge for notifications tab
-                                if tab == .notifications && notificationViewModel.unreadCount > 0 {
-                                    Text("\(min(notificationViewModel.unreadCount, 99))")
+                                // Unread badge for DMs tab
+                                if tab == .dm && dmViewModel.totalUnread > 0 {
+                                    Text("\(min(dmViewModel.totalUnread, 99))")
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(Color.black)
                                         .padding(.horizontal, 4)

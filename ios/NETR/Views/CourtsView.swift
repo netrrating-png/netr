@@ -8,11 +8,11 @@ struct CourtsView: View {
     @State private var showCreateGame: Bool = false
     @State private var showJoinGame: Bool = false
     @State private var showFullScreenMap: Bool = false
+    @State private var showFilterSheet: Bool = false
     @State private var cameraPosition: MapCameraPosition = .automatic
     @State private var hasSetInitialLocation: Bool = false
 
     private let filters: [(label: String, icon: String)] = [
-        ("All", "layout-grid"),
         ("Favorites", "heart"),
         ("Live Now", "circle-dot"),
         ("Lights", "sun"),
@@ -64,6 +64,13 @@ struct CourtsView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
         }
+        .sheet(isPresented: $showFilterSheet) {
+            CourtFilterSheet(viewModel: viewModel, isPresented: $showFilterSheet)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(NETRTheme.surface)
+                .presentationCornerRadius(20)
+        }
         .sheet(isPresented: $showAddCourt) {
             AddCourtView(viewModel: viewModel)
                 .presentationDetents([.large])
@@ -110,7 +117,7 @@ struct CourtsView: View {
                 .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
             }
 
-            Text("COURTS NEAR YOU")
+            Text(viewModel.isDefaultView ? "MY COURTS" : "COURTS")
                 .font(NETRTheme.headingFont(size: .title2))
                 .foregroundStyle(NETRTheme.text)
         }
@@ -189,25 +196,68 @@ struct CourtsView: View {
     }
 
     private var searchSection: some View {
-        HStack(spacing: 10) {
-            LucideIcon("search")
-                .foregroundStyle(NETRTheme.subtext)
-            TextField("Search courts, neighborhoods, zip codes...", text: $viewModel.searchText)
-                .foregroundStyle(NETRTheme.text)
-                .autocorrectionDisabled()
-                .submitLabel(.done)
-            if !viewModel.searchText.isEmpty {
-                Button {
-                    viewModel.searchText = ""
-                } label: {
-                    LucideIcon("x-circle")
-                        .foregroundStyle(NETRTheme.subtext)
+        HStack(spacing: 8) {
+            // Search field
+            HStack(spacing: 10) {
+                LucideIcon("search")
+                    .foregroundStyle(NETRTheme.subtext)
+                TextField("Search courts, neighborhoods, zip codes...", text: $viewModel.searchText)
+                    .foregroundStyle(NETRTheme.text)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .onChange(of: viewModel.searchText) { _, newValue in
+                        if !newValue.isEmpty { viewModel.isExploring = true }
+                    }
+                if !viewModel.searchText.isEmpty {
+                    Button {
+                        viewModel.searchText = ""
+                        if viewModel.selectedFilter == "All" {
+                            viewModel.isExploring = false
+                        }
+                    } label: {
+                        LucideIcon("x-circle")
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
                 }
             }
+            .padding(12)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+
+            // Filter button
+            Button {
+                showFilterSheet = true
+            } label: {
+                ZStack(alignment: .topTrailing) {
+                    LucideIcon("sliders-horizontal", size: 18)
+                        .foregroundStyle(viewModel.hasActiveFilters ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            viewModel.hasActiveFilters
+                                ? NETRTheme.neonGreen.opacity(0.12)
+                                : NETRTheme.card,
+                            in: .rect(cornerRadius: 12)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(
+                                    viewModel.hasActiveFilters
+                                        ? NETRTheme.neonGreen.opacity(0.4)
+                                        : NETRTheme.border,
+                                    lineWidth: 1
+                                )
+                        )
+                    // Active badge dot
+                    if viewModel.hasActiveFilters {
+                        Circle()
+                            .fill(NETRTheme.neonGreen)
+                            .frame(width: 8, height: 8)
+                            .offset(x: 2, y: -2)
+                    }
+                }
+            }
+            .buttonStyle(PressButtonStyle())
         }
-        .padding(12)
-        .background(NETRTheme.card, in: .rect(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
@@ -216,9 +266,17 @@ struct CourtsView: View {
         ScrollView(.horizontal) {
             HStack(spacing: 6) {
                 ForEach(filters, id: \.label) { filter in
-                    let isSelected = viewModel.selectedFilter == filter.label
+                    let isSelected = viewModel.selectedFilter == filter.label && !viewModel.isDefaultView
                     Button {
-                        withAnimation(.snappy) { viewModel.selectedFilter = filter.label }
+                        withAnimation(.snappy) {
+                            if isSelected {
+                                // Tap active chip → reset to My Courts
+                                viewModel.resetToDefaultView()
+                            } else {
+                                viewModel.isExploring = true
+                                viewModel.selectedFilter = filter.label
+                            }
+                        }
                     } label: {
                         HStack(spacing: 5) {
                             LucideIcon(filter.icon, size: 11)
@@ -243,8 +301,22 @@ struct CourtsView: View {
     private var resultsHeader: some View {
         HStack {
             let filtered = viewModel.filteredCourts
-            let activeCount = filtered.filter { $0.verified }.count
-            Text("\(viewModel.totalCourtCount) courts · \(activeCount) active")
+            let resultsLabel: String = {
+                if viewModel.isDefaultView {
+                    let favCount = viewModel.favoriteCourtIds.count
+                    let hasHome = viewModel.homeCourtId != nil
+                    if favCount == 0 && !hasHome { return "No courts saved yet" }
+                    var parts: [String] = []
+                    if hasHome { parts.append("1 home court") }
+                    let favOnly = viewModel.favoriteCourtIds.filter { $0 != viewModel.homeCourtId }.count
+                    if favOnly > 0 { parts.append("\(favOnly) favorite\(favOnly == 1 ? "" : "s")") }
+                    return parts.joined(separator: " · ")
+                } else {
+                    let activeCount = filtered.filter { $0.verified }.count
+                    return "\(filtered.count) courts · \(activeCount) verified"
+                }
+            }()
+            Text(resultsLabel)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(NETRTheme.subtext)
 
@@ -309,7 +381,36 @@ struct CourtsView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 .padding(.vertical, 40)
-            } else if viewModel.selectedFilter == "Favorites" && viewModel.filteredCourts.isEmpty {
+            } else if viewModel.filteredCourts.isEmpty && viewModel.isDefaultView {
+                // No home court or favorites saved yet
+                VStack(spacing: 16) {
+                    LucideIcon("heart", size: 36)
+                        .foregroundStyle(NETRTheme.muted)
+                    Text("No saved courts yet")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Search for courts or tap \u{2665} on any court to add it here. You can also set a home court.")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.subtext)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                    Button {
+                        withAnimation(.snappy) { viewModel.isExploring = true }
+                    } label: {
+                        HStack(spacing: 6) {
+                            LucideIcon("search", size: 13)
+                            Text("Browse All Courts")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NETRTheme.background)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(NETRTheme.neonGreen, in: Capsule())
+                    }
+                    .buttonStyle(PressButtonStyle())
+                }
+                .padding(.vertical, 40)
+            } else if viewModel.filteredCourts.isEmpty && viewModel.selectedFilter == "Favorites" {
                 VStack(spacing: 12) {
                     LucideIcon("heart", size: 28)
                         .foregroundStyle(NETRTheme.subtext)
