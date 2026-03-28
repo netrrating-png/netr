@@ -251,16 +251,23 @@ class ProfileViewModel {
 
     func uploadAvatar(_ image: UIImage) async {
         isUploadingAvatar = true
+        print("[NETR Avatar] ProfileViewModel.uploadAvatar called")
 
         do {
             try await SupabaseManager.shared.uploadAvatar(image)
             avatarImage = image
             isUploadingAvatar = false
-            // Reload profile to sync all fields
+            print("[NETR Avatar] Upload complete, reloading profile")
+            // Reload to sync Player model
             await loadProfile()
+            // Also ensure the Player model has the latest URL
+            if let latestUrl = SupabaseManager.shared.currentUserAvatarUrl {
+                player?.avatarUrl = latestUrl
+            }
+            print("[NETR Avatar] Profile reload done, player avatarUrl: \(player?.avatarUrl ?? "nil")")
         } catch {
             isUploadingAvatar = false
-            print("[NETR] Avatar upload error: \(error)")
+            print("[NETR Avatar] Upload error: \(error)")
         }
     }
 

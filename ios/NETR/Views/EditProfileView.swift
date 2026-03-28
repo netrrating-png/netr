@@ -165,7 +165,8 @@ struct EditProfileView: View {
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(NETRTheme.background, lineWidth: 4))
-                } else if let urlStr = player.avatarUrl, let url = URL(string: urlStr) {
+                } else if let urlStr = SupabaseManager.shared.currentUserAvatarUrl ?? player.avatarUrl,
+                          let url = URL(string: urlStr) {
                     AsyncImage(url: url) { phase in
                         if let image = phase.image {
                             image.resizable()

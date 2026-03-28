@@ -94,6 +94,13 @@ struct ContentView: View {
                 store.syncFromProfile(profile)
             }
         }
+        .onChange(of: supabase.currentUserAvatarUrl) { _, newUrl in
+            // When avatar URL changes via upload, sync the store immediately
+            if let newUrl, var profile = supabase.currentProfile {
+                profile.avatarUrl = newUrl
+                store.syncFromProfile(profile)
+            }
+        }
         .onAppear {
             if let profile = supabase.currentProfile {
                 store.syncFromProfile(profile)
