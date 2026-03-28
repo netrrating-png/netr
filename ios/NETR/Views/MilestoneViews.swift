@@ -1,5 +1,7 @@
 import SwiftUI
 import Supabase
+import Auth
+import PostgREST
 
 // MARK: - Edit Milestones Sheet
 

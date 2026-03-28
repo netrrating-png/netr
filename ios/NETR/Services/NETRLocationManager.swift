@@ -1,6 +1,8 @@
 import Foundation
 import CoreLocation
 import Supabase
+import Auth
+import PostgREST
 
 @Observable
 class NETRLocationManager: NSObject, CLLocationManagerDelegate {

@@ -1,4 +1,7 @@
 import SwiftUI
+import Supabase
+import Auth
+import PostgREST
 
 struct TermsOfServiceView: View {
     @Environment(\.dismiss) private var dismiss

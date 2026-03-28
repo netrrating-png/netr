@@ -2,6 +2,8 @@ import SwiftUI
 import AVFoundation
 import CoreLocation
 import Supabase
+import Auth
+import PostgREST
 
 nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let id: String

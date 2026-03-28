@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 import Auth
+import Supabase
+import PostgREST
 import LocalAuthentication
 
 struct SettingsView: View {

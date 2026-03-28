@@ -1,6 +1,8 @@
 import SwiftUI
 import UserNotifications
 import Supabase
+import Auth
+import PostgREST
 
 @Observable
 class PushNotificationManager: NSObject {

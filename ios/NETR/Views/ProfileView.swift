@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import Supabase
 import Auth
+import PostgREST
 
 struct ProfileView: View {
     var profileUserId: String? = nil
