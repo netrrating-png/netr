@@ -240,30 +240,7 @@ struct ChatThreadView: View {
     }
 
     private func chatAvatar(name: String, url: String?, size: CGFloat) -> some View {
-        Group {
-            if let url, let imageUrl = URL(string: url) {
-                NETRTheme.card
-                    .frame(width: size, height: size)
-                    .overlay {
-                        AsyncImage(url: imageUrl) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-            } else {
-                let parts = name.split(separator: " ")
-                let initials = parts.count >= 2
-                    ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-                    : String(name.prefix(2)).uppercased()
-                Text(initials)
-                    .font(.system(size: size * 0.32, weight: .bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: size, height: size)
-                    .background(NETRTheme.card, in: Circle())
-            }
-        }
+        AvatarView(url: url, name: name, size: size)
     }
 }
 

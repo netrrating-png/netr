@@ -190,27 +190,13 @@ struct PublicPlayerProfileView: View {
                     ))
                     .frame(width: 84, height: 84)
 
-                Circle()
-                    .stroke(color.opacity(user.isVerified ? 0.6 : 0.25), lineWidth: 2)
-                    .frame(width: 84, height: 84)
-
-                if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 76, height: 76)
-                                .clipShape(Circle())
-                        } else if phase.error != nil {
-                            avatarInitials(user: user, color: color)
-                        } else {
-                            ProgressView()
-                                .frame(width: 76, height: 76)
-                        }
-                    }
-                } else {
-                    avatarInitials(user: user, color: color)
-                }
+                AvatarView(
+                    url: user.avatarUrl,
+                    name: user.name,
+                    size: 76,
+                    borderColor: color.opacity(user.isVerified ? 0.6 : 0.25),
+                    borderWidth: 2
+                )
             }
             .shadow(color: color.opacity(user.isVerified ? 0.3 : 0.1), radius: 20)
             .offset(y: -28)
@@ -439,13 +425,4 @@ struct PublicPlayerProfileView: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private func avatarInitials(user: Player, color: Color) -> some View {
-        Text(user.avatar)
-            .font(.system(size: 28, weight: .black, design: .default).width(.compressed))
-            .foregroundStyle(color)
-            .frame(width: 76, height: 76)
-            .background(NETRTheme.card, in: Circle())
-    }
 }

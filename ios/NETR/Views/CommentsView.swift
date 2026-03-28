@@ -93,7 +93,7 @@ struct CommentsView: View {
     private var originalPost: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                feedAvatar(name: post.author?.name ?? "?", url: post.author?.avatarUrl, size: 36)
+                AvatarView(url: post.author?.avatarUrl, name: post.author?.name, size: 36)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(post.author?.name ?? "Player")
@@ -190,20 +190,7 @@ struct CommentsView: View {
                     insertMention(user: user)
                 } label: {
                     HStack(spacing: 10) {
-                        if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                            AsyncImage(url: url) { phase in
-                                if let image = phase.image {
-                                    image.resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 28, height: 28)
-                                        .clipShape(Circle())
-                                } else {
-                                    mentionInitials(name: user.displayName)
-                                }
-                            }
-                        } else {
-                            mentionInitials(name: user.displayName)
-                        }
+                        AvatarView(url: user.avatarUrl, name: user.displayName, size: 28)
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text(user.displayName ?? "Player")
@@ -240,22 +227,6 @@ struct CommentsView: View {
             }
         }
         .background(NETRTheme.surface)
-    }
-
-    private func mentionInitials(name: String?) -> some View {
-        let initials: String = {
-            guard let name = name else { return "?" }
-            let parts = name.split(separator: " ")
-            if parts.count >= 2 {
-                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-            }
-            return String(name.prefix(2)).uppercased()
-        }()
-        return Text(initials)
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(NETRTheme.subtext)
-            .frame(width: 28, height: 28)
-            .background(NETRTheme.card, in: Circle())
     }
 
     // MARK: - Comment Input
@@ -385,35 +356,6 @@ struct CommentsView: View {
         showMentionResults = false
         activeMentionQuery = ""
         mentionSearchTask?.cancel()
-    }
-
-    // MARK: - Helpers
-
-    private func feedAvatar(name: String, url: String?, size: CGFloat) -> some View {
-        Group {
-            if let url, let imageUrl = URL(string: url) {
-                NETRTheme.card
-                    .frame(width: size, height: size)
-                    .overlay {
-                        AsyncImage(url: imageUrl) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-            } else {
-                let parts = name.split(separator: " ")
-                let initials = parts.count >= 2
-                    ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-                    : String(name.prefix(2)).uppercased()
-                Text(initials)
-                    .font(.system(size: size * 0.32, weight: .bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: size, height: size)
-                    .background(NETRTheme.card, in: Circle())
-            }
-        }
     }
 
     // MARK: - Data
@@ -702,31 +644,6 @@ struct CommentRow: View {
     }
 
     private var commentAvatar: some View {
-        Group {
-            let size: CGFloat = isReply ? 24 : 28
-            if let url = comment.author?.avatarUrl, let imageUrl = URL(string: url) {
-                NETRTheme.card
-                    .frame(width: size, height: size)
-                    .overlay {
-                        AsyncImage(url: imageUrl) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-            } else {
-                let name = comment.author?.name ?? "?"
-                let parts = name.split(separator: " ")
-                let initials = parts.count >= 2
-                    ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-                    : String(name.prefix(2)).uppercased()
-                Text(initials)
-                    .font(.system(size: size * 0.32, weight: .bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: size, height: size)
-                    .background(NETRTheme.card, in: Circle())
-            }
-        }
+        AvatarView(url: comment.author?.avatarUrl, name: comment.author?.name, size: isReply ? 24 : 28)
     }
 }

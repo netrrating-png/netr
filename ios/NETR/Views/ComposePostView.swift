@@ -75,33 +75,7 @@ struct ComposePostView: View {
     }
 
     private var authorAvatar: some View {
-        Group {
-            if let avatarUrl = SupabaseManager.shared.currentUserAvatarUrl,
-               let url = URL(string: avatarUrl) {
-                NETRTheme.card
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-            } else {
-                let name = SupabaseManager.shared.currentProfile?.fullName ?? "Player"
-                let parts = name.split(separator: " ")
-                let initials = parts.count >= 2
-                    ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-                    : String(name.prefix(2)).uppercased()
-
-                Text(initials)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: 40, height: 40)
-                    .background(NETRTheme.card, in: Circle())
-            }
-        }
+        AvatarView.currentUser(size: 40)
     }
 
     private var authorInfo: some View {
@@ -173,20 +147,7 @@ struct ComposePostView: View {
                     insertMention(user: user)
                 } label: {
                     HStack(spacing: 10) {
-                        if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                            AsyncImage(url: url) { phase in
-                                if let image = phase.image {
-                                    image.resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 28, height: 28)
-                                        .clipShape(Circle())
-                                } else {
-                                    mentionInitials(name: user.displayName)
-                                }
-                            }
-                        } else {
-                            mentionInitials(name: user.displayName)
-                        }
+                        AvatarView(url: user.avatarUrl, name: user.displayName, size: 28)
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text(user.displayName ?? "Player")
@@ -223,22 +184,6 @@ struct ComposePostView: View {
             }
         }
         .background(NETRTheme.surface)
-    }
-
-    private func mentionInitials(name: String?) -> some View {
-        let initials: String = {
-            guard let name = name else { return "?" }
-            let parts = name.split(separator: " ")
-            if parts.count >= 2 {
-                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-            }
-            return String(name.prefix(2)).uppercased()
-        }()
-        return Text(initials)
-            .font(.system(size: 9, weight: .bold))
-            .foregroundStyle(NETRTheme.subtext)
-            .frame(width: 28, height: 28)
-            .background(NETRTheme.card, in: Circle())
     }
 
     private func insertMention(user: UserSearchResult) {

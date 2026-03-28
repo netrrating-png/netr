@@ -78,28 +78,13 @@ struct PostCardView: View {
     // MARK: - Avatar
 
     private func avatarView(author: FeedAuthor?) -> some View {
-        Group {
-            if let avatarUrl = author?.avatarUrl, let url = URL(string: avatarUrl) {
-                NETRTheme.card
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
-            } else {
-                Text(initialsFor(author?.name))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(NETRTheme.text)
-                    .frame(width: 40, height: 40)
-                    .background(NETRTheme.card, in: Circle())
-                    .overlay(Circle().stroke(NETRRating.color(for: author?.netrScore), lineWidth: 2))
-            }
-        }
+        AvatarView(
+            url: author?.avatarUrl,
+            name: author?.name,
+            size: 40,
+            borderColor: NETRRating.color(for: author?.netrScore),
+            borderWidth: 2
+        )
     }
 
     // MARK: - Author Line
@@ -264,16 +249,6 @@ struct PostCardView: View {
         .padding(.leading, 50)
     }
 
-    // MARK: - Helpers
-
-    private func initialsFor(_ name: String?) -> String {
-        let name = name ?? "?"
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 {
-            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-        }
-        return String(name.prefix(2)).uppercased()
-    }
 }
 
 // MARK: - Feed Action Button

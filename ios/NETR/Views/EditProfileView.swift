@@ -165,21 +165,9 @@ struct EditProfileView: View {
                         .frame(width: 80, height: 80)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(NETRTheme.background, lineWidth: 4))
-                } else if let urlStr = SupabaseManager.shared.currentUserAvatarUrl ?? player.avatarUrl,
-                          let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 80, height: 80)
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(NETRTheme.background, lineWidth: 4))
-                        } else {
-                            avatarPlaceholder
-                        }
-                    }
                 } else {
-                    avatarPlaceholder
+                    AvatarView.currentUser(size: 80)
+                        .overlay(Circle().stroke(NETRTheme.background, lineWidth: 4))
                 }
 
                 PhotosPicker(selection: $avatarPhotoItem, matching: .images) {
@@ -196,15 +184,6 @@ struct EditProfileView: View {
         }
         .padding(.horizontal, 20)
         .padding(.bottom, -20)
-    }
-
-    private var avatarPlaceholder: some View {
-        Text(player.avatar)
-            .font(.system(size: 28, weight: .bold))
-            .foregroundStyle(NETRTheme.text)
-            .frame(width: 80, height: 80)
-            .background(NETRTheme.card, in: Circle())
-            .overlay(Circle().stroke(NETRTheme.background, lineWidth: 4))
     }
 
     // MARK: - Form Fields

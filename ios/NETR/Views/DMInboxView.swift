@@ -259,30 +259,7 @@ struct ConversationRow: View {
     }
 
     private func dmAvatar(name: String, url: String?, size: CGFloat) -> some View {
-        Group {
-            if let url, let imageUrl = URL(string: url) {
-                NETRTheme.card
-                    .frame(width: size, height: size)
-                    .overlay {
-                        AsyncImage(url: imageUrl) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-            } else {
-                let parts = name.split(separator: " ")
-                let initials = parts.count >= 2
-                    ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-                    : String(name.prefix(2)).uppercased()
-                Text(initials)
-                    .font(.system(size: size * 0.32, weight: .bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: size, height: size)
-                    .background(NETRTheme.card, in: Circle())
-            }
-        }
+        AvatarView(url: url, name: name, size: size)
     }
 }
 
@@ -408,31 +385,7 @@ struct NewDMSheet: View {
 
     private func userRow(user: UserSearchResult) -> some View {
         HStack(spacing: 12) {
-            if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                NETRTheme.card
-                    .frame(width: 40, height: 40)
-                    .overlay {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().aspectRatio(contentMode: .fill).allowsHitTesting(false)
-                            }
-                        }
-                    }
-                    .clipShape(Circle())
-            } else {
-                let initials = {
-                    guard let name = user.displayName else { return "?" }
-                    let parts = name.split(separator: " ")
-                    return parts.count >= 2
-                        ? "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-                        : String(name.prefix(2)).uppercased()
-                }()
-                Text(initials)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .frame(width: 40, height: 40)
-                    .background(NETRTheme.card, in: Circle())
-            }
+            AvatarView(url: user.avatarUrl, name: user.displayName ?? "?", size: 40)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(user.displayName ?? "Player")

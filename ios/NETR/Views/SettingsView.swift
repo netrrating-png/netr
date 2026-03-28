@@ -180,34 +180,8 @@ struct SettingsView: View {
                                 .tint(NETRTheme.neonGreen)
                                 .frame(width: 64, height: 64)
                                 .background(NETRTheme.card, in: Circle())
-                        } else if let urlStr = SupabaseManager.shared.currentUserAvatarUrl, let url = URL(string: urlStr) {
-                            AsyncImage(url: url) { phase in
-                                if let image = phase.image {
-                                    image.resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 64, height: 64)
-                                        .clipShape(Circle())
-                                } else {
-                                    Text(user.avatar)
-                                        .font(.system(size: 24, weight: .bold))
-                                        .foregroundStyle(NETRTheme.text)
-                                        .frame(width: 64, height: 64)
-                                        .background(NETRTheme.card, in: Circle())
-                                }
-                            }
-                        } else if let imageData = user.profileImageData,
-                                  let uiImage = UIImage(data: imageData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 64, height: 64)
-                                .clipShape(Circle())
                         } else {
-                            Text(user.avatar)
-                                .font(.system(size: 24, weight: .bold))
-                                .foregroundStyle(NETRTheme.text)
-                                .frame(width: 64, height: 64)
-                                .background(NETRTheme.card, in: Circle())
+                            AvatarView.currentUser(size: 64)
                         }
                     }
 
