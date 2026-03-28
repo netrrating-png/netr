@@ -299,7 +299,10 @@ struct ProfileView: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 76, height: 76)
                         .clipShape(Circle())
-                } else if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                } else if let urlStr = viewModel.isCurrentUser
+                    ? SupabaseManager.shared.currentUserAvatarUrl
+                    : user.avatarUrl,
+                          let url = URL(string: urlStr) {
                     AsyncImage(url: url) { phase in
                         if let image = phase.image {
                             image.resizable()
