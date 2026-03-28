@@ -299,25 +299,14 @@ struct ProfileView: View {
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 76, height: 76)
                         .clipShape(Circle())
-                } else if let urlStr = viewModel.isCurrentUser
-                    ? SupabaseManager.shared.currentUserAvatarUrl
-                    : user.avatarUrl,
-                          let url = URL(string: urlStr) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 76, height: 76)
-                                .clipShape(Circle())
-                        } else if phase.error != nil {
-                            avatarInitials(user: user, color: color)
-                        } else {
-                            ProgressView()
-                                .frame(width: 76, height: 76)
-                        }
-                    }
                 } else {
-                    avatarInitials(user: user, color: color)
+                    AvatarView(
+                        url: viewModel.isCurrentUser
+                            ? SupabaseManager.shared.currentUserAvatarUrl
+                            : user.avatarUrl,
+                        name: user.name,
+                        size: 76
+                    )
                 }
 
                 let vibeTier = VibeTier.display(score: viewModel.vibeScore)
@@ -1073,14 +1062,6 @@ private struct FollowUser: Identifiable, Sendable {
 
     var displayName: String { fullName ?? username ?? "Player" }
     var displayHandle: String { username.map { "@\($0)" } ?? "" }
-    var initials: String {
-        let name = fullName ?? username ?? "?"
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 {
-            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-        }
-        return String(name.prefix(2)).uppercased()
-    }
 }
 
 // MARK: - Real Follow List Sheet
@@ -1162,23 +1143,7 @@ struct ProfileFollowListSheet: View {
     private func followRow(_ user: FollowUser) -> some View {
         HStack(spacing: 14) {
             // Avatar
-            Circle()
-                .fill(NETRTheme.muted)
-                .frame(width: 44, height: 44)
-                .overlay {
-                    if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
-                        AsyncImage(url: url) { phase in
-                            if let img = phase.image {
-                                img.resizable().aspectRatio(contentMode: .fill)
-                            }
-                        }
-                        .clipShape(Circle())
-                    } else {
-                        Text(user.initials)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                }
+            AvatarView(url: user.avatarUrl, name: user.displayName, size: 44)
 
             // Name + handle + scores
             VStack(alignment: .leading, spacing: 3) {

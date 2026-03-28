@@ -186,41 +186,7 @@ struct NotificationsView: View {
     // MARK: - Sender Avatar
 
     private func senderAvatar(_ sender: FeedAuthor?) -> some View {
-        ZStack {
-            if let urlStr = sender?.avatarUrl, let url = URL(string: urlStr) {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 40, height: 40)
-                            .clipShape(Circle())
-                    } else {
-                        initialsCircle(sender)
-                    }
-                }
-            } else {
-                initialsCircle(sender)
-            }
-        }
-    }
-
-    private func initialsCircle(_ sender: FeedAuthor?) -> some View {
-        let initials = sender.map { author in
-            let parts = (author.displayName ?? "").split(separator: " ")
-            if parts.count >= 2 {
-                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-            } else if let first = parts.first {
-                return String(first.prefix(2)).uppercased()
-            }
-            return "?"
-        } ?? "?"
-
-        return Text(initials)
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(NETRTheme.text)
-            .frame(width: 40, height: 40)
-            .background(NETRTheme.card, in: Circle())
-            .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+        AvatarView(url: sender?.avatarUrl, name: sender?.displayName ?? "?", size: 40)
     }
 
     // MARK: - Notification Icon

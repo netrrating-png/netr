@@ -328,20 +328,7 @@ struct FeedView: View {
 
     private func searchResultRow(user: UserSearchResult) -> some View {
         HStack(spacing: 12) {
-            if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 36, height: 36)
-                            .clipShape(Circle())
-                    } else {
-                        searchInitialsAvatar(name: user.displayName)
-                    }
-                }
-            } else {
-                searchInitialsAvatar(name: user.displayName)
-            }
+            AvatarView(url: user.avatarUrl, name: user.displayName, size: 36)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(user.displayName ?? "Player")
@@ -407,22 +394,7 @@ struct FeedView: View {
         .padding(.vertical, 10)
     }
 
-    private func searchInitialsAvatar(name: String?) -> some View {
-        let initials: String = {
-            guard let name = name else { return "?" }
-            let parts = name.split(separator: " ")
-            if parts.count >= 2 {
-                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-            }
-            return String(name.prefix(2)).uppercased()
-        }()
 
-        return Text(initials)
-            .font(.caption.weight(.bold))
-            .foregroundStyle(NETRTheme.subtext)
-            .frame(width: 36, height: 36)
-            .background(NETRTheme.card, in: Circle())
-    }
 
     // MARK: - Tab Bar
 
@@ -599,22 +571,7 @@ struct FeedView: View {
             viewModel.selectedProfileUserId = player.id
         } label: {
             VStack(spacing: 8) {
-                if let avatarUrl = player.avatarUrl, let url = URL(string: avatarUrl) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 56, height: 56)
-                                .clipShape(Circle())
-                        } else {
-                            searchInitialsAvatar(name: player.displayName)
-                                .frame(width: 56, height: 56)
-                        }
-                    }
-                } else {
-                    searchInitialsAvatar(name: player.displayName)
-                        .frame(width: 56, height: 56)
-                }
+                AvatarView(url: player.avatarUrl, name: player.displayName, size: 56)
 
                 Text(player.displayName ?? "Player")
                     .font(.caption.weight(.semibold))

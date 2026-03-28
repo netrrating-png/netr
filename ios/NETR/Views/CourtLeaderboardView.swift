@@ -193,15 +193,7 @@ struct PodiumPlayerView: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            ZStack {
-                Circle()
-                    .fill(NETRTheme.card)
-                    .frame(width: avatarSize, height: avatarSize)
-                    .overlay(Circle().stroke(rankColor, lineWidth: 2))
-                Text(initials(for: player.displayName))
-                    .font(.system(size: rank == 1 ? 18 : 14, weight: .black))
-                    .foregroundStyle(NETRTheme.text)
-            }
+            AvatarView(url: player.avatarUrl, name: player.displayName, size: avatarSize, borderColor: rankColor, borderWidth: 2)
 
             Text(player.displayName.components(separatedBy: " ").first ?? player.displayName)
                 .font(.system(size: 11, weight: .semibold))
@@ -228,11 +220,6 @@ struct PodiumPlayerView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private func initials(for name: String) -> String {
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 { return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased() }
-        return String(name.prefix(2)).uppercased()
-    }
 }
 
 // MARK: - Single leaderboard row (reused in CourtDetailView tab)
@@ -245,12 +232,6 @@ struct LeaderboardRowView: View {
     private var vibeTier: VibeTier { VibeTier.display(score: player.vibeScore) }
     private var vibeColor: Color { Color(red: vibeTier.color.red, green: vibeTier.color.green, blue: vibeTier.color.blue) }
 
-    private func initials(for name: String) -> String {
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 { return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased() }
-        return String(name.prefix(2)).uppercased()
-    }
-
     var body: some View {
         if showIfTopThree && rank <= 3 {
             EmptyView()
@@ -262,14 +243,7 @@ struct LeaderboardRowView: View {
                         .foregroundStyle(NETRTheme.subtext)
                         .frame(width: 28, alignment: .center)
 
-                    ZStack {
-                        Circle()
-                            .fill(NETRTheme.card)
-                            .frame(width: 38, height: 38)
-                        Text(initials(for: player.displayName))
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(NETRTheme.text)
-                    }
+                    AvatarView(url: player.avatarUrl, name: player.displayName, size: 38)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(player.displayName)

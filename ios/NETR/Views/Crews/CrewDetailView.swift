@@ -317,7 +317,7 @@ struct CrewDetailView: View {
             .frame(width: 28)
 
             // Avatar
-            avatarCircle(profile: member, size: 38)
+            AvatarView(url: member.avatarUrl, name: member.displayName, size: 38)
 
             // Name & username
             VStack(alignment: .leading, spacing: 2) {
@@ -393,7 +393,7 @@ struct CrewDetailView: View {
     @ViewBuilder
     private func memberRow(member: CrewMemberProfile) -> some View {
         HStack(spacing: 12) {
-            avatarCircle(profile: member, size: 42)
+            AvatarView(url: member.avatarUrl, name: member.displayName, size: 42)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
@@ -535,7 +535,7 @@ struct CrewDetailView: View {
                                             Task { await makeAdmin(member) }
                                         } label: {
                                             HStack(spacing: 12) {
-                                                avatarCircle(profile: member, size: 36)
+                                                AvatarView(url: member.avatarUrl, name: member.displayName, size: 36)
                                                 Text(member.displayName)
                                                     .font(.system(size: 14))
                                                     .foregroundStyle(NETRTheme.text)
@@ -643,50 +643,6 @@ struct CrewDetailView: View {
             LucideIcon("lock", size: 13)
                 .foregroundStyle(NETRTheme.subtext)
         }
-    }
-
-    // MARK: - Avatar Helper
-
-    @ViewBuilder
-    private func avatarCircle(profile: CrewMemberProfile, size: CGFloat) -> some View {
-        ZStack {
-            Circle()
-                .fill(NETRTheme.surface)
-                .frame(width: size, height: size)
-
-            initialsView(name: profile.displayName, size: size)
-
-            if let urlString = profile.avatarUrl,
-               urlString.hasPrefix("http"),
-               let url = URL(string: urlString) {
-                AsyncImage(url: url) { phase in
-                    if case .success(let image) = phase {
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: size, height: size)
-                            .clipShape(Circle())
-                    }
-                }
-            }
-        }
-        .frame(width: size, height: size)
-        .clipShape(Circle())
-    }
-
-    @ViewBuilder
-    private func initialsView(name: String, size: CGFloat) -> some View {
-        Text(initials(from: name))
-            .font(.system(size: size * 0.35, weight: .bold))
-            .foregroundStyle(NETRTheme.subtext)
-    }
-
-    private func initials(from name: String) -> String {
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 {
-            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-        }
-        return String(name.prefix(2)).uppercased()
     }
 
     // MARK: - Actions

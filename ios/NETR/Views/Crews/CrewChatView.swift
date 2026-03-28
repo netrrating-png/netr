@@ -164,25 +164,7 @@ struct CrewChatView: View {
                 }
             } else {
                 // Avatar circle
-                ZStack {
-                    Circle().fill(NETRTheme.surface).frame(width: 30, height: 30)
-                    Text(initials(from: senderName))
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(NETRTheme.subtext)
-                    if let urlStr = senderAvatarUrl,
-                       urlStr.hasPrefix("http"),
-                       let url = URL(string: urlStr) {
-                        AsyncImage(url: url) { phase in
-                            if case .success(let image) = phase {
-                                image.resizable().scaledToFill()
-                                    .frame(width: 30, height: 30)
-                                    .clipShape(Circle())
-                            }
-                        }
-                    }
-                }
-                .frame(width: 30, height: 30)
-                .clipShape(Circle())
+                AvatarView(url: senderAvatarUrl, name: senderName, size: 30)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(senderName)
@@ -289,11 +271,4 @@ struct CrewChatView: View {
         return display.string(from: date)
     }
 
-    private func initials(from name: String) -> String {
-        let parts = name.split(separator: " ")
-        if parts.count >= 2 {
-            return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
-        }
-        return String(name.prefix(2)).uppercased()
-    }
 }
