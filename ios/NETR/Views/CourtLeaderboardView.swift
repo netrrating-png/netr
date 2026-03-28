@@ -1,5 +1,7 @@
 import SwiftUI
 import Supabase
+import Auth
+import PostgREST
 
 // Shared leaderboard player model used by CourtLeaderboardView and CourtDetailView
 nonisolated struct LeaderboardEntry: Identifiable, Decodable, Sendable {

@@ -1,6 +1,8 @@
 import SwiftUI
 import CoreLocation
 import Supabase
+import Auth
+import PostgREST
 
 struct CreateGameView: View {
     @Bindable var viewModel: CourtsViewModel

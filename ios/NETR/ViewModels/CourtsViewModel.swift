@@ -3,6 +3,7 @@ import MapKit
 import CoreLocation
 import Supabase
 import Auth
+import PostgREST
 
 @Observable
 @MainActor

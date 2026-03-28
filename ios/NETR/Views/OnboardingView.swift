@@ -2,7 +2,9 @@ import SwiftUI
 import PhotosUI
 import AuthenticationServices
 import CryptoKit
+import Supabase
 import Auth
+import PostgREST
 
 struct OnboardingView: View {
     @Environment(SupabaseManager.self) private var supabase

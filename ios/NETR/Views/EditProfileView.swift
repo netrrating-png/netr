@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 import Supabase
+import Auth
+import PostgREST
 
 struct EditProfileView: View {
     @Bindable var viewModel: ProfileViewModel

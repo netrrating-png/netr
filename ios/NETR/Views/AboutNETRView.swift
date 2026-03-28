@@ -1,5 +1,8 @@
 import SwiftUI
 import MessageUI
+import Supabase
+import Auth
+import PostgREST
 
 struct AboutNETRView: View {
     @Environment(\.dismiss) private var dismiss

@@ -1,6 +1,8 @@
 import SwiftUI
 import PhotosUI
 import Supabase
+import Auth
+import PostgREST
 
 struct CourtDetailView: View {
     let court: Court
