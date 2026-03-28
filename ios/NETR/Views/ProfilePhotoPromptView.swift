@@ -7,10 +7,10 @@ import PostgREST
 struct ProfilePhotoPromptView: View {
     var onComplete: () -> Void
 
-    @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var selectedImage: UIImage?
     @State private var isUploading: Bool = false
     @State private var uploadError: String?
+    @StateObject private var photoPicker = PhotoPickerManager()
 
     var body: some View {
         ZStack {
@@ -48,14 +48,11 @@ struct ProfilePhotoPromptView: View {
                     .padding(.bottom, 40)
             }
         }
-        .onChange(of: selectedPhotoItem) { _, newValue in
-            guard let item = newValue else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        selectedImage = image
-                    }
+        .photoPickerSheet(manager: photoPicker)
+        .onChange(of: photoPicker.selectedImage) { _, newImage in
+            if let newImage {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    selectedImage = newImage
                 }
             }
         }
@@ -158,14 +155,18 @@ struct ProfilePhotoPromptView: View {
                 .disabled(isUploading)
 
                 // Allow re-pick
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                Button {
+                    photoPicker.showActionSheet = true
+                } label: {
                     Text("Choose a different photo")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(.white.opacity(0.5))
                 }
             } else {
                 // No photo yet — show upload button
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                Button {
+                    photoPicker.showActionSheet = true
+                } label: {
                     Text("Upload My Photo")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(Color.black)

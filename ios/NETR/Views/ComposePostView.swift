@@ -6,6 +6,8 @@ struct ComposePostView: View {
     var quotePost: SupabaseFeedPost? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var postText: String = ""
+    @State private var selectedCourt: FeedCourtSearchResult? = nil
+    @State private var showCourtPicker: Bool = false
 
     private let maxChars = 280
 
@@ -28,6 +30,11 @@ struct ComposePostView: View {
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
+
+                        if let court = selectedCourt {
+                            courtChip(court)
+                                .padding(.horizontal, 16)
+                        }
 
                         if let quote = quotePost {
                             quotePostEmbed(quote)
@@ -57,7 +64,11 @@ struct ComposePostView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task {
-                            await viewModel.createPost(content: postText)
+                            await viewModel.createPost(
+                                content: postText,
+                                courtId: selectedCourt?.id,
+                                courtName: selectedCourt?.name
+                            )
                         }
                     } label: {
                         Text("POST")
@@ -70,6 +81,12 @@ struct ComposePostView: View {
                     }
                     .disabled(!canPost)
                 }
+            }
+            .sheet(isPresented: $showCourtPicker) {
+                CourtTagPickerView(selectedCourt: $selectedCourt)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationBackground(Color.black)
             }
         }
     }
@@ -195,10 +212,48 @@ struct ComposePostView: View {
         viewModel.dismissMentionSearch()
     }
 
+    // MARK: - Court Chip
+
+    private func courtChip(_ court: FeedCourtSearchResult) -> some View {
+        HStack(spacing: 6) {
+            LucideIcon("map-pin", size: 12)
+                .foregroundStyle(NETRTheme.neonGreen)
+            Text(court.name)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(NETRTheme.neonGreen)
+            if !court.locationLabel.isEmpty {
+                Text("· \(court.locationLabel)")
+                    .font(.caption)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            Spacer()
+            Button {
+                selectedCourt = nil
+            } label: {
+                LucideIcon("x-circle", size: 12)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+        }
+        .padding(10)
+        .background(NETRTheme.neonGreen.opacity(0.06), in: .rect(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
+    }
+
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
         HStack(spacing: 16) {
+            Button {
+                showCourtPicker = true
+            } label: {
+                HStack(spacing: 4) {
+                    LucideIcon("map-pin", size: 14)
+                    Text("Court")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(selectedCourt != nil ? NETRTheme.neonGreen : NETRTheme.subtext)
+            }
+
             Spacer()
 
             Text("\(charCount)/\(maxChars)")

@@ -4,6 +4,7 @@ struct ChatThreadView: View {
     let otherUserId: String
     let otherUser: FeedAuthor?
     @State private var viewModel: ChatViewModel
+    @State private var showCourtPicker: Bool = false
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
 
@@ -143,6 +144,30 @@ struct ChatThreadView: View {
         VStack(spacing: 0) {
             Divider().background(NETRTheme.border)
 
+            // Court tag preview
+            if let court = viewModel.courtTag {
+                HStack(spacing: 8) {
+                    LucideIcon("map-pin", size: 12)
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    Text(court.name)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    if !court.locationLabel.isEmpty {
+                        Text("· \(court.locationLabel)")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                    Spacer()
+                    Button { viewModel.courtTag = nil } label: {
+                        LucideIcon("x", size: 10)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(NETRTheme.surface)
+            }
+
             if viewModel.showCharCount {
                 HStack {
                     Spacer()
@@ -155,6 +180,12 @@ struct ChatThreadView: View {
             }
 
             HStack(spacing: 8) {
+                // Court tag button
+                Button { showCourtPicker = true } label: {
+                    LucideIcon("map-pin", size: 16)
+                        .foregroundStyle(viewModel.courtTag != nil ? NETRTheme.neonGreen : NETRTheme.subtext)
+                }
+
                 TextField("Message...", text: $viewModel.messageText, axis: .vertical)
                     .font(.subheadline)
                     .foregroundStyle(NETRTheme.text)
@@ -193,6 +224,12 @@ struct ChatThreadView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .background(NETRTheme.surface)
+        }
+        .sheet(isPresented: $showCourtPicker) {
+            CourtTagPickerView(selectedCourt: $viewModel.courtTag)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.black)
         }
     }
 
@@ -255,15 +292,37 @@ struct MessageBubble: View {
             if isCurrentUser { Spacer(minLength: 60) }
 
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 3) {
-                Text(message.content)
-                    .font(.subheadline)
-                    .foregroundStyle(isCurrentUser ? Color.black : NETRTheme.text)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(
-                        isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
-                        in: BubbleShape(isCurrentUser: isCurrentUser)
+                // Text content (if any)
+                if !message.content.isEmpty {
+                    Text(message.content)
+                        .font(.subheadline)
+                        .foregroundStyle(isCurrentUser ? Color.black : NETRTheme.text)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(
+                            isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
+                            in: BubbleShape(isCurrentUser: isCurrentUser)
+                        )
+                }
+
+                // Court tag card (if attached)
+                if let courtName = message.courtTagName {
+                    HStack(spacing: 8) {
+                        LucideIcon("map-pin", size: 14)
+                            .foregroundStyle(NETRTheme.neonGreen)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(courtName)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(NETRTheme.text)
+                        }
+                    }
+                    .padding(10)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1)
                     )
+                }
 
                 Text(message.createdAt.relativeTimeFromISO)
                     .font(.system(size: 9))
