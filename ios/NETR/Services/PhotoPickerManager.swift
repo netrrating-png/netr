@@ -1,41 +1,57 @@
 import SwiftUI
 import AVFoundation
+import UIKit
 
-/// Reusable coordinator for presenting camera or photo library.
-/// Usage: Add @StateObject var photoPicker = PhotoPickerManager() to your view,
-/// then call photoPicker.showActionSheet = true and handle the result via photoPicker.selectedImage.
-class PhotoPickerManager: NSObject, ObservableObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    @Published var selectedImage: UIImage? = nil
-    @Published var showActionSheet: Bool = false
-    @Published var showCameraPermissionAlert: Bool = false
+/// Reusable image picker that presents camera or photo library via UIImagePickerController.
+/// Uses a completion handler pattern to avoid NSObject + @Published conflicts.
+///
+/// Usage in views:
+///   @State private var showPhotoActionSheet = false
+///   @State private var avatarImage: UIImage?
+///   let photoPicker = PhotoPickerManager()
+///
+///   .confirmationDialog(...) { Button("Take") { photoPicker.showCamera { img in avatarImage = img } } }
+final class PhotoPickerManager: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+
+    private var onImageSelected: ((UIImage) -> Void)?
 
     var isCameraAvailable: Bool {
         UIImagePickerController.isSourceTypeAvailable(.camera)
     }
 
-    func showCamera() {
+    /// Show the camera. Checks permission first.
+    /// - Parameters:
+    ///   - completion: Called on the main thread with the selected/captured image.
+    ///   - onPermissionDenied: Called if camera permission is denied.
+    func showCamera(completion: @escaping (UIImage) -> Void, onPermissionDenied: (() -> Void)? = nil) {
         guard isCameraAvailable else { return }
 
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             DispatchQueue.main.async {
                 if granted {
+                    self?.onImageSelected = completion
                     self?.presentPicker(sourceType: .camera)
                 } else {
-                    self?.showCameraPermissionAlert = true
+                    onPermissionDenied?()
                 }
             }
         }
     }
 
-    func showLibrary() {
+    /// Show the photo library picker.
+    func showLibrary(completion: @escaping (UIImage) -> Void) {
+        onImageSelected = completion
         presentPicker(sourceType: .photoLibrary)
     }
 
+    /// Open the system Settings app (for granting camera permission).
     func openSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }
     }
+
+    // MARK: - Private
 
     private func presentPicker(sourceType: UIImagePickerController.SourceType) {
         let picker = UIImagePickerController()
@@ -56,43 +72,18 @@ class PhotoPickerManager: NSObject, ObservableObject, UIImagePickerControllerDel
     // MARK: - UIImagePickerControllerDelegate
 
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-        if let edited = info[.editedImage] as? UIImage {
-            selectedImage = edited
-        } else if let original = info[.originalImage] as? UIImage {
-            selectedImage = original
+        let image = (info[.editedImage] as? UIImage) ?? (info[.originalImage] as? UIImage)
+        picker.dismiss(animated: true) { [weak self] in
+            if let image {
+                self?.onImageSelected?(image)
+            }
+            self?.onImageSelected = nil
         }
-        picker.dismiss(animated: true)
     }
 
     func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-        picker.dismiss(animated: true)
-    }
-}
-
-/// SwiftUI modifier that adds photo source action sheet + camera permission alert.
-struct PhotoPickerModifier: ViewModifier {
-    @ObservedObject var manager: PhotoPickerManager
-
-    func body(content: Content) -> some View {
-        content
-            .confirmationDialog("Choose Photo", isPresented: $manager.showActionSheet, titleVisibility: .hidden) {
-                if manager.isCameraAvailable {
-                    Button("Take a Photo") { manager.showCamera() }
-                }
-                Button("Choose from Library") { manager.showLibrary() }
-                Button("Cancel", role: .cancel) {}
-            }
-            .alert("Camera Access Required", isPresented: $manager.showCameraPermissionAlert) {
-                Button("Open Settings") { manager.openSettings() }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Camera access is needed to take a profile photo. Enable it in Settings.")
-            }
-    }
-}
-
-extension View {
-    func photoPickerSheet(manager: PhotoPickerManager) -> some View {
-        modifier(PhotoPickerModifier(manager: manager))
+        picker.dismiss(animated: true) { [weak self] in
+            self?.onImageSelected = nil
+        }
     }
 }
