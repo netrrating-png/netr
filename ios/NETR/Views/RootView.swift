@@ -5,6 +5,8 @@ struct RootView: View {
     @Environment(SupabaseManager.self) private var supabase
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
+    @AppStorage("hasCompletedPhotoPrompt") private var hasCompletedPhotoPrompt: Bool = false
+    @AppStorage("photoPromptSkipCount") private var photoPromptSkipCount: Int = 0
 
     var body: some View {
         Group {
@@ -15,6 +17,16 @@ struct RootView: View {
                 LockScreenView()
                     .preferredColorScheme(.dark)
                     .transition(.opacity)
+            } else if !hasCompletedPhotoPrompt && supabase.currentUserAvatarUrl == nil {
+                ProfilePhotoPromptView {
+                    hasCompletedPhotoPrompt = true
+                    if supabase.currentUserAvatarUrl == nil {
+                        // User skipped — track for reminder badge
+                        photoPromptSkipCount = 1
+                    }
+                }
+                .preferredColorScheme(.dark)
+                .transition(.opacity)
             } else {
                 ContentView()
                     .transition(.opacity)
@@ -22,6 +34,7 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.3), value: supabase.isSignedIn)
         .animation(.easeInOut(duration: 0.3), value: biometrics.isUnlocked)
+        .animation(.easeInOut(duration: 0.3), value: hasCompletedPhotoPrompt)
         .overlay {
             if supabase.isLoading {
                 ZStack {

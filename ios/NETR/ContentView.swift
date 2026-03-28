@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showSelfAssessment: Bool = false
     @State private var dismissedAssessmentBanner: Bool = false
     @State private var showSettings: Bool = false
+    @AppStorage("photoPromptSkipCount") private var photoPromptSkipCount: Int = 0
     @Namespace private var tabBarNamespace
 
     // Active game banner
@@ -108,6 +109,10 @@ struct ContentView: View {
         }
         .task {
             await checkForHostActiveGame()
+            // Increment photo skip session counter (caps at 4 to stop showing badge after 3)
+            if photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
+                photoPromptSkipCount += 1
+            }
         }
         .sheet(isPresented: $showActiveGameSheet, onDismiss: {
             Task { await checkForHostActiveGame() }
@@ -349,6 +354,14 @@ struct ContentView: View {
                                         .padding(.vertical, 1)
                                         .background(NETRTheme.neonGreen, in: Capsule())
                                         .offset(x: 10, y: -8)
+                                }
+
+                                // Photo reminder badge for Profile tab (first 3 sessions after skip)
+                                if tab == .profile && photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
+                                    Circle()
+                                        .fill(Color.orange)
+                                        .frame(width: 8, height: 8)
+                                        .offset(x: 10, y: -6)
                                 }
                             }
                         }
