@@ -23,7 +23,9 @@ struct EditProfileView: View {
     @State private var bannerImage: UIImage?
     @State private var avatarPhotoItem: PhotosPickerItem?
     @State private var avatarImage: UIImage?
-    @StateObject private var avatarPhotoPicker = PhotoPickerManager()
+    @State private var showAvatarActionSheet: Bool = false
+    @State private var showCameraPermissionAlert: Bool = false
+    private let photoPicker = PhotoPickerManager()
 
     @State private var isUploadingBanner: Bool = false
     @State private var isSaving: Bool = false
@@ -172,7 +174,7 @@ struct EditProfileView: View {
                 }
 
                 Button {
-                    avatarPhotoPicker.showActionSheet = true
+                    showAvatarActionSheet = true
                 } label: {
                     LucideIcon("camera", size: 10)
                         .foregroundStyle(NETRTheme.background)
@@ -182,9 +184,22 @@ struct EditProfileView: View {
                 }
             }
             .offset(y: -30)
-            .photoPickerSheet(manager: avatarPhotoPicker)
-            .onChange(of: avatarPhotoPicker.selectedImage) { _, newImage in
-                if let newImage { avatarImage = newImage }
+            .confirmationDialog("Profile Photo", isPresented: $showAvatarActionSheet, titleVisibility: .hidden) {
+                if photoPicker.isCameraAvailable {
+                    Button("Take a Photo") {
+                        photoPicker.showCamera(completion: { img in avatarImage = img }, onPermissionDenied: { showCameraPermissionAlert = true })
+                    }
+                }
+                Button("Choose from Library") {
+                    photoPicker.showLibrary { img in avatarImage = img }
+                }
+                Button("Cancel", role: .cancel) {}
+            }
+            .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
+                Button("Open Settings") { photoPicker.openSettings() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Camera access is needed to take a profile photo. Enable it in Settings.")
             }
 
             Spacer()

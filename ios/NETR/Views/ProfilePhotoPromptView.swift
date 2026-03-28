@@ -10,7 +10,9 @@ struct ProfilePhotoPromptView: View {
     @State private var selectedImage: UIImage?
     @State private var isUploading: Bool = false
     @State private var uploadError: String?
-    @StateObject private var photoPicker = PhotoPickerManager()
+    @State private var showPhotoActionSheet: Bool = false
+    @State private var showCameraPermissionAlert: Bool = false
+    private let photoPicker = PhotoPickerManager()
 
     var body: some View {
         ZStack {
@@ -48,13 +50,26 @@ struct ProfilePhotoPromptView: View {
                     .padding(.bottom, 40)
             }
         }
-        .photoPickerSheet(manager: photoPicker)
-        .onChange(of: photoPicker.selectedImage) { _, newImage in
-            if let newImage {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    selectedImage = newImage
+        .confirmationDialog("Profile Photo", isPresented: $showPhotoActionSheet, titleVisibility: .hidden) {
+            if photoPicker.isCameraAvailable {
+                Button("Take a Photo") {
+                    photoPicker.showCamera(completion: { img in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedImage = img }
+                    }, onPermissionDenied: { showCameraPermissionAlert = true })
                 }
             }
+            Button("Choose from Library") {
+                photoPicker.showLibrary { img in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { selectedImage = img }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
+            Button("Open Settings") { photoPicker.openSettings() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Camera access is needed to take a profile photo. Enable it in Settings.")
         }
     }
 
@@ -156,7 +171,7 @@ struct ProfilePhotoPromptView: View {
 
                 // Allow re-pick
                 Button {
-                    photoPicker.showActionSheet = true
+                    showPhotoActionSheet = true
                 } label: {
                     Text("Choose a different photo")
                         .font(.system(size: 14, weight: .semibold))
@@ -165,7 +180,7 @@ struct ProfilePhotoPromptView: View {
             } else {
                 // No photo yet — show upload button
                 Button {
-                    photoPicker.showActionSheet = true
+                    showPhotoActionSheet = true
                 } label: {
                     Text("Upload My Photo")
                         .font(.system(size: 16, weight: .bold))
