@@ -1,6 +1,7 @@
 import SwiftUI
 import PhotosUI
 import Auth
+import LocalAuthentication
 
 struct SettingsView: View {
     let store: MockDataStore
@@ -16,7 +17,10 @@ struct SettingsView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showSignOutConfirm: Bool = false
     @State private var showDeleteConfirm: Bool = false
-    @State private var showPrivacy: Bool = false
+    @State private var showDeleteTyping: Bool = false
+    @State private var deleteConfirmText: String = ""
+    @State private var showPrivacyPolicy: Bool = false
+    @State private var showTermsOfService: Bool = false
     @State private var showAbout: Bool = false
     @State private var profileViewModel = ProfileViewModel()
     @State private var isUploadingAvatar: Bool = false
@@ -63,6 +67,10 @@ struct SettingsView: View {
         }
         .task {
             await profileViewModel.loadProfile()
+            // Sync private profile state from Supabase
+            if let profile = supabase.currentProfile {
+                profilePrivate = profile.isPrivate ?? false
+            }
         }
         .sheet(isPresented: $showMyGames) {
             NavigationStack {
@@ -76,6 +84,24 @@ struct SettingsView: View {
             EditProfileView(viewModel: profileViewModel, player: user)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.background)
+        }
+        .sheet(isPresented: $showAbout) {
+            AboutNETRView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showTermsOfService) {
+            TermsOfServiceView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.black)
+        }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            PrivacyPolicyView()
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(Color.black)
         }
         .onChange(of: selectedPhotoItem) { _, newValue in
             guard let item = newValue else { return }
@@ -152,7 +178,7 @@ struct SettingsView: View {
                                 .tint(NETRTheme.neonGreen)
                                 .frame(width: 64, height: 64)
                                 .background(NETRTheme.card, in: Circle())
-                        } else if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                        } else if let urlStr = SupabaseManager.shared.currentUserAvatarUrl, let url = URL(string: urlStr) {
                             AsyncImage(url: url) { phase in
                                 if let image = phase.image {
                                     image.resizable()
@@ -337,7 +363,20 @@ struct SettingsView: View {
                             .labelsHidden()
                             .tint(NETRTheme.neonGreen)
                             .onChange(of: biometricsEnabled) { _, enabled in
-                                if !enabled { biometrics.isUnlocked = true }
+                                if enabled {
+                                    // Trigger biometric auth to verify
+                                    let context = LAContext()
+                                    var error: NSError?
+                                    if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error) {
+                                        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: "Enable biometric unlock for NETR") { success, _ in
+                                            if !success {
+                                                DispatchQueue.main.async { biometricsEnabled = false }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    biometrics.isUnlocked = true
+                                }
                             }
                     }
                     .padding(14)
@@ -425,6 +464,20 @@ struct SettingsView: View {
                     Toggle("", isOn: $profilePrivate)
                         .labelsHidden()
                         .tint(NETRTheme.neonGreen)
+                        .onChange(of: profilePrivate) { _, newValue in
+                            Task {
+                                guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+                                do {
+                                    try await SupabaseManager.shared.client
+                                        .from("profiles")
+                                        .update(["is_private": AnyJSON.bool(newValue)])
+                                        .eq("id", value: userId)
+                                        .execute()
+                                } catch {
+                                    print("[NETR] Private profile update error: \(error)")
+                                }
+                            }
+                        }
                 }
                 .padding(14)
             }
@@ -443,11 +496,11 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                SettingsRow(icon: "info", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version 1.0")
+                SettingsRow(icon: "info", iconColor: NETRTheme.subtext, title: "About NETR", subtitle: "Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")", action: { showAbout = true })
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "file-text", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil)
+                SettingsRow(icon: "file-text", iconColor: NETRTheme.subtext, title: "Terms of Service", subtitle: nil, action: { showTermsOfService = true })
                 Divider().padding(.leading, 50)
-                SettingsRow(icon: "hand", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil)
+                SettingsRow(icon: "hand", iconColor: NETRTheme.subtext, title: "Privacy Policy", subtitle: nil, action: { showPrivacyPolicy = true })
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
@@ -509,13 +562,55 @@ struct SettingsView: View {
         .buttonStyle(PressButtonStyle())
         .padding(.horizontal, 16)
         .alert("Delete Account?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
-                // Account deletion requires server-side support.
-                // Show a warning only — actual deletion is handled via support.
+            Button("Continue", role: .destructive) {
+                showDeleteTyping = true
+                deleteConfirmText = ""
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This action is permanent and cannot be undone. All your games, ratings, posts, and profile data will be permanently deleted. To proceed, contact support at support@netr.app.")
+            Text("This will permanently delete your account and all your data. This cannot be undone.")
+        }
+        .alert("Type DELETE to confirm", isPresented: $showDeleteTyping) {
+            TextField("DELETE", text: $deleteConfirmText)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.characters)
+            Button("Delete My Account", role: .destructive) {
+                guard deleteConfirmText == "DELETE" else { return }
+                Task {
+                    await deleteAccountAndSignOut()
+                }
+            }
+            Button("Cancel", role: .cancel) {
+                deleteConfirmText = ""
+            }
+        } message: {
+            Text("Type DELETE to permanently delete your account.")
+        }
+    }
+
+    private func deleteAccountAndSignOut() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        let client = SupabaseManager.shared.client
+
+        do {
+            // Delete user data from all tables
+            try? await client.from("feed_posts").delete().eq("author_id", value: userId).execute()
+            try? await client.from("comments").delete().eq("author_id", value: userId).execute()
+            try? await client.from("likes").delete().eq("user_id", value: userId).execute()
+            try? await client.from("comment_likes").delete().eq("user_id", value: userId).execute()
+            try? await client.from("bookmarks").delete().eq("user_id", value: userId).execute()
+            try? await client.from("follows").delete().eq("follower_id", value: userId).execute()
+            try? await client.from("follows").delete().eq("following_id", value: userId).execute()
+            try? await client.from("mentions").delete().eq("mentioned_user_id", value: userId).execute()
+            try? await client.from("mentions").delete().eq("mentioning_user_id", value: userId).execute()
+            try? await client.from("notifications").delete().eq("user_id", value: userId).execute()
+            try? await client.from("notification_preferences").delete().eq("user_id", value: userId).execute()
+            try? await client.from("court_favorites").delete().eq("user_id", value: userId).execute()
+            try? await client.from("profiles").delete().eq("id", value: userId).execute()
+
+            try await supabase.signOut()
+        } catch {
+            print("[NETR] Delete account error: \(error)")
         }
     }
 }

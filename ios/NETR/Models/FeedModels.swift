@@ -8,15 +8,19 @@ nonisolated struct SupabaseFeedPost: Identifiable, Sendable, Equatable {
     let content: String
     var likeCount: Int
     var commentCount: Int
+    var repostCount: Int
     let courtTagId: String?
     let courtTagName: String?
+    let repostOfId: String?
     let createdAt: String
     var author: FeedAuthor?
     // Local UI state
     var isLiked: Bool = false
+    var isReposted: Bool = false
+    var isBookmarked: Bool = false
 
     static func == (lhs: SupabaseFeedPost, rhs: SupabaseFeedPost) -> Bool {
-        lhs.id == rhs.id && lhs.isLiked == rhs.isLiked && lhs.likeCount == rhs.likeCount
+        lhs.id == rhs.id && lhs.isLiked == rhs.isLiked && lhs.likeCount == rhs.likeCount && lhs.isBookmarked == rhs.isBookmarked && lhs.repostCount == rhs.repostCount
     }
 }
 
@@ -27,10 +31,27 @@ extension SupabaseFeedPost: Decodable {
         case content
         case likeCount = "like_count"
         case commentCount = "comment_count"
+        case repostCount = "repost_count"
         case courtTagId = "court_tag_id"
         case courtTagName = "court_tag_name"
+        case repostOfId = "repost_of_id"
         case createdAt = "created_at"
         case author = "profiles"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        authorId = try container.decode(String.self, forKey: .authorId)
+        content = try container.decode(String.self, forKey: .content)
+        likeCount = try container.decodeIfPresent(Int.self, forKey: .likeCount) ?? 0
+        commentCount = try container.decodeIfPresent(Int.self, forKey: .commentCount) ?? 0
+        repostCount = try container.decodeIfPresent(Int.self, forKey: .repostCount) ?? 0
+        courtTagId = try container.decodeIfPresent(String.self, forKey: .courtTagId)
+        courtTagName = try container.decodeIfPresent(String.self, forKey: .courtTagName)
+        repostOfId = try container.decodeIfPresent(String.self, forKey: .repostOfId)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        author = try container.decodeIfPresent(FeedAuthor.self, forKey: .author)
     }
 }
 
@@ -137,6 +158,42 @@ nonisolated struct CommentLikePayload: Encodable, Sendable {
     }
 }
 
+nonisolated struct BookmarkPayload: Encodable, Sendable {
+    let postId: String
+    let userId: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case postId = "post_id"
+        case userId = "user_id"
+    }
+}
+
+nonisolated struct RepostPayload: Encodable, Sendable {
+    let authorId: String
+    let content: String
+    let repostOfId: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case authorId = "author_id"
+        case content
+        case repostOfId = "repost_of_id"
+    }
+}
+
+nonisolated struct MentionPayload: Encodable, Sendable {
+    let commentId: String
+    let postId: String
+    let mentionedUserId: String
+    let mentioningUserId: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case commentId = "comment_id"
+        case postId = "post_id"
+        case mentionedUserId = "mentioned_user_id"
+        case mentioningUserId = "mentioning_user_id"
+    }
+}
+
 // MARK: - Helper Row Types
 
 nonisolated struct FeedLikeRow: Decodable, Sendable {
@@ -152,6 +209,16 @@ nonisolated struct CommentLikeRow: Decodable, Sendable {
 nonisolated struct FollowingIdRow: Decodable, Sendable {
     let followingId: String
     nonisolated enum CodingKeys: String, CodingKey { case followingId = "following_id" }
+}
+
+nonisolated struct BookmarkRow: Decodable, Sendable {
+    let postId: String
+    nonisolated enum CodingKeys: String, CodingKey { case postId = "post_id" }
+}
+
+nonisolated struct RepostRow: Decodable, Sendable {
+    let repostOfId: String
+    nonisolated enum CodingKeys: String, CodingKey { case repostOfId = "repost_of_id" }
 }
 
 // MARK: - Court Search

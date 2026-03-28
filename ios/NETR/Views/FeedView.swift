@@ -8,6 +8,7 @@ struct FeedView: View {
     @State private var showNotifications: Bool = false
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
+    @State private var quotePost: SupabaseFeedPost?
     @State private var suggestedPlayers: [UserSearchResult] = []
     @State private var selectedCourtResult: FeedCourtSearchResult?
     @State private var selectedCourtFull: Court?
@@ -43,8 +44,8 @@ struct FeedView: View {
                 toastView(toast)
             }
         }
-        .sheet(isPresented: $viewModel.showCompose) {
-            ComposePostView(viewModel: viewModel)
+        .sheet(isPresented: $viewModel.showCompose, onDismiss: { quotePost = nil }) {
+            ComposePostView(viewModel: viewModel, quotePost: quotePost)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
@@ -524,6 +525,19 @@ struct FeedView: View {
             },
             onComment: {
                 commentPost = post
+            },
+            onRepost: {
+                Task { await viewModel.repost(post: post) }
+            },
+            onUndoRepost: {
+                Task { await viewModel.undoRepost(post: post) }
+            },
+            onQuotePost: {
+                quotePost = post
+                viewModel.showCompose = true
+            },
+            onBookmark: {
+                Task { await viewModel.toggleBookmark(post: post) }
             },
             onDelete: {
                 Task { await viewModel.deletePost(post) }

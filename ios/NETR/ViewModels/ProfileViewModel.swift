@@ -190,8 +190,8 @@ class ProfileViewModel {
         guard let targetId = profileUserId else { return }
 
         let selectQuery = """
-            id, author_id, content, like_count, comment_count,
-            court_tag_id, court_tag_name, created_at,
+            id, author_id, content, like_count, comment_count, repost_count,
+            court_tag_id, court_tag_name, repost_of_id, created_at,
             profiles(id, full_name, username, avatar_url, netr_score)
         """
 
@@ -249,50 +249,13 @@ class ProfileViewModel {
     }
 
     func uploadAvatar(_ image: UIImage) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
-              let imageData = image.jpegData(compressionQuality: 0.8) else { return }
-
         isUploadingAvatar = true
 
-        let path = "\(userId)/avatar.jpg"
-
         do {
-            try await client.storage
-                .from("avatars")
-                .upload(
-                    path,
-                    data: imageData,
-                    options: FileOptions(
-                        cacheControl: "3600",
-                        contentType: "image/jpeg",
-                        upsert: true
-                    )
-                )
-
-            let publicURL = try client.storage
-                .from("avatars")
-                .getPublicURL(path: path)
-
-            // Append timestamp to bust AsyncImage cache
-            let cacheBustedUrl = publicURL.absoluteString + "?t=\(Int(Date().timeIntervalSince1970))"
-
-            nonisolated struct AvatarUpdate: Encodable, Sendable {
-                let avatarUrl: String
-                nonisolated enum CodingKeys: String, CodingKey {
-                    case avatarUrl = "avatar_url"
-                }
-            }
-
-            try await client
-                .from("profiles")
-                .update(AvatarUpdate(avatarUrl: cacheBustedUrl))
-                .eq("id", value: userId)
-                .execute()
-
+            try await SupabaseManager.shared.uploadAvatar(image)
             avatarImage = image
             isUploadingAvatar = false
-
-            await SupabaseManager.shared.loadProfile(userId: userId)
+            // Reload profile to sync all fields
             await loadProfile()
         } catch {
             isUploadingAvatar = false
