@@ -5,12 +5,18 @@ struct PostCardView: View {
     var isOwnPost: Bool = false
     let onLike: () -> Void
     let onComment: () -> Void
+    var onRepost: (() -> Void)? = nil
+    var onUndoRepost: (() -> Void)? = nil
+    var onQuotePost: (() -> Void)? = nil
+    var onBookmark: (() -> Void)? = nil
     let onDelete: () -> Void
     let onBlock: () -> Void
     var onProfileTap: ((String) -> Void)? = nil
     var onCourtTap: ((String, String) -> Void)? = nil
 
     @State private var likeScale: CGFloat = 1.0
+    @State private var bookmarkScale: CGFloat = 1.0
+    @State private var showRepostSheet: Bool = false
 
     private var author: FeedAuthor? { post.author }
 
@@ -32,9 +38,18 @@ struct PostCardView: View {
                 }
             }
         }
+        .confirmationDialog("Repost", isPresented: $showRepostSheet, titleVisibility: .visible) {
+            if post.isReposted {
+                Button("Undo Repost", role: .destructive) { onUndoRepost?() }
+            } else {
+                Button("Repost") { onRepost?() }
+                Button("Quote Post") { onQuotePost?() }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
     }
 
-    // MARK: - Post Content (original post)
+    // MARK: - Post Content
 
     private var postContent: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -122,7 +137,7 @@ struct PostCardView: View {
         }
     }
 
-    // MARK: - Content Text (with @mention styling)
+    // MARK: - Content Text (with @mention styling in lime green)
 
     private func contentText(_ text: String) -> some View {
         Text(styledContent(text))
@@ -141,7 +156,7 @@ struct PostCardView: View {
             for match in regex.matches(in: text, range: range) {
                 if let swiftRange = Range(match.range, in: text),
                    let attrRange = Range(swiftRange, in: result) {
-                    result[attrRange].foregroundColor = UIColor(NETRTheme.blue)
+                    result[attrRange].foregroundColor = UIColor(NETRTheme.neonGreen)
                 }
             }
         }
@@ -188,7 +203,7 @@ struct PostCardView: View {
                 onLike()
             } label: {
                 HStack(spacing: 4) {
-                    LucideIcon("heart", size: 12)
+                    LucideIcon(post.isLiked ? "heart" : "heart", size: 12)
                     if post.likeCount > 0 {
                         Text("\(post.likeCount)")
                             .font(.caption2)
@@ -196,7 +211,7 @@ struct PostCardView: View {
                 }
                 .foregroundStyle(post.isLiked ? NETRTheme.neonGreen : NETRTheme.subtext)
                 .scaleEffect(likeScale)
-                .frame(minWidth: 60, alignment: .leading)
+                .frame(minWidth: 50, alignment: .leading)
             }
             .buttonStyle(.plain)
             .sensoryFeedback(.selection, trigger: post.isLiked)
@@ -208,6 +223,41 @@ struct PostCardView: View {
                 color: NETRTheme.subtext,
                 action: onComment
             )
+
+            // Repost
+            Button {
+                showRepostSheet = true
+            } label: {
+                HStack(spacing: 4) {
+                    LucideIcon("repeat-2", size: 12)
+                    if post.repostCount > 0 {
+                        Text("\(post.repostCount)")
+                            .font(.caption2)
+                    }
+                }
+                .foregroundStyle(post.isReposted ? NETRTheme.neonGreen : NETRTheme.subtext)
+                .frame(minWidth: 50, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            // Bookmark
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    bookmarkScale = 1.3
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        bookmarkScale = 1.0
+                    }
+                }
+                onBookmark?()
+            } label: {
+                LucideIcon(post.isBookmarked ? "bookmark" : "bookmark", size: 12)
+                    .foregroundStyle(post.isBookmarked ? NETRTheme.neonGreen : NETRTheme.subtext)
+                    .scaleEffect(bookmarkScale)
+            }
+            .buttonStyle(.plain)
+            .sensoryFeedback(.selection, trigger: post.isBookmarked)
 
             Spacer()
         }
@@ -244,7 +294,7 @@ struct FeedActionButton: View {
                 }
             }
             .foregroundStyle(color)
-            .frame(minWidth: 60, alignment: .leading)
+            .frame(minWidth: 50, alignment: .leading)
         }
         .buttonStyle(.plain)
     }

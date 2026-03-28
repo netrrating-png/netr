@@ -19,6 +19,15 @@ class SupabaseManager {
 
     var isSignedIn: Bool { session != nil }
 
+    /// Single source of truth for the current user's avatar URL.
+    /// All views displaying the current user's avatar should observe this property.
+    var currentUserAvatarUrl: String? {
+        get { currentProfile?.avatarUrl }
+        set {
+            currentProfile?.avatarUrl = newValue
+        }
+    }
+
     init() {
         let urlString = Config.SUPABASE_URL.isEmpty ? "https://placeholder.supabase.co" : Config.SUPABASE_URL
         guard let url = URL(string: urlString) else {
@@ -219,6 +228,48 @@ class SupabaseManager {
         }
 
         await loadProfile(userId: userId)
+    }
+
+    /// Upload avatar to Supabase Storage bucket and update profile + shared state.
+    func uploadAvatar(_ image: UIImage) async throws {
+        guard let userId = session?.user.id.uuidString,
+              let imageData = image.jpegData(compressionQuality: 0.8) else { return }
+
+        let path = "\(userId)/avatar.jpg"
+
+        try await client.storage
+            .from("avatars")
+            .upload(
+                path,
+                data: imageData,
+                options: FileOptions(
+                    cacheControl: "3600",
+                    contentType: "image/jpeg",
+                    upsert: true
+                )
+            )
+
+        let publicURL = try client.storage
+            .from("avatars")
+            .getPublicURL(path: path)
+
+        let cacheBustedUrl = publicURL.absoluteString + "?t=\(Int(Date().timeIntervalSince1970))"
+
+        nonisolated struct AvatarUpdate: Encodable, Sendable {
+            let avatarUrl: String
+            nonisolated enum CodingKeys: String, CodingKey {
+                case avatarUrl = "avatar_url"
+            }
+        }
+
+        try await client
+            .from("profiles")
+            .update(AvatarUpdate(avatarUrl: cacheBustedUrl))
+            .eq("id", value: userId)
+            .execute()
+
+        // Update the single source of truth immediately
+        currentUserAvatarUrl = cacheBustedUrl
     }
 
     func flagProVerificationPending() async throws {

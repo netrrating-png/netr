@@ -3,10 +3,9 @@ import Supabase
 
 struct ComposePostView: View {
     @Bindable var viewModel: FeedViewModel
+    var quotePost: SupabaseFeedPost? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var postText: String = ""
-    @State private var selectedCourt: FeedCourtSearchResult? = nil
-    @State private var showCourtSearch: Bool = false
 
     private let maxChars = 280
 
@@ -30,11 +29,10 @@ struct ComposePostView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 12)
 
-                        if let court = selectedCourt {
-                            selectedCourtChip(court)
+                        if let quote = quotePost {
+                            quotePostEmbed(quote)
                                 .padding(.horizontal, 16)
                         }
-
                     }
                 }
                 .scrollIndicators(.hidden)
@@ -59,11 +57,7 @@ struct ComposePostView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
                         Task {
-                            await viewModel.createPost(
-                                content: postText,
-                                courtId: selectedCourt.map { $0.id },
-                                courtName: selectedCourt?.name
-                            )
+                            await viewModel.createPost(content: postText)
                         }
                     } label: {
                         Text("POST")
@@ -77,19 +71,12 @@ struct ComposePostView: View {
                     .disabled(!canPost)
                 }
             }
-            .sheet(isPresented: $showCourtSearch) {
-                CourtSearchSheet(viewModel: viewModel, selectedCourt: $selectedCourt)
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
-                    .presentationBackground(NETRTheme.surface)
-            }
         }
     }
 
     private var authorAvatar: some View {
         Group {
-            if let profile = SupabaseManager.shared.currentProfile,
-               let avatarUrl = profile.avatarUrl,
+            if let avatarUrl = SupabaseManager.shared.currentUserAvatarUrl,
                let url = URL(string: avatarUrl) {
                 NETRTheme.card
                     .frame(width: 40, height: 40)
@@ -152,6 +139,29 @@ struct ComposePostView: View {
                     viewModel.searchMentions(text: newValue, cursorPosition: newValue.count)
                 }
         }
+    }
+
+    // MARK: - Quote Post Embed
+
+    private func quotePostEmbed(_ post: SupabaseFeedPost) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text(post.author?.name ?? "Player")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(NETRTheme.text)
+                Text(post.author?.handle ?? "")
+                    .font(.caption2)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            Text(post.content)
+                .font(.caption)
+                .foregroundStyle(NETRTheme.subtext)
+                .lineLimit(3)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
     }
 
     // MARK: - Mention Suggestions
@@ -240,48 +250,10 @@ struct ComposePostView: View {
         viewModel.dismissMentionSearch()
     }
 
-    // MARK: - Court Chip
-
-    private func selectedCourtChip(_ court: FeedCourtSearchResult) -> some View {
-        HStack(spacing: 6) {
-            LucideIcon("map-pin", size: 12)
-                .foregroundStyle(NETRTheme.blue)
-            Text(court.name)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(NETRTheme.text)
-            if !court.locationLabel.isEmpty {
-                Text("· \(court.locationLabel)")
-                    .font(.caption)
-                    .foregroundStyle(NETRTheme.subtext)
-            }
-            Spacer()
-            Button {
-                selectedCourt = nil
-            } label: {
-                LucideIcon("x-circle", size: 12)
-                    .foregroundStyle(NETRTheme.subtext)
-            }
-        }
-        .padding(10)
-        .background(NETRTheme.blue.opacity(0.06), in: .rect(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.blue.opacity(0.15), lineWidth: 1))
-    }
-
     // MARK: - Bottom Bar
 
     private var bottomBar: some View {
         HStack(spacing: 16) {
-            Button {
-                showCourtSearch = true
-            } label: {
-                HStack(spacing: 4) {
-                    LucideIcon("map-pin", size: 14)
-                    Text("Court")
-                        .font(.caption.weight(.semibold))
-                }
-                .foregroundStyle(NETRTheme.blue)
-            }
-
             Spacer()
 
             Text("\(charCount)/\(maxChars)")
@@ -301,88 +273,5 @@ struct ComposePostView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(NETRTheme.surface)
-    }
-}
-
-// MARK: - Court Search Sheet
-
-struct CourtSearchSheet: View {
-    @Bindable var viewModel: FeedViewModel
-    @Binding var selectedCourt: FeedCourtSearchResult?
-    @Environment(\.dismiss) private var dismiss
-    @State private var searchText: String = ""
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                HStack(spacing: 10) {
-                    LucideIcon("search")
-                        .foregroundStyle(NETRTheme.subtext)
-                    TextField("Search courts...", text: $searchText)
-                        .foregroundStyle(NETRTheme.text)
-                        .autocorrectionDisabled()
-                        .submitLabel(.done)
-                }
-                .padding(12)
-                .background(NETRTheme.card, in: .rect(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .onChange(of: searchText) { _, newValue in
-                    Task { await viewModel.searchCourts(query: newValue) }
-                }
-
-                if viewModel.courtResults.isEmpty && searchText.count >= 1 {
-                    VStack(spacing: 8) {
-                        LucideIcon("map-pin-off", size: 22)
-                            .foregroundStyle(NETRTheme.subtext)
-                        Text("No courts found")
-                            .font(.subheadline)
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 4) {
-                            ForEach(viewModel.courtResults) { court in
-                                Button {
-                                    selectedCourt = court
-                                    dismiss()
-                                } label: {
-                                    HStack(spacing: 10) {
-                                        LucideIcon("map-pin")
-                                            .foregroundStyle(NETRTheme.blue)
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(court.name)
-                                                .font(.subheadline.weight(.semibold))
-                                                .foregroundStyle(NETRTheme.text)
-                                            if !court.locationLabel.isEmpty {
-                                                Text(court.locationLabel)
-                                                    .font(.caption)
-                                                    .foregroundStyle(NETRTheme.subtext)
-                                            }
-                                        }
-                                        Spacer()
-                                    }
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                }
-                            }
-                        }
-                        .padding(.top, 8)
-                    }
-                    .scrollIndicators(.hidden)
-                    .dismissKeyboardOnScroll()
-                }
-            }
-            .navigationTitle("Tag a Court")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-            }
-        }
     }
 }

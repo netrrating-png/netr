@@ -13,6 +13,12 @@ struct CommentsView: View {
     @State private var realtimeChannel: RealtimeChannelV2?
     @State private var realtimeTask: Task<Void, Never>?
 
+    // Mention autocomplete
+    @State private var mentionResults: [UserSearchResult] = []
+    @State private var showMentionResults: Bool = false
+    @State private var activeMentionQuery: String = ""
+    @State private var mentionSearchTask: Task<Void, Never>?
+
     @Environment(\.dismiss) private var dismiss
 
     private let client = SupabaseManager.shared.client
@@ -45,6 +51,10 @@ struct CommentsView: View {
                 .scrollIndicators(.hidden)
                 .dismissKeyboardOnScroll()
 
+                if showMentionResults && !mentionResults.isEmpty {
+                    mentionSuggestionsView
+                }
+
                 commentInput
             }
             .background(Color.black)
@@ -66,6 +76,7 @@ struct CommentsView: View {
             }
             .onDisappear {
                 realtimeTask?.cancel()
+                mentionSearchTask?.cancel()
                 Task {
                     if let channel = realtimeChannel {
                         await client.realtimeV2.removeChannel(channel)
@@ -121,13 +132,10 @@ struct CommentsView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Text("🏀")
-                .font(.system(size: 40))
-            Text("No comments yet")
+            LucideIcon("message-circle", size: 40)
+                .foregroundStyle(NETRTheme.muted)
+            Text("No comments yet. Be the first.")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(NETRTheme.text)
-            Text("Be the first to reply.")
-                .font(.caption)
                 .foregroundStyle(NETRTheme.subtext)
         }
         .frame(maxWidth: .infinity)
@@ -144,11 +152,11 @@ struct CommentsView: View {
                     comment: comment,
                     isLiked: likedCommentIds.contains(comment.id),
                     onLike: { Task { await toggleCommentLike(comment) } },
-                    onReply: { startReply(to: comment) }
+                    onReply: { startReply(to: comment) },
+                    onProfileTap: nil
                 )
                 Divider().background(NETRTheme.border)
 
-                // Replies (1 level deep)
                 let replies = comments.filter { $0.parentCommentId == comment.id }
                 ForEach(replies) { reply in
                     HStack(spacing: 0) {
@@ -161,13 +169,91 @@ struct CommentsView: View {
                             isLiked: likedCommentIds.contains(reply.id),
                             onLike: { Task { await toggleCommentLike(reply) } },
                             onReply: { startReply(to: reply) },
-                            isReply: true
+                            isReply: true,
+                            onProfileTap: nil
                         )
                     }
                     Divider().background(NETRTheme.border)
                 }
             }
         }
+    }
+
+    // MARK: - Mention Suggestions
+
+    private var mentionSuggestionsView: some View {
+        VStack(spacing: 0) {
+            ForEach(mentionResults) { user in
+                Button {
+                    insertMention(user: user)
+                } label: {
+                    HStack(spacing: 10) {
+                        if let avatarUrl = user.avatarUrl, let url = URL(string: avatarUrl) {
+                            AsyncImage(url: url) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 28, height: 28)
+                                        .clipShape(Circle())
+                                } else {
+                                    mentionInitials(name: user.displayName)
+                                }
+                            }
+                        } else {
+                            mentionInitials(name: user.displayName)
+                        }
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(user.displayName ?? "Player")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(NETRTheme.text)
+                                .lineLimit(1)
+                            if let username = user.username {
+                                Text("@\(username)")
+                                    .font(.caption2)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                    .lineLimit(1)
+                            }
+                        }
+
+                        Spacer()
+
+                        if let score = user.netrScore {
+                            Text(String(format: "%.1f", score))
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundStyle(NETRRating.color(for: score))
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 1)
+                                .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 4))
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+
+                if user.id != mentionResults.last?.id {
+                    Divider().background(NETRTheme.border)
+                }
+            }
+        }
+        .background(NETRTheme.surface)
+    }
+
+    private func mentionInitials(name: String?) -> some View {
+        let initials: String = {
+            guard let name = name else { return "?" }
+            let parts = name.split(separator: " ")
+            if parts.count >= 2 {
+                return "\(parts[0].prefix(1))\(parts[1].prefix(1))".uppercased()
+            }
+            return String(name.prefix(2)).uppercased()
+        }()
+        return Text(initials)
+            .font(.system(size: 9, weight: .bold))
+            .foregroundStyle(NETRTheme.subtext)
+            .frame(width: 28, height: 28)
+            .background(NETRTheme.card, in: Circle())
     }
 
     // MARK: - Comment Input
@@ -178,7 +264,7 @@ struct CommentsView: View {
                 HStack(spacing: 6) {
                     Text("Replying to \(replyTo.author?.handle ?? "comment")")
                         .font(.caption)
-                        .foregroundStyle(NETRTheme.blue)
+                        .foregroundStyle(NETRTheme.neonGreen)
                     Spacer()
                     Button {
                         replyingTo = nil
@@ -201,6 +287,9 @@ struct CommentsView: View {
                     .foregroundStyle(NETRTheme.text)
                     .submitLabel(.send)
                     .onSubmit { Task { await submitComment() } }
+                    .onChange(of: commentText) { _, newValue in
+                        searchMentions(text: newValue)
+                    }
                     .padding(10)
                     .background(NETRTheme.card, in: .rect(cornerRadius: 20))
                     .overlay(RoundedRectangle(cornerRadius: 20).stroke(NETRTheme.border, lineWidth: 1))
@@ -233,6 +322,67 @@ struct CommentsView: View {
 
     private var canSubmit: Bool {
         !commentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    // MARK: - Mention Search
+
+    private func searchMentions(text: String) {
+        mentionSearchTask?.cancel()
+
+        let cursorPosition = text.count
+        let prefixText = String(text.prefix(cursorPosition))
+        guard let atIndex = prefixText.lastIndex(of: "@") else {
+            mentionResults = []
+            showMentionResults = false
+            activeMentionQuery = ""
+            return
+        }
+
+        let queryStart = prefixText.index(after: atIndex)
+        let query = String(prefixText[queryStart...])
+
+        if query.contains(" ") || query.isEmpty {
+            mentionResults = []
+            showMentionResults = false
+            activeMentionQuery = ""
+            return
+        }
+
+        activeMentionQuery = query
+        showMentionResults = true
+
+        mentionSearchTask = Task {
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+
+            do {
+                let results: [UserSearchResult] = try await client
+                    .from("profiles")
+                    .select("id, username, full_name, avatar_url, netr_score")
+                    .ilike("username", pattern: "\(query)%")
+                    .limit(5)
+                    .execute()
+                    .value
+
+                guard !Task.isCancelled else { return }
+                mentionResults = results
+            } catch {
+                guard !Task.isCancelled else { return }
+                mentionResults = []
+            }
+        }
+    }
+
+    private func insertMention(user: UserSearchResult) {
+        guard let username = user.username else { return }
+        let query = activeMentionQuery
+        if let range = commentText.range(of: "@\(query)", options: .backwards) {
+            commentText.replaceSubrange(range, with: "@\(username) ")
+        }
+        mentionResults = []
+        showMentionResults = false
+        activeMentionQuery = ""
+        mentionSearchTask?.cancel()
     }
 
     // MARK: - Helpers
@@ -280,7 +430,7 @@ struct CommentsView: View {
             isLoading = false
         } catch {
             isLoading = false
-            print("Load comments error: \(error)")
+            print("[NETR] Load comments error: \(error)")
         }
     }
 
@@ -318,13 +468,52 @@ struct CommentsView: View {
                 .value
 
             comments.append(created)
+
+            // Parse @mentions and insert into mentions table
+            await insertMentions(commentId: created.id, text: text, userId: userId)
+
             commentText = ""
             replyingTo = nil
             isSubmitting = false
             onCommentAdded?()
         } catch {
             isSubmitting = false
-            print("Submit comment error: \(error)")
+            print("[NETR] Submit comment error: \(error)")
+        }
+    }
+
+    private func insertMentions(commentId: String, text: String, userId: String) async {
+        let mentionedUsernames = extractMentions(from: text)
+        guard !mentionedUsernames.isEmpty else { return }
+
+        for username in mentionedUsernames {
+            do {
+                nonisolated struct UsernameRow: Decodable, Sendable {
+                    let id: String
+                }
+                let rows: [UsernameRow] = try await client
+                    .from("profiles")
+                    .select("id")
+                    .eq("username", value: username)
+                    .limit(1)
+                    .execute()
+                    .value
+
+                guard let mentionedUser = rows.first else { continue }
+
+                let payload = MentionPayload(
+                    commentId: commentId,
+                    postId: post.id,
+                    mentionedUserId: mentionedUser.id,
+                    mentioningUserId: userId
+                )
+                try await client
+                    .from("mentions")
+                    .insert(payload)
+                    .execute()
+            } catch {
+                print("[NETR] Insert mention error for @\(username): \(error)")
+            }
         }
     }
 
@@ -356,12 +545,11 @@ struct CommentsView: View {
                     .execute()
             }
         } catch {
-            // Revert
             if let j = comments.firstIndex(where: { $0.id == comment.id }) {
                 comments[j].likeCount = comment.likeCount
             }
             if wasLiked { likedCommentIds.insert(comment.id) } else { likedCommentIds.remove(comment.id) }
-            print("Comment like error: \(error)")
+            print("[NETR] Comment like error: \(error)")
         }
     }
 
@@ -389,7 +577,6 @@ struct CommentsView: View {
 
         realtimeTask = Task {
             for await change in changes {
-                // Only add if we don't already have it (from our own submit)
                 if let newId = change.record["id"]?.stringValue,
                    !comments.contains(where: { $0.id == newId }) {
                     await loadComments()
@@ -407,6 +594,7 @@ struct CommentRow: View {
     let onLike: () -> Void
     let onReply: () -> Void
     var isReply: Bool = false
+    var onProfileTap: ((String) -> Void)? = nil
 
     @State private var likeScale: CGFloat = 1.0
 
@@ -440,10 +628,7 @@ struct CommentRow: View {
                 }
 
                 if !comment.content.isEmpty {
-                    Text(comment.content)
-                        .font(.subheadline)
-                        .foregroundStyle(NETRTheme.text)
-                        .fixedSize(horizontal: false, vertical: true)
+                    styledCommentContent(comment.content)
                 }
 
                 HStack(spacing: 16) {
@@ -487,6 +672,31 @@ struct CommentRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    /// Renders comment content with @mentions in lime green
+    private func styledCommentContent(_ text: String) -> some View {
+        Text(styledText(text))
+            .font(.subheadline)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func styledText(_ text: String) -> AttributedString {
+        var result = AttributedString(text)
+        result.foregroundColor = UIColor(NETRTheme.text)
+
+        let mentionPattern = #"@\w+"#
+        if let regex = try? NSRegularExpression(pattern: mentionPattern) {
+            let range = NSRange(text.startIndex..., in: text)
+            for match in regex.matches(in: text, range: range) {
+                if let swiftRange = Range(match.range, in: text),
+                   let attrRange = Range(swiftRange, in: result) {
+                    result[attrRange].foregroundColor = UIColor(NETRTheme.neonGreen)
+                }
+            }
+        }
+
+        return result
     }
 
     private var commentAvatar: some View {
