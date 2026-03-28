@@ -8,6 +8,8 @@ nonisolated struct DirectMessage: Identifiable, Sendable, Equatable {
     let recipientId: String
     let content: String
     let read: Bool
+    let courtTagId: String?
+    let courtTagName: String?
     let createdAt: String
 
     static func == (lhs: DirectMessage, rhs: DirectMessage) -> Bool {
@@ -22,7 +24,21 @@ extension DirectMessage: Decodable {
         case recipientId = "recipient_id"
         case content
         case read
+        case courtTagId = "court_tag_id"
+        case courtTagName = "court_tag_name"
         case createdAt = "created_at"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        senderId = try container.decode(String.self, forKey: .senderId)
+        recipientId = try container.decode(String.self, forKey: .recipientId)
+        content = try container.decode(String.self, forKey: .content)
+        read = try container.decodeIfPresent(Bool.self, forKey: .read) ?? false
+        courtTagId = try container.decodeIfPresent(String.self, forKey: .courtTagId)
+        courtTagName = try container.decodeIfPresent(String.self, forKey: .courtTagName)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
     }
 }
 
@@ -32,11 +48,15 @@ nonisolated struct SendDirectMessagePayload: Encodable, Sendable {
     let senderId: String
     let recipientId: String
     let content: String
+    let courtTagId: String?
+    let courtTagName: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case senderId = "sender_id"
         case recipientId = "recipient_id"
         case content
+        case courtTagId = "court_tag_id"
+        case courtTagName = "court_tag_name"
     }
 }
 

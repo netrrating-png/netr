@@ -23,6 +23,7 @@ struct EditProfileView: View {
     @State private var bannerImage: UIImage?
     @State private var avatarPhotoItem: PhotosPickerItem?
     @State private var avatarImage: UIImage?
+    @StateObject private var avatarPhotoPicker = PhotoPickerManager()
 
     @State private var isUploadingBanner: Bool = false
     @State private var isSaving: Bool = false
@@ -170,7 +171,9 @@ struct EditProfileView: View {
                         .overlay(Circle().stroke(NETRTheme.background, lineWidth: 4))
                 }
 
-                PhotosPicker(selection: $avatarPhotoItem, matching: .images) {
+                Button {
+                    avatarPhotoPicker.showActionSheet = true
+                } label: {
                     LucideIcon("camera", size: 10)
                         .foregroundStyle(NETRTheme.background)
                         .frame(width: 24, height: 24)
@@ -179,6 +182,10 @@ struct EditProfileView: View {
                 }
             }
             .offset(y: -30)
+            .photoPickerSheet(manager: avatarPhotoPicker)
+            .onChange(of: avatarPhotoPicker.selectedImage) { _, newImage in
+                if let newImage { avatarImage = newImage }
+            }
 
             Spacer()
         }

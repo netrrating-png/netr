@@ -34,7 +34,7 @@ class DMViewModel {
             // Fetch all messages where user is sender or recipient
             let sent: [DirectMessage] = try await client
                 .from("direct_messages")
-                .select("id, sender_id, recipient_id, content, read, created_at")
+                .select("id, sender_id, recipient_id, content, read, court_tag_id, court_tag_name, created_at")
                 .eq("sender_id", value: userId)
                 .order("created_at", ascending: false)
                 .execute()
@@ -42,7 +42,7 @@ class DMViewModel {
 
             let received: [DirectMessage] = try await client
                 .from("direct_messages")
-                .select("id, sender_id, recipient_id, content, read, created_at")
+                .select("id, sender_id, recipient_id, content, read, court_tag_id, court_tag_name, created_at")
                 .eq("recipient_id", value: userId)
                 .order("created_at", ascending: false)
                 .execute()
@@ -229,8 +229,13 @@ class ChatViewModel {
         SupabaseManager.shared.session?.user.id.uuidString.lowercased()
     }
 
+    // Court tag for next message
+    var courtTag: FeedCourtSearchResult? = nil
+
     var canSend: Bool {
-        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasText = !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasCourt = courtTag != nil
+        return (hasText || hasCourt)
             && messageText.count <= maxChars
             && !isSending
     }
@@ -253,7 +258,7 @@ class ChatViewModel {
             // Messages sent by me to them
             let sent: [DirectMessage] = try await client
                 .from("direct_messages")
-                .select("id, sender_id, recipient_id, content, read, created_at")
+                .select("id, sender_id, recipient_id, content, read, court_tag_id, court_tag_name, created_at")
                 .eq("sender_id", value: userId)
                 .eq("recipient_id", value: otherUserId)
                 .order("created_at", ascending: true)
@@ -263,7 +268,7 @@ class ChatViewModel {
             // Messages sent by them to me
             let received: [DirectMessage] = try await client
                 .from("direct_messages")
-                .select("id, sender_id, recipient_id, content, read, created_at")
+                .select("id, sender_id, recipient_id, content, read, court_tag_id, court_tag_name, created_at")
                 .eq("sender_id", value: otherUserId)
                 .eq("recipient_id", value: userId)
                 .order("created_at", ascending: true)
@@ -283,23 +288,29 @@ class ChatViewModel {
     func sendMessage() async {
         guard let userId = currentUserId else { return }
         let text = messageText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, text.count <= maxChars else { return }
+        let hasCourt = courtTag != nil
+        guard !text.isEmpty || hasCourt else { return }
+        guard text.count <= maxChars else { return }
 
         isSending = true
         let sentText = messageText
+        let sentCourt = courtTag
         messageText = ""
+        courtTag = nil
 
         do {
             let payload = SendDirectMessagePayload(
                 senderId: userId,
                 recipientId: otherUserId,
-                content: text
+                content: text,
+                courtTagId: sentCourt?.id,
+                courtTagName: sentCourt?.name
             )
 
             let created: DirectMessage = try await client
                 .from("direct_messages")
                 .insert(payload)
-                .select("id, sender_id, recipient_id, content, read, created_at")
+                .select("id, sender_id, recipient_id, content, read, court_tag_id, court_tag_name, created_at")
                 .single()
                 .execute()
                 .value
@@ -309,8 +320,9 @@ class ChatViewModel {
         } catch {
             isSending = false
             messageText = sentText
+            courtTag = sentCourt
             self.error = "Failed to send message"
-            print("Send message error: \(error)")
+            print("[NETR] Send message error: \(error)")
         }
     }
 

@@ -710,7 +710,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera so you can take a profile photo directly in the app.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "NETR needs access to your photo library to set your profile picture.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "NETR uses your contacts to help you invite friends to the app.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
@@ -749,7 +750,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera to scan QR codes to join games.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "NETR uses your camera so you can take a profile photo directly in the app.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "NETR needs access to your photo library to set your profile picture.";
 				INFOPLIST_KEY_NSContactsUsageDescription = "NETR uses your contacts to help you invite friends to the app.";
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "NETR uses Face ID to keep your account secure.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "NETR uses your location to find courts near you and calculate distances.";
