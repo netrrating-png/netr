@@ -16,9 +16,6 @@ class FeedViewModel {
 
     var showCompose: Bool = false
 
-    // Court search
-    var courtResults: [FeedCourtSearchResult] = []
-
     // Follow state
     var followingIds: Set<String> = []
     var followingLoaded: Bool = false
@@ -29,11 +26,8 @@ class FeedViewModel {
     var repostedPostIds: Set<String> = []
 
     // Search
-    enum SearchMode: String, CaseIterable { case players = "Players"; case courts = "Courts" }
-    var searchMode: SearchMode = .players
     var userSearchText: String = ""
     var userSearchResults: [UserSearchResult] = []
-    var courtSearchResults: [FeedCourtSearchResult] = []
     var isSearching: Bool = false
     var showSearchResults: Bool = false
 
@@ -158,13 +152,11 @@ class FeedViewModel {
                 let twentyFourHoursAgo = ISO8601DateFormatter().string(
                     from: Date().addingTimeInterval(-86400)
                 )
-                let filterQuery = client
+                let offset = loadMore ? posts.count : 0
+                fetched = try await client
                     .from("feed_posts")
                     .select(selectQuery)
                     .gte("created_at", value: twentyFourHoursAgo)
-
-                let offset = loadMore ? posts.count : 0
-                fetched = try await filterQuery
                     .order("created_at", ascending: false)
                     .range(from: offset, to: offset + pageSize - 1)
                     .execute().value
@@ -200,14 +192,13 @@ class FeedViewModel {
         }
     }
 
-    // MARK: - Search (Players & Courts)
+    // MARK: - Search (Players)
 
     func performSearch(query: String) {
         searchTask?.cancel()
 
         guard query.count >= 1 else {
             userSearchResults = []
-            courtSearchResults = []
             showSearchResults = false
             isSearching = false
             return
@@ -220,64 +211,33 @@ class FeedViewModel {
             try? await Task.sleep(for: .milliseconds(250))
             guard !Task.isCancelled else { return }
 
-            switch searchMode {
-            case .players:
-                do {
-                    let results: [UserSearchResult] = try await client
-                        .from("profiles")
-                        .select("id, username, full_name, avatar_url, netr_score")
-                        .or("username.ilike.\(query)%,full_name.ilike.%\(query)%")
-                        .limit(8)
-                        .execute()
-                        .value
+            do {
+                let results: [UserSearchResult] = try await client
+                    .from("profiles")
+                    .select("id, username, full_name, avatar_url, netr_score")
+                    .or("username.ilike.\(query)%,full_name.ilike.%\(query)%")
+                    .limit(8)
+                    .execute()
+                    .value
 
-                    guard !Task.isCancelled else { return }
-                    userSearchResults = results
-                    isSearching = false
-                } catch {
-                    guard !Task.isCancelled else { return }
-                    isSearching = false
-                    print("[NETR] User search error: \(error)")
-                }
-
-            case .courts:
-                await searchCourtsForFeed(query: query)
+                guard !Task.isCancelled else { return }
+                userSearchResults = results
+                isSearching = false
+            } catch {
+                guard !Task.isCancelled else { return }
+                isSearching = false
+                print("[NETR] User search error: \(error)")
             }
         }
     }
 
-    private func searchCourtsForFeed(query: String) async {
-        do {
-            let results: [FeedCourtSearchResult] = try await client
-                .from("courts")
-                .select("id, name, neighborhood, city")
-                .or("name.ilike.%\(query)%,neighborhood.ilike.%\(query)%,city.ilike.%\(query)%")
-                .limit(10)
-                .execute()
-                .value
-
-            guard !Task.isCancelled else { return }
-            courtSearchResults = results
-            isSearching = false
-        } catch {
-            guard !Task.isCancelled else { return }
-            isSearching = false
-            print("[NETR] Court search error: \(error)")
-        }
-    }
-
-    // Keep for backward compat with ComposePostView
     func searchUsers(query: String) {
-        let saved = searchMode
-        searchMode = .players
         performSearch(query: query)
-        searchMode = saved
     }
 
     func dismissSearch() {
         userSearchText = ""
         userSearchResults = []
-        courtSearchResults = []
         showSearchResults = false
         isSearching = false
         searchTask?.cancel()
@@ -546,29 +506,6 @@ class FeedViewModel {
 
     func blockUser(userId: String) async {
         posts.removeAll { $0.authorId == userId }
-    }
-
-    // MARK: - Court Search
-
-    func searchCourts(query: String) async {
-        guard query.count >= 1 else {
-            courtResults = []
-            return
-        }
-
-        do {
-            let results: [FeedCourtSearchResult] = try await client
-                .from("courts")
-                .select("id, name, neighborhood, city")
-                .or("name.ilike.%\(query)%,neighborhood.ilike.%\(query)%,city.ilike.%\(query)%")
-                .limit(10)
-                .execute()
-                .value
-
-            courtResults = results
-        } catch {
-            print("[NETR] Court search error: \(error)")
-        }
     }
 
     // MARK: - Realtime

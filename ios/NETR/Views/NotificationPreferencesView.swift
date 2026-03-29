@@ -9,7 +9,7 @@ struct NotificationPreferencesView: View {
     @State private var locationDenied: Bool = false
     @Environment(\.dismiss) private var dismiss
 
-    private let limeGreen = Color(red: 0.784, green: 1.0, blue: 0.0)
+    private let limeGreen = NETRTheme.neonGreen
     private let radiusOptions = [1, 2, 5, 10, 25]
 
     var body: some View {

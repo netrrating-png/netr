@@ -38,18 +38,15 @@ struct OnboardingView: View {
                         .padding(.top, 8)
                 }
 
-                TabView(selection: $currentStep) {
-                    WelcomeView {
-                        withAnimation { currentStep = 1 }
-                    }.tag(0)
-                    locationStep.tag(1)
-                    accountStep.tag(2)
-                    ratingExplainedStep.tag(3)
-                    disclaimerStep.tag(4)
-                    selfAssessmentStep.tag(5)
-                    ratingRevealStep.tag(6)
+                ZStack {
+                    onboardingStep(for: currentStep)
+                        .id(currentStep)
+                        .transition(.asymmetric(
+                            insertion: .move(edge: .trailing),
+                            removal: .move(edge: .leading)
+                        ))
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(.snappy(duration: 0.3), value: currentStep)
             }
         }
@@ -528,6 +525,26 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func onboardingStep(for step: Int) -> some View {
+        switch step {
+        case 0:
+            WelcomeView { withAnimation { currentStep = 1 } }
+        case 1:
+            locationStep
+        case 2:
+            accountStep
+        case 3:
+            ratingExplainedStep
+        case 4:
+            disclaimerStep
+        case 5:
+            selfAssessmentStep
+        default:
+            ratingRevealStep
         }
     }
 

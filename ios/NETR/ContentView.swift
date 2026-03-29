@@ -13,6 +13,7 @@ struct ContentView: View {
     @State private var showSelfAssessment: Bool = false
     @State private var dismissedAssessmentBanner: Bool = false
     @State private var showSettings: Bool = false
+    @State private var showPhotoBanner: Bool = false
     @AppStorage("photoPromptSkipCount") private var photoPromptSkipCount: Int = 0
     @Namespace private var tabBarNamespace
 
@@ -143,7 +144,7 @@ struct ContentView: View {
                 DMInboxView(viewModel: dmViewModel)
             case .profile:
                 ZStack(alignment: .topTrailing) {
-                    ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment)
+                    ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment, showPhotoBanner: $showPhotoBanner)
                     Button {
                         showSettings = true
                     } label: {
@@ -302,6 +303,10 @@ struct ContentView: View {
                         impact.impactOccurred()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             selectedTab = tab
+                        }
+                    } else if tab == .profile && photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            showPhotoBanner = true
                         }
                     }
                 } label: {

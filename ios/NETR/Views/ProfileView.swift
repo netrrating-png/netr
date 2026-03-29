@@ -8,8 +8,10 @@ struct ProfileView: View {
     var profileUserId: String? = nil
     var courtsViewModel: CourtsViewModel? = nil
     @Binding var showSelfAssessment: Bool
+    @Binding var showPhotoBanner: Bool
 
     @State private var viewModel = ProfileViewModel()
+    @AppStorage("photoPromptSkipCount") private var photoPromptSkipCount: Int = 0
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var showScoreInfo: Bool = false
     @State private var ratingAnimated: Bool = false
@@ -27,10 +29,11 @@ struct ProfileView: View {
     @State private var crewViewModel = CrewViewModel()
     @State private var showMyCrews: Bool = false
 
-    init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false)) {
+    init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false), showPhotoBanner: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
         self.courtsViewModel = courtsViewModel
         self._showSelfAssessment = showSelfAssessment
+        self._showPhotoBanner = showPhotoBanner
     }
 
     var body: some View {
@@ -143,6 +146,62 @@ struct ProfileView: View {
                     }
                     .foregroundStyle(NETRTheme.neonGreen)
                 }
+            }
+        }
+        .overlay(alignment: .top) {
+            if showPhotoBanner {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.crop.circle.badge.plus")
+                            .font(.system(size: 20))
+                            .foregroundStyle(Color.orange)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Add a profile photo")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(NETRTheme.text)
+                            Text("So other players recognize you when playing together")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) { showPhotoBanner = false }
+                            photoPromptSkipCount = 0
+                            showEditProfile = true
+                        } label: {
+                            Text("Add Photo")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(Color.black)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(Color.orange, in: Capsule())
+                        }
+
+                        Button {
+                            withAnimation(.easeOut(duration: 0.2)) { showPhotoBanner = false }
+                            photoPromptSkipCount = 0
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(NETRTheme.subtext)
+                                .frame(width: 20, height: 20)
+                                .background(NETRTheme.muted, in: Circle())
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color.orange.opacity(0.10))
+                    .overlay(
+                        Rectangle()
+                            .fill(Color.orange.opacity(0.25))
+                            .frame(height: 1),
+                        alignment: .bottom
+                    )
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .task(id: "profile") {
