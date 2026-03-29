@@ -365,7 +365,11 @@ struct PublicPlayerProfileView: View {
 
         return VStack(alignment: .leading, spacing: 12) {
             if hasRatings {
-                ArchetypeBadge(skills: skills)
+                ArchetypeBadge(
+                    archetypeName: viewModel.userProfile?.archetypeName,
+                    archetypeKey: viewModel.userProfile?.archetypeKey,
+                    skills: skills
+                )
             }
 
             Text("SKILL BREAKDOWN")

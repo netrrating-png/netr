@@ -30,6 +30,8 @@ nonisolated struct UserProfile: Codable, Sendable {
     var isPrivate: Bool?
     var isVerifiedPro: Bool?
     var proVerificationPending: Bool?
+    var archetypeName: String?
+    var archetypeKey: String?
     var createdAt: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
@@ -62,6 +64,8 @@ nonisolated struct UserProfile: Codable, Sendable {
         case isPrivate = "is_private"
         case isVerifiedPro = "is_verified_pro"
         case proVerificationPending = "pro_verification_pending"
+        case archetypeName = "archetype_name"
+        case archetypeKey = "archetype_key"
         case createdAt = "created_at"
     }
 }
