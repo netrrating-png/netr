@@ -423,106 +423,82 @@ func buildRadarSkills(from categoryScores: [String: Double]) -> [RadarSkill] {
     }
 }
 
-// MARK: - Archetypes
+// MARK: - Archetypes (powered by ArchetypeEngine)
 
-private let singleArchetypes: [String: [String]] = [
-    "Shooting":   ["Durant Jr.", "Kobe's Echo", "The Microwave"],
-    "Finishing":  ["Shaq's Heir", "The Lob Son", "Mutombo's Revenge"],
-    "Handles":    ["Kyrie's Shadow", "Iverson's Ghost"],
-    "Playmaking": ["Magic's Apprentice", "Young CP3"],
-    "Defense":    ["Kawhi's Clone", "Draymond's Disciple"],
-    "Rebounding": ["Young Worm", "Moses' Mentee"],
-    "IQ":         ["LeBron's Blueprint", "Jokic's Cousin"],
-]
-
-private let dualArchetypes: [String: [String]] = [
-    "Finishing|Shooting":    ["Kobe-Shaq Remix"],
-    "Handles|Shooting":      ["Kyrie-Kobe Hybrid", "Iverson's Last Wish"],
-    "IQ|Shooting":           ["LeBron's Understudy", "Dirk's Protégé"],
-    "Defense|Shooting":      ["Jimmy's Twin"],
-    "Finishing|Rebounding":  ["Shaq-Worm Combo"],
-    "Defense|Finishing":     ["Giannis' Little Bro"],
-    "Handles|Playmaking":    ["CP3's Protégé"],
-    "Defense|Handles":       ["Payton's Heir"],
-    "Playmaking|Rebounding": ["LeBron's Outlet"],
-    "IQ|Playmaking":         ["Magic & Jokic's Kid"],
-    "Defense|Rebounding":    ["Draymond-Worm"],
-    "Defense|IQ":            ["Kawhi's Apprentice"],
-    "IQ|Rebounding":         ["Jokic With a Grudge"],
-]
-
-struct ArchetypeResult {
-    let name: String
-    let color: Color
-    let subtitle: String
-    let icon: String
-}
-
-func computeArchetype(from skills: [RadarSkill]) -> ArchetypeResult? {
-    let sorted = skills.filter { $0.raw > 2.5 }.sorted { $0.raw > $1.raw }
-    guard let top = sorted.first else { return nil }
-
-    let topRounded = (top.raw * 10).rounded() / 10
-
-    if sorted.count >= 2 {
-        let second = sorted[1]
-        let secondRounded = (second.raw * 10).rounded() / 10
-        if secondRounded == topRounded {
-            let pairKey = [top.label, second.label].sorted().joined(separator: "|")
-            if let options = dualArchetypes[pairKey], !options.isEmpty {
-                let idx = abs(Int((top.raw + second.raw) * 50)) % options.count
-                let subtitle = "\(top.label) · \(second.label)"
-                return ArchetypeResult(name: options[idx], color: top.categoryColor, subtitle: subtitle, icon: top.icon)
-            }
-        }
-    }
-
-    if let options = singleArchetypes[top.label], !options.isEmpty {
-        let idx = abs(Int(top.raw * 100)) % options.count
-        return ArchetypeResult(name: options[idx], color: top.categoryColor, subtitle: top.label, icon: top.icon)
-    }
-
-    return nil
-}
-
+/// Archetype badge that uses the new ArchetypeEngine.
+/// Prefers the persisted archetype_name from the profile; falls back to computing from skill scores.
 struct ArchetypeBadge: View {
-    let skills: [RadarSkill]
+    var archetypeName: String? = nil
+    var archetypeKey: String? = nil
+    var skills: [RadarSkill] = []
 
     var body: some View {
-        if let result = computeArchetype(from: skills) {
+        if let name = displayName {
             HStack(spacing: 12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(result.color.opacity(0.12))
+                        .fill(NETRTheme.neonGreen.opacity(0.12))
                         .frame(width: 38, height: 38)
                     RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(result.color.opacity(0.3), lineWidth: 1)
+                        .strokeBorder(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1)
                         .frame(width: 38, height: 38)
-                    LucideIcon(result.icon, size: 18)
-                        .foregroundStyle(result.color)
+                    LucideIcon("zap", size: 18)
+                        .foregroundStyle(NETRTheme.neonGreen)
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ARCHETYPE")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundStyle(NETRTheme.subtext)
                         .tracking(1.5)
-                    Text(result.name)
+                    Text(name)
                         .font(.system(.title3, design: .default, weight: .black).width(.compressed))
-                        .foregroundStyle(result.color)
+                        .foregroundStyle(NETRTheme.neonGreen)
                 }
                 Spacer()
-                Text(result.subtitle)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(result.color.opacity(0.85))
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(result.color.opacity(0.12), in: .capsule)
-                    .overlay(Capsule().stroke(result.color.opacity(0.28), lineWidth: 1))
+                if let key = displayKey {
+                    Text(key.replacingOccurrences(of: "_", with: " · ").uppercased())
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(NETRTheme.neonGreen.opacity(0.85))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 5)
+                        .background(NETRTheme.neonGreen.opacity(0.12), in: .capsule)
+                        .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.28), lineWidth: 1))
+                }
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(NETRTheme.surface, in: .rect(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(result.color.opacity(0.3), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
         }
+    }
+
+    private var displayName: String? {
+        if let name = archetypeName, !name.isEmpty { return name }
+        return computedResult?.name
+    }
+
+    private var displayKey: String? {
+        if let key = archetypeKey, !key.isEmpty { return key }
+        return computedResult?.key
+    }
+
+    private var computedResult: ArchetypeEngine.Result? {
+        guard !skills.isEmpty else { return nil }
+        var scores: [String: Double] = [:]
+        for skill in skills where skill.raw > 0 {
+            let key: String
+            switch skill.label {
+            case "SHT": key = "shooting"
+            case "FIN": key = "finishing"
+            case "HND": key = "handles"
+            case "PLY": key = "playmaking"
+            case "DEF": key = "defense"
+            case "REB": key = "rebounding"
+            case "IQ":  key = "iq"
+            default: continue
+            }
+            scores[key] = skill.raw
+        }
+        return ArchetypeEngine.computeArchetype(categoryScores: scores)
     }
 }

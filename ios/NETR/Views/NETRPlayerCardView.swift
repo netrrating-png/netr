@@ -378,26 +378,21 @@ struct NETRPlayerCardView: View {
     @ViewBuilder
     private var archetypeOrMilestone: some View {
         let skills = user.skills
-        let radarSkills = [
-            RadarSkill(label: "SHT", icon: "target",                raw: skills.shooting     ?? 0, value: normalize(skills.shooting),     categoryColor: .yellow),
-            RadarSkill(label: "FIN", icon: "flame",                 raw: skills.finishing    ?? 0, value: normalize(skills.finishing),    categoryColor: .orange),
-            RadarSkill(label: "HND", icon: "hand.raised",           raw: skills.ballHandling ?? 0, value: normalize(skills.ballHandling), categoryColor: .cyan),
-            RadarSkill(label: "PLY", icon: "arrow.triangle.branch", raw: skills.playmaking   ?? 0, value: normalize(skills.playmaking),   categoryColor: .mint),
-            RadarSkill(label: "DEF", icon: "shield",                raw: skills.defense      ?? 0, value: normalize(skills.defense),      categoryColor: .blue),
-            RadarSkill(label: "REB", icon: "arrow.up",              raw: skills.rebounding   ?? 0, value: normalize(skills.rebounding),   categoryColor: .purple),
-            RadarSkill(label: "IQ",  icon: "brain",                 raw: skills.basketballIQ ?? 0, value: normalize(skills.basketballIQ), categoryColor: .green)
-        ]
-
-        if let archetype = computeArchetype(from: radarSkills) {
+        let scores = ArchetypeEngine.categoryScoresFromProfile(
+            shooting: skills.shooting, finishing: skills.finishing,
+            dribbling: skills.ballHandling, passing: skills.playmaking,
+            defense: skills.defense, rebounding: skills.rebounding,
+            basketballIQ: skills.basketballIQ
+        )
+        if let archetype = ArchetypeEngine.computeArchetype(categoryScores: scores) {
             HStack(spacing: 6) {
-                Image(systemName: archetype.icon)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(archetype.color)
+                LucideIcon("zap", size: 11)
+                    .foregroundStyle(NETRTheme.neonGreen)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(archetype.name)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(archetype.color)
-                    Text(archetype.subtitle)
+                        .foregroundStyle(NETRTheme.neonGreen)
+                    Text(archetype.key.replacingOccurrences(of: "_", with: " · ").uppercased())
                         .font(.system(size: 9))
                         .foregroundStyle(.white.opacity(0.35))
                 }

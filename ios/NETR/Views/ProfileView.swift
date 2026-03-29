@@ -674,7 +674,11 @@ struct ProfileView: View {
     private func radarSection(user: Player) -> some View {
         let radarSkills = buildRadarSkills(from: user.skills)
         return VStack(alignment: .leading, spacing: 16) {
-            ArchetypeBadge(skills: radarSkills)
+            ArchetypeBadge(
+                archetypeName: viewModel.userProfile?.archetypeName,
+                archetypeKey: viewModel.userProfile?.archetypeKey,
+                skills: radarSkills
+            )
 
             HStack {
                 Text("SKILL BREAKDOWN")

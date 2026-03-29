@@ -247,7 +247,44 @@ class SupabaseManager {
             print("[NETR] saveSelfAssessmentScore remote save failed: \(error)")
         }
 
+        // Compute and save archetype from category scores
+        if let cats = categoryScores {
+            await computeAndSaveArchetype(userId: userId, categoryScores: cats)
+        }
+
         await loadProfile(userId: userId)
+    }
+
+    /// Compute archetype from category scores and persist to profiles table.
+    /// Only reassigns if no archetype exists yet or the top skill changed.
+    func computeAndSaveArchetype(userId: String, categoryScores: [String: Double]) async {
+        let currentKey = currentProfile?.archetypeKey
+
+        // Compute what the archetype WOULD be
+        let computed = ArchetypeEngine.computeArchetype(categoryScores: categoryScores)
+        guard let computed else { return }
+
+        // If archetype already exists and the key hasn't changed, don't reassign
+        if let existing = currentKey, !existing.isEmpty, existing == computed.key {
+            return
+        }
+
+        // Assign (random pick from 3 options) and persist
+        guard let assigned = ArchetypeEngine.assignArchetype(categoryScores: categoryScores) else { return }
+
+        do {
+            try await client
+                .from("profiles")
+                .update([
+                    "archetype_name": AnyJSON.string(assigned.name),
+                    "archetype_key": AnyJSON.string(assigned.key),
+                ])
+                .eq("id", value: userId)
+                .execute()
+            print("[NETR] Archetype assigned: \(assigned.name) (\(assigned.key))")
+        } catch {
+            print("[NETR] Failed to save archetype: \(error)")
+        }
     }
 
     /// Upload avatar to Supabase Storage bucket and update profile + shared state.
