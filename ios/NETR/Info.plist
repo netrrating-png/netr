@@ -13,5 +13,41 @@
 			</array>
 		</dict>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>NETR uses your camera so you can take a profile photo directly in the app.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>NETR needs access to your photo library to set your profile picture.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>NETR uses your contacts to help you invite friends to the app.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>NETR uses Face ID to keep your account secure.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>NETR uses your location to find courts near you and calculate distances.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict/>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~iphone</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 </dict>
 </plist>
