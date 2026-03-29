@@ -330,7 +330,9 @@ struct FeedView: View {
 
     @ViewBuilder
     private var feedContent: some View {
-        if !viewModel.hasLoadedOnce && viewModel.isLoading {
+        if viewModel.activeTab == .discover {
+            discoverContent
+        } else if !viewModel.hasLoadedOnce && viewModel.isLoading {
             VStack(spacing: 16) {
                 Spacer()
                 ProgressView()
@@ -379,6 +381,66 @@ struct FeedView: View {
         }
     }
 
+    // MARK: - Discover Content
+
+    private var discoverContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                if viewModel.isLoadingNearby {
+                    VStack(spacing: 16) {
+                        Spacer()
+                        ProgressView()
+                            .tint(NETRTheme.neonGreen)
+                            .scaleEffect(1.2)
+                        Text("Finding players near you...")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.subtext)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 300)
+                } else if viewModel.nearbyUsers.isEmpty {
+                    VStack(spacing: 16) {
+                        LucideIcon("users", size: 44)
+                            .foregroundStyle(NETRTheme.muted)
+                        Text("No players nearby")
+                            .font(.headline)
+                            .foregroundStyle(NETRTheme.text)
+                        Text("No players found within 5 miles.\nCheck back later!")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.subtext)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 80)
+                } else {
+                    Text("PLAYERS NEAR YOU")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .tracking(1.5)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 12)
+
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 90, maximum: 110), spacing: 12)],
+                        spacing: 12
+                    ) {
+                        ForEach(viewModel.nearbyUsers) { player in
+                            suggestedPlayerCard(player)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+            .padding(.bottom, 100)
+        }
+        .scrollIndicators(.hidden)
+        .refreshable {
+            viewModel.userLocation = nil
+            viewModel.requestDiscoverLocation()
+        }
+    }
+
     private func postCard(for post: SupabaseFeedPost) -> some View {
         PostCardView(
             post: post,
@@ -410,6 +472,9 @@ struct FeedView: View {
             },
             onProfileTap: { authorId in
                 viewModel.selectedProfileUserId = authorId
+            },
+            onMentionTap: { username in
+                Task { await viewModel.openProfile(username: username) }
             }
         )
     }

@@ -117,7 +117,9 @@ struct CourtsView: View {
                 .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
             }
 
-            Text(viewModel.isDefaultView ? "MY COURTS" : "COURTS")
+            Text(viewModel.isDefaultView
+                 ? (viewModel.favoriteCourtIds.isEmpty && viewModel.homeCourtId == nil ? "NEARBY" : "MY COURTS")
+                 : "COURTS")
                 .font(NETRTheme.headingFont(size: .title2))
                 .foregroundStyle(NETRTheme.text)
         }
@@ -128,7 +130,8 @@ struct CourtsView: View {
     private var mapSection: some View {
         ZStack(alignment: .topTrailing) {
             Map(position: $cameraPosition) {
-                ForEach(viewModel.filteredCourts) { court in
+                UserAnnotation()
+                ForEach(viewModel.filteredCourts + viewModel.nearbyCourtsInDefaultView) { court in
                     Annotation(court.name, coordinate: court.coordinate) {
                         Button {
                             selectedCourt = court
@@ -164,7 +167,8 @@ struct CourtsView: View {
     private var fullScreenMapOverlay: some View {
         ZStack(alignment: .topTrailing) {
             Map(position: $cameraPosition) {
-                ForEach(viewModel.filteredCourts) { court in
+                UserAnnotation()
+                ForEach(viewModel.filteredCourts + viewModel.nearbyCourtsInDefaultView) { court in
                     Annotation(court.name, coordinate: court.coordinate) {
                         Button {
                             selectedCourt = court
@@ -305,11 +309,17 @@ struct CourtsView: View {
                 if viewModel.isDefaultView {
                     let favCount = viewModel.favoriteCourtIds.count
                     let hasHome = viewModel.homeCourtId != nil
-                    if favCount == 0 && !hasHome { return "No courts saved yet" }
+                    let nearbyCount = viewModel.nearbyCourtsInDefaultView.count
+                    if favCount == 0 && !hasHome {
+                        return nearbyCount > 0
+                            ? "\(nearbyCount) courts within 5 mi"
+                            : (viewModel.userLocation != nil ? "No courts within 5 mi" : "No courts saved yet")
+                    }
                     var parts: [String] = []
                     if hasHome { parts.append("1 home court") }
                     let favOnly = viewModel.favoriteCourtIds.filter { $0 != viewModel.homeCourtId }.count
                     if favOnly > 0 { parts.append("\(favOnly) favorite\(favOnly == 1 ? "" : "s")") }
+                    if nearbyCount > 0 { parts.append("\(nearbyCount) nearby") }
                     return parts.joined(separator: " · ")
                 } else {
                     let activeCount = filtered.filter { $0.verified }.count
@@ -370,6 +380,21 @@ struct CourtsView: View {
         .padding(.top, 16)
     }
 
+    private func courtSectionHeader(_ title: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            LucideIcon(icon, size: 10)
+                .foregroundStyle(NETRTheme.subtext)
+            Text(title)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .kerning(0.8)
+            Rectangle()
+                .fill(NETRTheme.border)
+                .frame(height: 1)
+        }
+        .padding(.top, 4)
+    }
+
     private var courtsList: some View {
         LazyVStack(spacing: 12) {
             if viewModel.isLoading && viewModel.courts.isEmpty {
@@ -381,35 +406,71 @@ struct CourtsView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 .padding(.vertical, 40)
-            } else if viewModel.filteredCourts.isEmpty && viewModel.isDefaultView {
-                // No home court or favorites saved yet
-                VStack(spacing: 16) {
-                    LucideIcon("heart", size: 36)
-                        .foregroundStyle(NETRTheme.muted)
-                    Text("No saved courts yet")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NETRTheme.text)
-                    Text("Search for courts or tap \u{2665} on any court to add it here. You can also set a home court.")
-                        .font(.caption)
-                        .foregroundStyle(NETRTheme.subtext)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
-                    Button {
-                        withAnimation(.snappy) { viewModel.isExploring = true }
-                    } label: {
-                        HStack(spacing: 6) {
-                            LucideIcon("search", size: 13)
-                            Text("Browse All Courts")
+            } else if viewModel.isDefaultView {
+                let saved = viewModel.filteredCourts
+                let nearby = viewModel.nearbyCourtsInDefaultView
+                if saved.isEmpty && nearby.isEmpty {
+                    VStack(spacing: 16) {
+                        LucideIcon(viewModel.userLocation != nil ? "map-pin-off" : "map-pin", size: 36)
+                            .foregroundStyle(NETRTheme.muted)
+                        Text(viewModel.userLocation != nil ? "No courts within 5 miles" : "Finding courts near you...")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(viewModel.userLocation != nil
+                             ? "Try browsing all courts or add one nearby."
+                             : "Enable location or browse all courts.")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                        Button {
+                            withAnimation(.snappy) { viewModel.isExploring = true }
+                        } label: {
+                            HStack(spacing: 6) {
+                                LucideIcon("search", size: 13)
+                                Text("Browse All Courts")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.background)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(NETRTheme.neonGreen, in: Capsule())
                         }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(NETRTheme.background)
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 10)
-                        .background(NETRTheme.neonGreen, in: Capsule())
+                        .buttonStyle(PressButtonStyle())
                     }
-                    .buttonStyle(PressButtonStyle())
+                    .padding(.vertical, 40)
+                } else {
+                    if !saved.isEmpty {
+                        courtSectionHeader("MY COURTS", icon: "heart")
+                        ForEach(saved) { court in
+                            CourtCardView(
+                                court: court,
+                                distance: viewModel.distanceString(for: court),
+                                isFavorite: viewModel.isFavorite(court.id),
+                                isHomeCourt: viewModel.isHomeCourt(court.id),
+                                onFavoriteToggle: {
+                                    Task { await viewModel.toggleFavorite(courtId: court.id) }
+                                },
+                                onTap: { selectedCourt = court }
+                            )
+                        }
+                    }
+                    if !nearby.isEmpty {
+                        courtSectionHeader("NEARBY · 5 MI", icon: "map-pin")
+                        ForEach(nearby) { court in
+                            CourtCardView(
+                                court: court,
+                                distance: viewModel.distanceString(for: court),
+                                isFavorite: viewModel.isFavorite(court.id),
+                                isHomeCourt: viewModel.isHomeCourt(court.id),
+                                onFavoriteToggle: {
+                                    Task { await viewModel.toggleFavorite(courtId: court.id) }
+                                },
+                                onTap: { selectedCourt = court }
+                            )
+                        }
+                    }
                 }
-                .padding(.vertical, 40)
             } else if viewModel.filteredCourts.isEmpty && viewModel.selectedFilter == "Favorites" {
                 VStack(spacing: 12) {
                     LucideIcon("heart", size: 28)
@@ -448,9 +509,7 @@ struct CourtsView: View {
                         onFavoriteToggle: {
                             Task { await viewModel.toggleFavorite(courtId: court.id) }
                         },
-                        onTap: {
-                            selectedCourt = court
-                        }
+                        onTap: { selectedCourt = court }
                     )
                 }
             }

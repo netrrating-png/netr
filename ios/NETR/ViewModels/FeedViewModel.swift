@@ -2,6 +2,7 @@ import SwiftUI
 import Supabase
 import Auth
 import PostgREST
+import CoreLocation
 
 @Observable
 class FeedViewModel {
@@ -45,12 +46,18 @@ class FeedViewModel {
     // Live tab — new posts pill
     var pendingNewPosts: Int = 0
 
+    // Discover tab
+    var nearbyUsers: [UserSearchResult] = []
+    var isLoadingNearby: Bool = false
+    var userLocation: CLLocationCoordinate2D?
+
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
     private var searchTask: Task<Void, Never>?
     private var mentionSearchTask: Task<Void, Never>?
     private let pageSize = 20
+    private var discoverLocationHelper: DiscoverLocationHelper?
 
     private let selectQuery = """
         id, author_id, content, like_count, comment_count, repost_count,
@@ -116,6 +123,11 @@ class FeedViewModel {
     // MARK: - Fetch Feed
 
     func fetchFeed(tab: FeedTab, loadMore: Bool = false) async {
+        if tab == .discover {
+            requestDiscoverLocation()
+            hasLoadedOnce = true
+            return
+        }
         if !loadMore {
             isLoading = true
         }
@@ -161,6 +173,8 @@ class FeedViewModel {
                     .range(from: offset, to: offset + pageSize - 1)
                     .execute().value
 
+            case .discover:
+                fetched = []
             }
 
             applyInteractionState(&fetched)
@@ -591,5 +605,119 @@ class FeedViewModel {
 
         let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
         return (results ?? []).filter { $0.id != currentUserId && !followingIds.contains($0.id) }
+    }
+
+    // MARK: - Open Profile by Username (for mention taps)
+
+    func openProfile(username: String) async {
+        let results: [UserSearchResult]? = try? await client
+            .from("profiles")
+            .select("id, username, full_name, avatar_url, netr_score")
+            .eq("username", value: username)
+            .limit(1)
+            .execute()
+            .value
+        if let user = results?.first {
+            selectedProfileUserId = user.id
+        }
+    }
+
+    // MARK: - Discover (Nearby Users)
+
+    func requestDiscoverLocation() {
+        if let loc = userLocation {
+            Task { await fetchNearbyUsers(at: loc) }
+            return
+        }
+        isLoadingNearby = true
+        discoverLocationHelper = DiscoverLocationHelper { [weak self] location in
+            Task { @MainActor [weak self] in
+                self?.userLocation = location
+                await self?.fetchNearbyUsers(at: location)
+            }
+        }
+        discoverLocationHelper?.requestLocation()
+    }
+
+    func fetchNearbyUsers(at loc: CLLocationCoordinate2D) async {
+        isLoadingNearby = true
+        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+
+        // Update current user's location in profiles so they show up for others
+        if let uid = currentUserId {
+            try? await client
+                .from("profiles")
+                .update(["lat": AnyJSON.double(loc.latitude), "lng": AnyJSON.double(loc.longitude)])
+                .eq("id", value: uid)
+                .execute()
+        }
+
+        // Bounding box: ~5 miles in each direction
+        let latDelta = 0.0725
+        let lngDelta = 0.0725 / max(cos(loc.latitude * .pi / 180), 0.01)
+
+        let results: [UserSearchResult]? = try? await client
+            .from("profiles")
+            .select("id, username, full_name, avatar_url, netr_score, lat, lng")
+            .not("lat", operator: .is, value: "null")
+            .gte("lat", value: loc.latitude - latDelta)
+            .lte("lat", value: loc.latitude + latDelta)
+            .gte("lng", value: loc.longitude - lngDelta)
+            .lte("lng", value: loc.longitude + lngDelta)
+            .limit(50)
+            .execute()
+            .value
+
+        let userLoc = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
+        let maxMeters = 5.0 * 1609.34
+
+        nearbyUsers = (results ?? [])
+            .filter { user in
+                guard let uLat = user.lat, let uLng = user.lng,
+                      user.id != currentUserId else { return false }
+                return CLLocation(latitude: uLat, longitude: uLng).distance(from: userLoc) <= maxMeters
+            }
+            .sorted { a, b in
+                let dA: Double
+                let dB: Double
+                if let aLat = a.lat, let aLng = a.lng {
+                    dA = CLLocation(latitude: aLat, longitude: aLng).distance(from: userLoc)
+                } else { dA = .greatestFiniteMagnitude }
+                if let bLat = b.lat, let bLng = b.lng {
+                    dB = CLLocation(latitude: bLat, longitude: bLng).distance(from: userLoc)
+                } else { dB = .greatestFiniteMagnitude }
+                return dA < dB
+            }
+
+        isLoadingNearby = false
+    }
+}
+
+// MARK: - Location helper for Discover tab
+
+private final class DiscoverLocationHelper: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private let onLocation: (CLLocationCoordinate2D) -> Void
+
+    init(onLocation: @escaping (CLLocationCoordinate2D) -> Void) {
+        self.onLocation = onLocation
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+
+    func requestLocation() {
+        manager.requestWhenInUseAuthorization()
+        manager.requestLocation()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        if let coord = locations.first?.coordinate {
+            onLocation(coord)
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        print("[NETR Discover] Location error: \(error.localizedDescription)")
     }
 }

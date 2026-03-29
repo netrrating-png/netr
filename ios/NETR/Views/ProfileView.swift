@@ -906,46 +906,83 @@ struct ProfileView: View {
 
             if viewModel.milestones.isEmpty {
                 Text(viewModel.isCurrentUser
-                     ? "Add your basketball achievements — school team, AAU, college, and more."
+                     ? "Add your basketball career — school team, AAU, college, pro, and more."
                      : "No milestones added yet.")
                     .font(.system(size: 13))
                     .foregroundStyle(NETRTheme.subtext)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 let sorted = viewModel.milestones.sorted { $0.milestoneType.prestige > $1.milestoneType.prestige }
-                VStack(spacing: 10) {
-                    ForEach(sorted) { milestone in
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(milestone.milestoneType.badgeColor.opacity(0.15))
-                                    .frame(width: 38, height: 38)
-                                Image(systemName: milestone.milestoneType.sfSymbol)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(milestone.milestoneType.badgeColor)
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(milestone.milestoneType.displayName)
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .foregroundStyle(milestone.milestoneType.badgeColor)
-                                if let sub = milestone.subtitle {
-                                    Text(sub)
-                                        .font(.system(size: 12))
-                                        .foregroundStyle(NETRTheme.subtext)
+                VStack(spacing: 0) {
+                    ForEach(Array(sorted.enumerated()), id: \.element.id) { index, milestone in
+                        let isTop = index == 0
+                        VStack(spacing: 0) {
+                            HStack(alignment: .top, spacing: 14) {
+                                // Badge with timeline line below
+                                VStack(spacing: 0) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(milestone.milestoneType.badgeColor.opacity(isTop ? 0.2 : 0.1))
+                                            .frame(width: 40, height: 40)
+                                        if isTop {
+                                            Circle()
+                                                .stroke(milestone.milestoneType.badgeColor.opacity(0.5), lineWidth: 1.5)
+                                                .frame(width: 40, height: 40)
+                                        }
+                                        Image(systemName: milestone.milestoneType.sfSymbol)
+                                            .font(.system(size: isTop ? 17 : 14, weight: .semibold))
+                                            .foregroundStyle(milestone.milestoneType.badgeColor)
+                                    }
+                                    if index < sorted.count - 1 {
+                                        Rectangle()
+                                            .fill(NETRTheme.border)
+                                            .frame(width: 1)
+                                            .frame(minHeight: 24)
+                                    }
                                 }
+                                .frame(width: 40)
+
+                                // Content
+                                VStack(alignment: .leading, spacing: 3) {
+                                    if isTop {
+                                        Text("HIGHEST LEVEL")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(milestone.milestoneType.badgeColor.opacity(0.8))
+                                            .tracking(1.2)
+                                    }
+                                    Text(milestone.milestoneType.displayName)
+                                        .font(.system(size: isTop ? 15 : 14, weight: isTop ? .bold : .semibold))
+                                        .foregroundStyle(isTop ? milestone.milestoneType.badgeColor : NETRTheme.text)
+                                    if let sub = milestone.subtitle {
+                                        Text(sub)
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(NETRTheme.subtext)
+                                    }
+                                }
+                                .padding(.top, 10)
+                                .padding(.bottom, index < sorted.count - 1 ? 20 : 12)
+
+                                Spacer()
                             }
-                            Spacer()
+                            .padding(.horizontal, 14)
+                            .padding(.top, isTop ? 10 : 0)
                         }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(milestone.milestoneType.badgeColor.opacity(0.06))
-                        .clipShape(.rect(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(milestone.milestoneType.badgeColor.opacity(0.25), lineWidth: 1)
+                        .background(
+                            isTop
+                                ? milestone.milestoneType.badgeColor.opacity(0.06)
+                                : Color.clear
                         )
+                        .clipShape(.rect(
+                            topLeadingRadius: isTop ? 12 : 0,
+                            bottomLeadingRadius: isTop && sorted.count == 1 ? 12 : 0,
+                            bottomTrailingRadius: isTop && sorted.count == 1 ? 12 : 0,
+                            topTrailingRadius: isTop ? 12 : 0
+                        ))
                     }
                 }
+                .background(NETRTheme.card)
+                .clipShape(.rect(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
             }
         }
     }
