@@ -94,10 +94,11 @@ class SupabaseManager {
         await loadProfile(userId: session.user.id.uuidString)
     }
 
-    func signInWithApple(idToken: String, nonce: String) async throws {
+    func signInWithApple(idToken: String, nonce: String, fullName: String? = nil) async throws {
         isLoading = true
         authError = nil
         defer { isLoading = false }
+        print("[NETR Auth] Apple Sign-In started")
         let session = try await client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .apple,
@@ -106,7 +107,24 @@ class SupabaseManager {
             )
         )
         self.session = session
+        print("[NETR Auth] Apple session established: \(session.user.id)")
         await loadProfile(userId: session.user.id.uuidString)
+
+        // Apple only sends the user's name on the very first sign-in.
+        // Save it to the profiles table if we got it and the profile doesn't have one yet.
+        if let name = fullName, !name.isEmpty, currentProfile?.fullName == nil {
+            print("[NETR Auth] Saving Apple-provided name: \(name)")
+            do {
+                try await client
+                    .from("profiles")
+                    .update(["full_name": AnyJSON.string(name)])
+                    .eq("id", value: session.user.id.uuidString)
+                    .execute()
+                await loadProfile(userId: session.user.id.uuidString)
+            } catch {
+                print("[NETR Auth] Failed to save Apple name: \(error)")
+            }
+        }
     }
 
     func signInWithGoogle() async throws {

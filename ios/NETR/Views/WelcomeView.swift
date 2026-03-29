@@ -192,15 +192,31 @@ struct WelcomeView: View {
                 let credential = auth.credential as? ASAuthorizationAppleIDCredential,
                 let idTokenData = credential.identityToken,
                 let idToken = String(data: idTokenData, encoding: .utf8)
-            else { return }
+            else {
+                print("[NETR Auth] Apple credential missing identity token")
+                return
+            }
+            print("[NETR Auth] Apple credential received")
+
+            // Apple only sends name on the very first sign-in — capture it now
+            var appleFullName: String?
+            if let nameComponents = credential.fullName {
+                let first = nameComponents.givenName ?? ""
+                let last = nameComponents.familyName ?? ""
+                let name = "\(first) \(last)".trimmingCharacters(in: .whitespaces)
+                if !name.isEmpty { appleFullName = name }
+            }
+
             Task {
                 do {
-                    try await supabase.signInWithApple(idToken: idToken, nonce: currentNonce)
+                    try await supabase.signInWithApple(idToken: idToken, nonce: currentNonce, fullName: appleFullName)
                 } catch {
+                    print("[NETR Auth] Apple Sign-In error: \(error)")
                     errorMessage = error.localizedDescription
                 }
             }
         case .failure(let error):
+            print("[NETR Auth] Apple Sign-In failed: \(error)")
             errorMessage = error.localizedDescription
         }
     }
