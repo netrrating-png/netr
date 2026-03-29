@@ -16,6 +16,16 @@ struct NETRApp: App {
                 .environment(appearance)
                 .environment(store)
                 .preferredColorScheme(.dark)
+                .onOpenURL { url in
+                    Task {
+                        do {
+                            try await SupabaseManager.shared.client.auth.session(from: url)
+                            print("[NETR Auth] OAuth callback handled successfully for URL: \(url)")
+                        } catch {
+                            print("[NETR Auth] OAuth callback error: \(error)")
+                        }
+                    }
+                }
                 .onAppear {
                     // Request push permission after first login
                     if supabase.isSignedIn {
