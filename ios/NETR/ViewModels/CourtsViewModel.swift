@@ -203,6 +203,20 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
     }
 
+    /// Courts within 5 miles that are not already saved/home — shown in default view for new users.
+    var nearbyCourtsInDefaultView: [Court] {
+        guard let loc = userLocation else { return [] }
+        let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
+        let maxMeters = 5.0 * 1609.34
+        return courts
+            .filter {
+                $0.id != homeCourtId &&
+                !favoriteCourtIds.contains($0.id) &&
+                CLLocation(latitude: $0.lat, longitude: $0.lng).distance(from: origin) <= maxMeters
+            }
+            .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
+    }
+
     func searchCourts(query: String) -> [Court] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return [] }

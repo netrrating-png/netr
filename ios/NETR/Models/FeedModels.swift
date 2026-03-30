@@ -245,6 +245,7 @@ extension FeedCourtSearchResult: Decodable {
 enum FeedTab: String, CaseIterable {
     case forYou = "For You"
     case live = "Live"
+    case discover = "Discover"
 }
 
 // MARK: - User Search
@@ -255,6 +256,8 @@ nonisolated struct UserSearchResult: Identifiable, Sendable {
     let displayName: String?
     let avatarUrl: String?
     let netrScore: Double?
+    let lat: Double?
+    let lng: Double?
 }
 
 extension UserSearchResult: Decodable {
@@ -264,6 +267,8 @@ extension UserSearchResult: Decodable {
         case displayName = "full_name"
         case avatarUrl = "avatar_url"
         case netrScore = "netr_score"
+        case lat
+        case lng
     }
 }
 

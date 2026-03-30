@@ -5,16 +5,34 @@ import PostgREST
 
 // MARK: - Edit Milestones Sheet
 
+private enum MilestoneFormTarget: Identifiable {
+    case add
+    case edit(PlayerMilestone)
+    var id: String {
+        switch self {
+        case .add: return "add"
+        case .edit(let m): return m.id
+        }
+    }
+    var existing: PlayerMilestone? {
+        if case .edit(let m) = self { return m }
+        return nil
+    }
+}
+
 struct EditMilestonesView: View {
     @Environment(\.dismiss) private var dismiss
     let userId: String
     @Binding var milestones: [PlayerMilestone]
 
-    @State private var isLoading = false
-    @State private var showAddSheet = false
-    @State private var editingMilestone: PlayerMilestone? = nil
+    @State private var formTarget: MilestoneFormTarget? = nil
+    @State private var deletingId: String? = nil
 
     private let client = SupabaseManager.shared.client
+
+    private var sorted: [PlayerMilestone] {
+        milestones.sorted { $0.milestoneType.prestige > $1.milestoneType.prestige }
+    }
 
     var body: some View {
         NavigationStack {
@@ -22,29 +40,22 @@ struct EditMilestonesView: View {
                 NETRTheme.background.ignoresSafeArea()
 
                 if milestones.isEmpty {
-                    VStack(spacing: 14) {
-                        Text("🏀")
-                            .font(.system(size: 44))
-                        Text("No milestones yet")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text("Add real-world achievements to your profile.\nThey don't affect your NETR score.")
-                            .font(.system(size: 13))
-                            .foregroundStyle(NETRTheme.subtext)
-                            .multilineTextAlignment(.center)
-                    }
-                    .padding(.horizontal, 32)
+                    emptyState
                 } else {
-                    List {
-                        ForEach(milestones.sorted { $0.milestoneType.prestige > $1.milestoneType.prestige }) { milestone in
-                            milestoneRow(milestone)
-                                .listRowBackground(NETRTheme.card)
-                                .listRowSeparatorTint(NETRTheme.border)
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            ForEach(Array(sorted.enumerated()), id: \.element.id) { index, milestone in
+                                milestoneRow(milestone, isLast: index == sorted.count - 1)
+                            }
                         }
-                        .onDelete(perform: deleteMilestones)
+                        .background(NETRTheme.card)
+                        .clipShape(.rect(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.border, lineWidth: 1))
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16)
+                        .padding(.bottom, 40)
                     }
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
+                    .scrollIndicators(.hidden)
                 }
             }
             .navigationTitle("Milestones")
@@ -56,78 +67,143 @@ struct EditMilestonesView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        editingMilestone = nil
-                        showAddSheet = true
+                        formTarget = .add
                     } label: {
-                        Image(systemName: "plus")
-                            .foregroundStyle(NETRTheme.neonGreen)
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 14, weight: .semibold))
+                            Text("Add")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundStyle(NETRTheme.neonGreen)
                     }
                 }
             }
-            .sheet(isPresented: $showAddSheet) {
-                MilestoneFormView(userId: userId, existing: nil) { newMilestone in
-                    milestones.append(newMilestone)
-                }
-            }
-            .sheet(item: $editingMilestone) { m in
-                MilestoneFormView(userId: userId, existing: m) { updated in
-                    if let idx = milestones.firstIndex(where: { $0.id == updated.id }) {
-                        milestones[idx] = updated
+            .sheet(item: $formTarget) { target in
+                MilestoneFormView(userId: userId, existing: target.existing) { result in
+                    if let existing = target.existing,
+                       let idx = milestones.firstIndex(where: { $0.id == existing.id }) {
+                        milestones[idx] = result
+                    } else {
+                        milestones.append(result)
                     }
                 }
             }
         }
     }
 
-    private func milestoneRow(_ m: PlayerMilestone) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle()
-                    .fill(m.milestoneType.badgeColor.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: m.milestoneType.sfSymbol)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(m.milestoneType.badgeColor)
-            }
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(m.milestoneType.displayName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(NETRTheme.text)
-                if let sub = m.subtitle {
-                    Text(sub)
-                        .font(.system(size: 12))
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-            }
-
-            Spacer()
-
+    private var emptyState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "trophy")
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(NETRTheme.muted)
+            Text("No milestones yet")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(NETRTheme.text)
+            Text("Add your basketball career —\nschool, AAU, college, pro, and more.")
+                .font(.system(size: 13))
+                .foregroundStyle(NETRTheme.subtext)
+                .multilineTextAlignment(.center)
             Button {
-                editingMilestone = m
+                formTarget = .add
             } label: {
-                Image(systemName: "pencil")
-                    .font(.system(size: 13))
-                    .foregroundStyle(NETRTheme.subtext)
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text("Add Milestone")
+                }
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(NETRTheme.background)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 11)
+                .background(NETRTheme.neonGreen, in: Capsule())
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
+        .padding(.top, 60)
+        .padding(.horizontal, 32)
     }
 
-    private func deleteMilestones(at offsets: IndexSet) {
-        let sorted = milestones.sorted { $0.milestoneType.prestige > $1.milestoneType.prestige }
-        let toDelete = offsets.map { sorted[$0] }
-        Task {
-            for m in toDelete {
-                try? await client
-                    .from("player_milestones")
-                    .delete()
-                    .eq("id", value: m.id)
-                    .execute()
-                milestones.removeAll { $0.id == m.id }
+    private func milestoneRow(_ m: PlayerMilestone, isLast: Bool) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(m.milestoneType.badgeColor.opacity(0.15))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: m.milestoneType.sfSymbol)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(m.milestoneType.badgeColor)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(m.milestoneType.displayName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    if let sub = m.subtitle {
+                        Text(sub)
+                            .font(.system(size: 12))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+
+                Spacer()
+
+                // Edit
+                Button {
+                    formTarget = .edit(m)
+                } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .frame(width: 34, height: 34)
+                        .background(NETRTheme.border.opacity(0.5), in: Circle())
+                }
+                .buttonStyle(.plain)
+
+                // Delete
+                Button {
+                    Task { await delete(m) }
+                } label: {
+                    if deletingId == m.id {
+                        ProgressView()
+                            .tint(.red)
+                            .scaleEffect(0.75)
+                            .frame(width: 34, height: 34)
+                    } else {
+                        Image(systemName: "trash")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(Color.red.opacity(0.8))
+                            .frame(width: 34, height: 34)
+                            .background(Color.red.opacity(0.1), in: Circle())
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(deletingId != nil)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+
+            if !isLast {
+                Divider()
+                    .background(NETRTheme.border)
+                    .padding(.leading, 74)
             }
         }
+    }
+
+    private func delete(_ m: PlayerMilestone) async {
+        deletingId = m.id
+        do {
+            try await client
+                .from("player_milestones")
+                .delete()
+                .eq("id", value: m.id)
+                .execute()
+            milestones.removeAll { $0.id == m.id }
+        } catch {
+            print("Milestone delete error: \(error)")
+        }
+        deletingId = nil
     }
 }
 
