@@ -2,6 +2,7 @@ import SwiftUI
 import Supabase
 import Auth
 import PostgREST
+import AuthenticationServices
 
 @Observable
 class SupabaseManager {
@@ -127,15 +128,55 @@ class SupabaseManager {
         }
     }
 
+    // Keep a strong reference to the session and its context provider for the duration of the auth flow.
+    private var googleAuthSession: ASWebAuthenticationSession?
+    private var googleAuthContext: OAuthPresentationContext?
+
     func signInWithGoogle() async throws {
         isLoading = true
         authError = nil
         defer { isLoading = false }
-        let url = try await client.auth.getOAuthSignInURL(
+
+        let oauthURL = try await client.auth.getOAuthSignInURL(
             provider: .google,
             redirectTo: URL(string: "netr://auth/callback")
         )
-        await UIApplication.shared.open(url)
+
+        // ASWebAuthenticationSession presents an in-app browser sheet —
+        // no need to leave the app or rely on onOpenURL.
+        let callbackURL: URL = try await withCheckedThrowingContinuation { continuation in
+            let context = OAuthPresentationContext()
+            let session = ASWebAuthenticationSession(
+                url: oauthURL,
+                callbackURLScheme: "netr"
+            ) { [weak self] url, error in
+                self?.googleAuthSession = nil
+                self?.googleAuthContext = nil
+
+                if let err = error {
+                    let asError = err as? ASWebAuthenticationSessionError
+                    if asError?.code == .canceledLogin {
+                        continuation.resume(throwing: CancellationError())
+                    } else {
+                        continuation.resume(throwing: err)
+                    }
+                    return
+                }
+                guard let url else {
+                    continuation.resume(throwing: URLError(.badURL))
+                    return
+                }
+                continuation.resume(returning: url)
+            }
+            session.presentationContextProvider = context
+            session.prefersEphemeralWebBrowserSession = false
+            self.googleAuthSession = session
+            self.googleAuthContext = context
+            session.start()
+        }
+
+        // Exchange the callback URL for a Supabase session.
+        try await client.auth.session(from: callbackURL)
     }
 
     func signOut() async throws {
@@ -363,5 +404,16 @@ class SupabaseManager {
         } catch {
             print("[NETR] flagProVerificationPending failed: \(error)")
         }
+    }
+}
+
+// MARK: - OAuth browser presentation context
+
+/// Provides a window anchor for ASWebAuthenticationSession, required on iOS.
+private final class OAuthPresentationContext: NSObject, ASWebAuthenticationPresentationContextProviding {
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first?.keyWindow ?? ASPresentationAnchor()
     }
 }

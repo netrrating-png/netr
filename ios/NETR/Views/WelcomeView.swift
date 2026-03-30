@@ -79,6 +79,8 @@ struct WelcomeView: View {
                         Task {
                             do {
                                 try await supabase.signInWithGoogle()
+                            } catch is CancellationError {
+                                // User dismissed the Google sign-in sheet — no error to show
                             } catch {
                                 errorMessage = error.localizedDescription
                             }
