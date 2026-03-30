@@ -86,17 +86,17 @@ struct WelcomeView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: 10) {
-                            LucideIcon("globe", size: 20)
-                                .foregroundStyle(.white)
+                        HStack(spacing: 12) {
+                            GoogleLogo(size: 22)
                             Text("Continue with Google")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(NETRTheme.text)
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(Color(red: 31/255, green: 31/255, blue: 31/255))
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 54)
-                        .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+                        .background(.white, in: .rect(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(white: 0.82), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
                     }
                     .buttonStyle(PressButtonStyle())
 
@@ -238,5 +238,60 @@ struct WelcomeView: View {
         let inputData = Data(input.utf8)
         let hashedData = SHA256.hash(data: inputData)
         return hashedData.compactMap { String(format: "%02x", $0) }.joined()
+    }
+}
+
+// MARK: - Google G logo (four-colour arc, matches brand guidelines)
+
+struct GoogleLogo: View {
+    var size: CGFloat = 24
+
+    // Official Google brand colours
+    private static let blue   = Color(red: 66/255,  green: 133/255, blue: 244/255)
+    private static let red    = Color(red: 234/255, green:  67/255, blue:  53/255)
+    private static let yellow = Color(red: 251/255, green: 188/255, blue:   5/255)
+    private static let green  = Color(red:  52/255, green: 168/255, blue:  83/255)
+
+    var body: some View {
+        Canvas { ctx, sz in
+            let cx     = sz.width  / 2
+            let cy     = sz.height / 2
+            let r      = sz.width  * 0.435
+            let stroke = sz.width  * 0.195
+            let mid    = CGPoint(x: cx, y: cy)
+
+            // Helper: draw a single coloured arc segment
+            func arc(_ start: Double, _ end: Double, _ color: Color) {
+                var p = Path()
+                p.addArc(center: mid, radius: r,
+                         startAngle: .degrees(start),
+                         endAngle:   .degrees(end),
+                         clockwise: false)
+                ctx.stroke(p, with: .color(color), lineWidth: stroke)
+            }
+
+            // Arc colour distribution (clockwise angles, 0° = 3 o'clock):
+            //  Blue   : top-left + left + most of bottom (~100° → 315°)
+            //  Red    : bottom-left (~315° → 355°)  ← small slice
+            //  Yellow : bottom-right (~355° → 460°/100°) — crosses 0°
+            //  Green  : right side  (0° → 100°) — where the crossbar sits
+            arc(100, 315, Self.blue)
+            arc(315, 355, Self.red)
+            arc(355, 460, Self.yellow)   // 460° = 100° after wrapping
+            arc(  0, 100, Self.green)
+
+            // Horizontal crossbar (Google "G" right arm) in blue
+            let barY      = cy + sz.height * 0.006
+            let barLeft   = cx + r * 0.04
+            let barRight  = cx + r + stroke * 0.5
+            let barHeight = stroke
+            let bar = CGRect(x: barLeft,
+                             y: barY - barHeight / 2,
+                             width: barRight - barLeft,
+                             height: barHeight)
+            ctx.fill(Path(roundedRect: bar, cornerRadius: barHeight / 2),
+                     with: .color(Self.blue))
+        }
+        .frame(width: size, height: size)
     }
 }
