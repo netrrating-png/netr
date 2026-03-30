@@ -75,30 +75,18 @@ struct WelcomeView: View {
                     }
                     .buttonStyle(PressButtonStyle())
 
-                    Button {
+                    GoogleSignInButtonView {
                         Task {
                             do {
                                 try await supabase.signInWithGoogle()
                             } catch is CancellationError {
-                                // User dismissed the Google sign-in sheet — no error to show
+                                // User dismissed — no error to show
                             } catch {
                                 errorMessage = error.localizedDescription
                             }
                         }
-                    } label: {
-                        HStack(spacing: 12) {
-                            GoogleLogo(size: 22)
-                            Text("Continue with Google")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(Color(red: 31/255, green: 31/255, blue: 31/255))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(.white, in: .rect(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(white: 0.82), lineWidth: 1))
-                        .shadow(color: .black.opacity(0.10), radius: 6, y: 2)
                     }
-                    .buttonStyle(PressButtonStyle())
+                    .frame(height: 54)
 
                     SignInWithAppleButton(.signIn) { request in
                         let nonce = randomNonceString()
@@ -241,57 +229,32 @@ struct WelcomeView: View {
     }
 }
 
-// MARK: - Google G logo (four-colour arc, matches brand guidelines)
+// MARK: - Official Google Sign-In button (GIDSignInButton from GoogleSignIn SDK)
 
-struct GoogleLogo: View {
-    var size: CGFloat = 24
+import GoogleSignIn
 
-    // Official Google brand colours
-    private static let blue   = Color(red: 66/255,  green: 133/255, blue: 244/255)
-    private static let red    = Color(red: 234/255, green:  67/255, blue:  53/255)
-    private static let yellow = Color(red: 251/255, green: 188/255, blue:   5/255)
-    private static let green  = Color(red:  52/255, green: 168/255, blue:  83/255)
+struct GoogleSignInButtonView: UIViewRepresentable {
+    var onTap: () -> Void
 
-    var body: some View {
-        Canvas { ctx, sz in
-            let cx     = sz.width  / 2
-            let cy     = sz.height / 2
-            let r      = sz.width  * 0.435
-            let stroke = sz.width  * 0.195
-            let mid    = CGPoint(x: cx, y: cy)
+    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
 
-            // Helper: draw a single coloured arc segment
-            func arc(_ start: Double, _ end: Double, _ color: Color) {
-                var p = Path()
-                p.addArc(center: mid, radius: r,
-                         startAngle: .degrees(start),
-                         endAngle:   .degrees(end),
-                         clockwise: false)
-                ctx.stroke(p, with: .color(color), lineWidth: stroke)
-            }
+    func makeUIView(context: Context) -> GIDSignInButton {
+        let btn = GIDSignInButton()
+        btn.style = .wide          // Shows full "Sign in with Google" text + official G logo
+        btn.colorScheme = .light   // White button, matches the Sign in with Apple style
+        btn.layer.cornerRadius = 14
+        btn.layer.masksToBounds = true
+        btn.addTarget(context.coordinator,
+                      action: #selector(Coordinator.tapped),
+                      for: .touchUpInside)
+        return btn
+    }
 
-            // Arc colour distribution (clockwise angles, 0° = 3 o'clock):
-            //  Blue   : top-left + left + most of bottom (~100° → 315°)
-            //  Red    : bottom-left (~315° → 355°)  ← small slice
-            //  Yellow : bottom-right (~355° → 460°/100°) — crosses 0°
-            //  Green  : right side  (0° → 100°) — where the crossbar sits
-            arc(100, 315, Self.blue)
-            arc(315, 355, Self.red)
-            arc(355, 460, Self.yellow)   // 460° = 100° after wrapping
-            arc(  0, 100, Self.green)
+    func updateUIView(_ uiView: GIDSignInButton, context: Context) {}
 
-            // Horizontal crossbar (Google "G" right arm) in blue
-            let barY      = cy + sz.height * 0.006
-            let barLeft   = cx + r * 0.04
-            let barRight  = cx + r + stroke * 0.5
-            let barHeight = stroke
-            let bar = CGRect(x: barLeft,
-                             y: barY - barHeight / 2,
-                             width: barRight - barLeft,
-                             height: barHeight)
-            ctx.fill(Path(roundedRect: bar, cornerRadius: barHeight / 2),
-                     with: .color(Self.blue))
-        }
-        .frame(width: size, height: size)
+    final class Coordinator: NSObject {
+        let onTap: () -> Void
+        init(onTap: @escaping () -> Void) { self.onTap = onTap }
+        @objc func tapped() { onTap() }
     }
 }
