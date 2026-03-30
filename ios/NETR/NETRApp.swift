@@ -1,6 +1,7 @@
 import SwiftUI
 import Supabase
 import Auth
+import GoogleSignIn
 
 @main
 struct NETRApp: App {
@@ -19,10 +20,13 @@ struct NETRApp: App {
                 .environment(store)
                 .preferredColorScheme(.dark)
                 .onOpenURL { url in
+                    // Let Google Sign-In SDK handle its own callback URLs first.
+                    if GIDSignIn.sharedInstance.handle(url) { return }
+                    // Fall through to Supabase for any other deep links (e.g. magic links).
                     Task {
                         do {
                             try await SupabaseManager.shared.client.auth.session(from: url)
-                            print("[NETR Auth] OAuth callback handled successfully for URL: \(url)")
+                            print("[NETR Auth] OAuth callback handled for URL: \(url)")
                         } catch {
                             print("[NETR Auth] OAuth callback error: \(error)")
                         }

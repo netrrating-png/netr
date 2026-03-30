@@ -26,7 +26,18 @@
 				<string>netr</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.google.GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Reverse iOS client ID — required for Google Sign-In SDK callback -->
+				<string>com.googleusercontent.apps.722737043885-lsdvq5sh9v4hto5bjcfnkpk6ppp3olis</string>
+			</array>
+		</dict>
 	</array>
+	<key>GIDClientID</key>
+	<string>722737043885-lsdvq5sh9v4hto5bjcfnkpk6ppp3olis.apps.googleusercontent.com</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSCameraUsageDescription</key>
