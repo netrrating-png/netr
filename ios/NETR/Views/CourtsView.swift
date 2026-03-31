@@ -9,14 +9,14 @@ struct CourtsView: View {
     @State private var showJoinGame: Bool = false
     @State private var showFullScreenMap: Bool = false
     @State private var showFilterSheet: Bool = false
-    @State private var cameraPosition: MapCameraPosition = .automatic
+    // Placeholder region — immediately replaced by user's GPS location in .task / onChange
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var hasSetInitialLocation: Bool = false
 
     private let filters: [(label: String, icon: String)] = [
         ("Favorites", "heart"),
         ("Live Now", "circle-dot"),
-        ("Lights", "sun"),
-        ("Indoor", "warehouse"),
+        ("Scheduled", "calendar-clock"),
         ("Verified", "shield-check")
     ]
 
@@ -47,6 +47,17 @@ struct CourtsView: View {
             await viewModel.loadCourts()
             await viewModel.loadFavorites()
             await viewModel.loadLiveCourts()
+            await viewModel.loadScheduledCourts()
+            // If location was already available before the view appeared, zoom now
+            if !hasSetInitialLocation, let loc = viewModel.userLocation {
+                hasSetInitialLocation = true
+                withAnimation {
+                    cameraPosition = .region(MKCoordinateRegion(
+                        center: loc,
+                        span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+                    ))
+                }
+            }
         }
         .onChange(of: viewModel.userLocation?.latitude) { _, _ in
             guard !hasSetInitialLocation, let loc = viewModel.userLocation else { return }
@@ -54,7 +65,7 @@ struct CourtsView: View {
             withAnimation {
                 cameraPosition = .region(MKCoordinateRegion(
                     center: loc,
-                    span: MKCoordinateSpan(latitudeDelta: 0.15, longitudeDelta: 0.15)
+                    span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
                 ))
             }
         }
@@ -131,7 +142,7 @@ struct CourtsView: View {
         ZStack(alignment: .topTrailing) {
             Map(position: $cameraPosition) {
                 UserAnnotation()
-                ForEach(viewModel.filteredCourts + viewModel.nearbyCourtsInDefaultView) { court in
+                ForEach(viewModel.mapCourts) { court in
                     Annotation(court.name, coordinate: court.coordinate) {
                         Button {
                             selectedCourt = court
@@ -168,7 +179,7 @@ struct CourtsView: View {
         ZStack(alignment: .topTrailing) {
             Map(position: $cameraPosition) {
                 UserAnnotation()
-                ForEach(viewModel.filteredCourts + viewModel.nearbyCourtsInDefaultView) { court in
+                ForEach(viewModel.mapCourts) { court in
                     Annotation(court.name, coordinate: court.coordinate) {
                         Button {
                             selectedCourt = court
