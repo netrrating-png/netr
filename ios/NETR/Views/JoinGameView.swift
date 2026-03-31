@@ -317,7 +317,7 @@ class JoinGameViewModel {
             let now = nowFmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: game.id, userId: userId, joinedAt: now, checkedInAt: now))
+                .insert(GamePlayerPayload(gameId: game.id, userId: userId, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client

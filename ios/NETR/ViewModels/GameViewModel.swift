@@ -107,7 +107,7 @@ class GameViewModel {
         let now = fmt.string(from: Date())
         try await client
             .from("game_players")
-            .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
+            .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: now))
             .execute()
     }
 
@@ -404,7 +404,7 @@ class GameViewModel {
             let now = fmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
+                .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client
