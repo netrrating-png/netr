@@ -296,13 +296,8 @@ class GameViewModel {
 
     func checkOut() async {
         guard let gameId = game?.id,
-              let userId = SupabaseManager.shared.session?.user.id.uuidString
+              let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
         else { return }
-
-        if !canCheckOut {
-            checkOutError = "You must be checked in for at least 15 minutes before checking out."
-            return
-        }
 
         isCheckingOut = true
         checkOutError = nil
@@ -338,8 +333,8 @@ class GameViewModel {
     }
 
     var currentUserCheckedOut: Bool {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return false }
-        return players.first(where: { $0.userId == userId })?.isCheckedOut ?? false
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return false }
+        return players.first(where: { $0.userId.lowercased() == userId })?.isCheckedOut ?? false
     }
 
     var checkedInPlayerIds: Set<String> {
@@ -353,26 +348,14 @@ class GameViewModel {
     // MARK: - 15-Minute Checkout Guard
 
     var canCheckOut: Bool {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
-              let player = players.first(where: { $0.userId == userId }),
-              let checkedInStr = player.checkedInAt
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
         else { return false }
-
-        let fmt = ISO8601DateFormatter()
-        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = fmt.date(from: checkedInStr) {
-            return Date().timeIntervalSince(d) >= 900
-        }
-        fmt.formatOptions = [.withInternetDateTime]
-        if let d = fmt.date(from: checkedInStr) {
-            return Date().timeIntervalSince(d) >= 900
-        }
-        return true
+        return players.contains(where: { $0.userId.lowercased() == userId && !$0.isCheckedOut && !$0.isRemoved })
     }
 
     var minutesUntilCheckOut: Int {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
-              let player = players.first(where: { $0.userId == userId }),
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased(),
+              let player = players.first(where: { $0.userId.lowercased() == userId }),
               let checkedInStr = player.checkedInAt
         else { return 0 }
 
