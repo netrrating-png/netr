@@ -2,6 +2,7 @@ import SwiftUI
 import Supabase
 import Auth
 import PostgREST
+import GoogleSignIn
 
 @Observable
 class SupabaseManager {
@@ -131,11 +132,32 @@ class SupabaseManager {
         isLoading = true
         authError = nil
         defer { isLoading = false }
-        let url = try await client.auth.getOAuthSignInURL(
-            provider: .google,
-            redirectTo: URL(string: "netr://auth/callback")
+
+        // Resolve the root view controller needed to present Google's account picker.
+        guard let windowScene = await UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene })
+                .first,
+              let rootVC = await windowScene.keyWindow?.rootViewController else {
+            throw NSError(domain: "NETRAuth", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Unable to find root view controller"])
+        }
+
+        // Native Google Sign-In — presents the system account picker, no browser required.
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
+
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw NSError(domain: "NETRAuth", code: -1,
+                          userInfo: [NSLocalizedDescriptionKey: "Google did not return an ID token"])
+        }
+
+        // Exchange the Google ID token for a Supabase session.
+        try await client.auth.signInWithIdToken(
+            credentials: .init(
+                provider: .google,
+                idToken: idToken,
+                accessToken: result.user.accessToken.tokenString
+            )
         )
-        await UIApplication.shared.open(url)
     }
 
     func signOut() async throws {
@@ -365,3 +387,4 @@ class SupabaseManager {
         }
     }
 }
+

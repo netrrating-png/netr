@@ -12,6 +12,7 @@ struct PostCardView: View {
     let onDelete: () -> Void
     let onBlock: () -> Void
     var onProfileTap: ((String) -> Void)? = nil
+    var onMentionTap: ((String) -> Void)? = nil
     var onCourtTap: ((String, String) -> Void)? = nil
 
     @State private var likeScale: CGFloat = 1.0
@@ -122,31 +123,11 @@ struct PostCardView: View {
         }
     }
 
-    // MARK: - Content Text (with @mention styling in lime green)
+    // MARK: - Content Text (with tappable @mentions in lime green)
 
     private func contentText(_ text: String) -> some View {
-        Text(styledContent(text))
-            .font(.subheadline)
-            .fixedSize(horizontal: false, vertical: true)
+        MentionTextView(text: text, onMentionTap: onMentionTap)
             .padding(.top, 2)
-    }
-
-    private func styledContent(_ text: String) -> AttributedString {
-        var result = AttributedString(text)
-        result.foregroundColor = UIColor(NETRTheme.text)
-
-        let mentionPattern = #"@\w+"#
-        if let regex = try? NSRegularExpression(pattern: mentionPattern) {
-            let range = NSRange(text.startIndex..., in: text)
-            for match in regex.matches(in: text, range: range) {
-                if let swiftRange = Range(match.range, in: text),
-                   let attrRange = Range(swiftRange, in: result) {
-                    result[attrRange].foregroundColor = UIColor(NETRTheme.neonGreen)
-                }
-            }
-        }
-
-        return result
     }
 
     // MARK: - Court Chip
@@ -249,6 +230,90 @@ struct PostCardView: View {
         .padding(.leading, 50)
     }
 
+}
+
+// MARK: - Mention Text View (UITextView-based for tappable @mentions)
+
+struct MentionTextView: UIViewRepresentable {
+    let text: String
+    var onMentionTap: ((String) -> Void)?
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onMentionTap: onMentionTap)
+    }
+
+    func makeUIView(context: Context) -> UITextView {
+        let tv = UITextView()
+        tv.isEditable = false
+        tv.isScrollEnabled = false
+        tv.backgroundColor = .clear
+        tv.textContainerInset = .zero
+        tv.textContainer.lineFragmentPadding = 0
+        tv.delegate = context.coordinator
+        tv.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        tv.linkTextAttributes = [
+            .foregroundColor: UIColor(NETRTheme.neonGreen),
+            .underlineStyle: 0
+        ]
+        return tv
+    }
+
+    func updateUIView(_ tv: UITextView, context: Context) {
+        context.coordinator.onMentionTap = onMentionTap
+        let built = buildAttributedString(text)
+        if tv.attributedText != built {
+            tv.attributedText = built
+            tv.invalidateIntrinsicContentSize()
+        }
+    }
+
+    private func buildAttributedString(_ text: String) -> NSAttributedString {
+        let font = UIFont.preferredFont(forTextStyle: .subheadline)
+        let result = NSMutableAttributedString(
+            string: text,
+            attributes: [.font: font, .foregroundColor: UIColor(NETRTheme.text)]
+        )
+        let pattern = #"@(\w+)"#
+        if let regex = try? NSRegularExpression(pattern: pattern) {
+            let nsRange = NSRange(text.startIndex..., in: text)
+            for match in regex.matches(in: text, range: nsRange) {
+                let fullRange = match.range
+                let usernameRange = match.range(at: 1)
+                if let swiftRange = Range(usernameRange, in: text),
+                   let url = URL(string: "mention://\(String(text[swiftRange]))") {
+                    result.addAttributes([
+                        .foregroundColor: UIColor(NETRTheme.neonGreen),
+                        .link: url
+                    ], range: fullRange)
+                }
+            }
+        }
+        return result
+    }
+
+    final class Coordinator: NSObject, UITextViewDelegate {
+        var onMentionTap: ((String) -> Void)?
+
+        init(onMentionTap: ((String) -> Void)?) {
+            self.onMentionTap = onMentionTap
+        }
+
+        func textView(_ textView: UITextView,
+                      shouldInteractWith URL: URL,
+                      in characterRange: NSRange,
+                      interaction: UITextItemInteraction) -> Bool {
+            if URL.scheme == "mention", let username = URL.host {
+                onMentionTap?(username)
+            }
+            return false
+        }
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            // Prevent text selection highlight
+            textView.selectedTextRange = nil
+        }
+    }
 }
 
 // MARK: - Feed Action Button

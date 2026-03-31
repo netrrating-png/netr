@@ -25,6 +25,7 @@ class GameViewModel {
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
+    var isSubscribed: Bool { realtimeChannel != nil }
 
     func createGame(
         courtId: String?,
@@ -82,7 +83,7 @@ class GameViewModel {
                 .from("games")
                 .select()
                 .eq("join_code", value: code.uppercased())
-                .eq("status", value: "waiting")
+                .in("status", values: ["waiting", "scheduled"])
                 .single()
                 .execute()
                 .value

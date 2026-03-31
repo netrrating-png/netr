@@ -75,28 +75,18 @@ struct WelcomeView: View {
                     }
                     .buttonStyle(PressButtonStyle())
 
-                    Button {
+                    GoogleSignInButtonView {
                         Task {
                             do {
                                 try await supabase.signInWithGoogle()
+                            } catch is CancellationError {
+                                // User dismissed — no error to show
                             } catch {
                                 errorMessage = error.localizedDescription
                             }
                         }
-                    } label: {
-                        HStack(spacing: 10) {
-                            LucideIcon("globe", size: 20)
-                                .foregroundStyle(.white)
-                            Text("Continue with Google")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(NETRTheme.text)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                        .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
                     }
-                    .buttonStyle(PressButtonStyle())
+                    .frame(height: 54)
 
                     SignInWithAppleButton(.signIn) { request in
                         let nonce = randomNonceString()
@@ -236,5 +226,35 @@ struct WelcomeView: View {
         let inputData = Data(input.utf8)
         let hashedData = SHA256.hash(data: inputData)
         return hashedData.compactMap { String(format: "%02x", $0) }.joined()
+    }
+}
+
+// MARK: - Official Google Sign-In button (GIDSignInButton from GoogleSignIn SDK)
+
+import GoogleSignIn
+
+struct GoogleSignInButtonView: UIViewRepresentable {
+    var onTap: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+
+    func makeUIView(context: Context) -> GIDSignInButton {
+        let btn = GIDSignInButton()
+        btn.style = .wide          // Shows full "Sign in with Google" text + official G logo
+        btn.colorScheme = .light   // White button, matches the Sign in with Apple style
+        btn.layer.cornerRadius = 14
+        btn.layer.masksToBounds = true
+        btn.addTarget(context.coordinator,
+                      action: #selector(Coordinator.tapped),
+                      for: .touchUpInside)
+        return btn
+    }
+
+    func updateUIView(_ uiView: GIDSignInButton, context: Context) {}
+
+    final class Coordinator: NSObject {
+        let onTap: () -> Void
+        init(onTap: @escaping () -> Void) { self.onTap = onTap }
+        @objc func tapped() { onTap() }
     }
 }

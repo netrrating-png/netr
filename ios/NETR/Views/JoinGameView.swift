@@ -211,6 +211,25 @@ class JoinGameViewModel {
                     .sorted { $0.distanceMiles < $1.distanceMiles }
             }
 
+            // Fetch accurate player counts — game_players RLS only shows current user's rows
+            // so game_players?.count from the select join is unreliable for other players.
+            let allIds = (filteredLive + scheduled).map { $0.id }
+            if !allIds.isEmpty {
+                nonisolated struct GPRow: Decodable, Sendable {
+                    let gameId: String
+                    nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+                }
+                let rows: [GPRow] = (try? await client
+                    .from("game_players")
+                    .select("game_id")
+                    .in("game_id", values: allIds)
+                    .execute()
+                    .value) ?? []
+                let countMap = Dictionary(grouping: rows, by: { $0.gameId }).mapValues { $0.count }
+                filteredLive = filteredLive.map { g in var g = g; g.playerCount = countMap[g.id] ?? g.game_players?.count ?? 0; return g }
+                scheduled    = scheduled.map    { g in var g = g; g.playerCount = countMap[g.id] ?? g.game_players?.count ?? 0; return g }
+            }
+
             liveGames = filteredLive
             scheduledGames = scheduled
 

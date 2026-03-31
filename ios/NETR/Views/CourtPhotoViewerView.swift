@@ -14,7 +14,7 @@ struct CourtPhotoViewerView: View {
     @Environment(\.dismiss) private var dismiss
 
     private var currentUserId: String? {
-        SupabaseManager.shared.session?.user.id.uuidString
+        SupabaseManager.shared.session?.user.id.uuidString.lowercased()
     }
 
     init(photos: [CourtPhoto], initialIndex: Int, onDelete: ((String) -> Void)? = nil) {

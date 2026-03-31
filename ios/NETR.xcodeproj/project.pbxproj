@@ -7,66 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		ADB4D3D42F64A815001D0E5F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */; };
-		ADB4D3D52F64A815001D0E5F /* netr_vid.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = ADB4D39E2F64A815001D0E5F /* netr_vid.mp4 */; };
-		ADB4D3D62F64A815001D0E5F /* WeatherService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A52F64A815001D0E5F /* WeatherService.swift */; };
-		ADB4D3D72F64A815001D0E5F /* CourtDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B52F64A815001D0E5F /* CourtDetailView.swift */; };
-		ADB4D3D82F64A815001D0E5F /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3D12F64A815001D0E5F /* ContentView.swift */; };
-		ADB4D3D92F64A815001D0E5F /* SelfAssessmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C72F64A815001D0E5F /* SelfAssessmentView.swift */; };
-		ADB4D3DA2F64A815001D0E5F /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3992F64A815001D0E5F /* Player.swift */; };
-		ADB4D3DB2F64A815001D0E5F /* NETRTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A82F64A815001D0E5F /* NETRTheme.swift */; };
-		ADB4D3DC2F64A815001D0E5F /* CreateGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B72F64A815001D0E5F /* CreateGameView.swift */; };
-		ADB4D3DD2F64A815001D0E5F /* ComposePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B32F64A815001D0E5F /* ComposePostView.swift */; };
-		ADB4D3DE2F64A815001D0E5F /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C22F64A815001D0E5F /* ProfileView.swift */; };
-		ADB4D3DF2F64A815001D0E5F /* PostCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C12F64A815001D0E5F /* PostCardView.swift */; };
-		ADB4D3E02F64A815001D0E5F /* NETRComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BE2F64A815001D0E5F /* NETRComponents.swift */; };
-		ADB4D3E12F64A815001D0E5F /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B92F64A815001D0E5F /* FeedView.swift */; };
-		ADB4D3E22F64A815001D0E5F /* RateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C32F64A815001D0E5F /* RateView.swift */; };
-		ADB4D3E32F64A815001D0E5F /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3962F64A815001D0E5F /* GameModels.swift */; };
-		ADB4D3E42F64A815001D0E5F /* FeedViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AB2F64A815001D0E5F /* FeedViewModel.swift */; };
-		ADB4D3E52F64A815001D0E5F /* JoinGameView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BA2F64A815001D0E5F /* JoinGameView.swift */; };
-		ADB4D3E62F64A815001D0E5F /* CourtCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B42F64A815001D0E5F /* CourtCardView.swift */; };
-		ADB4D3E72F64A815001D0E5F /* RateTabModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D39A2F64A815001D0E5F /* RateTabModels.swift */; };
-		ADB4D3E82F64A815001D0E5F /* NETRRatingScale.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3982F64A815001D0E5F /* NETRRatingScale.swift */; };
-		ADB4D3E92F64A815001D0E5F /* SkillRadarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CA2F64A815001D0E5F /* SkillRadarView.swift */; };
-		ADB4D3EA2F64A815001D0E5F /* GameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3972F64A815001D0E5F /* GameSession.swift */; };
-		ADB4D3EB2F64A815001D0E5F /* VibeDecalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */; };
-		ADB4D3EC2F64A815001D0E5F /* BiometricAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A02F64A815001D0E5F /* BiometricAuthManager.swift */; };
-		ADB4D3ED2F64A815001D0E5F /* NETRApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3D22F64A815001D0E5F /* NETRApp.swift */; };
-		ADB4D3EE2F64A815001D0E5F /* SelfAssessmentSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C62F64A815001D0E5F /* SelfAssessmentSheetView.swift */; };
-		ADB4D3EF2F64A815001D0E5F /* LucideIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BD2F64A815001D0E5F /* LucideIcon.swift */; };
-		ADB4D3F02F64A815001D0E5F /* VibeAndRepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CB2F64A815001D0E5F /* VibeAndRepView.swift */; };
-		ADB4D3F12F64A815001D0E5F /* SelfAssessmentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A22F64A815001D0E5F /* SelfAssessmentEngine.swift */; };
-		ADB4D3F22F64A815001D0E5F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C82F64A815001D0E5F /* SettingsView.swift */; };
-		ADB4D3F32F64A815001D0E5F /* FeedPost.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3952F64A815001D0E5F /* FeedPost.swift */; };
-		ADB4D3F42F64A815001D0E5F /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */; };
-		ADB4D3F52F64A815001D0E5F /* CourtsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AA2F64A815001D0E5F /* CourtsViewModel.swift */; };
-		ADB4D3F62F64A815001D0E5F /* LockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BB2F64A815001D0E5F /* LockScreenView.swift */; };
-		ADB4D3F72F64A815001D0E5F /* MockDataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A12F64A815001D0E5F /* MockDataStore.swift */; };
-		ADB4D3F82F64A815001D0E5F /* CourtsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B62F64A815001D0E5F /* CourtsView.swift */; };
-		ADB4D3F92F64A815001D0E5F /* AppearanceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A72F64A815001D0E5F /* AppearanceManager.swift */; };
-		ADB4D3FA2F64A815001D0E5F /* SupabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A42F64A815001D0E5F /* SupabaseManager.swift */; };
-		ADB4D3FB2F64A815001D0E5F /* RateViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AF2F64A815001D0E5F /* RateViewModel.swift */; };
-		ADB4D3FC2F64A815001D0E5F /* CommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B22F64A815001D0E5F /* CommentsView.swift */; };
-		ADB4D3FD2F64A815001D0E5F /* EmailSignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B82F64A815001D0E5F /* EmailSignUpView.swift */; };
-		ADB4D3FE2F64A815001D0E5F /* Court.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3932F64A815001D0E5F /* Court.swift */; };
-		ADB4D3FF2F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */; };
-		ADB4D4002F64A815001D0E5F /* FeedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3942F64A815001D0E5F /* FeedModels.swift */; };
-		ADB4D4012F64A815001D0E5F /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C92F64A815001D0E5F /* SignInView.swift */; };
-		ADB4D4022F64A815001D0E5F /* RatingModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D39B2F64A815001D0E5F /* RatingModels.swift */; };
-		ADB4D4032F64A815001D0E5F /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */; };
-		ADB4D4042F64A815001D0E5F /* AddCourtView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */; };
-		ADB4D4052F64A815001D0E5F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C42F64A815001D0E5F /* RootView.swift */; };
-		ADB4D4072F64A815001D0E5F /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */; };
-		ADB4D4082F64A815001D0E5F /* LoopingVideoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */; };
-		ADB4D4092F64A815001D0E5F /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */; };
-		ADB4D40A2F64A815001D0E5F /* PlayerCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */; };
-		ADB4D40B2F64A815001D0E5F /* SelfAssessmentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3A32F64A815001D0E5F /* SelfAssessmentStore.swift */; };
-		ADB4D40C2F64A815001D0E5F /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D39C2F64A815001D0E5F /* UserProfile.swift */; };
-		ADB4D40D2F64A815001D0E5F /* RateTabViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */; };
-		ADB4D4112F64ADFD001D0E5F /* SelfAssessmentFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */; };
-		CL00D41A2F77B001001FEED1 /* PublicPlayerProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */; };
-		CL00D41C2F77B001001FEED1 /* InviteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CL00D41B2F77B001001FEED1 /* InviteView.swift */; };
 		XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = XX1C9FF110ABBCE8BF456CXX /* Supabase */; };
 		XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */ = {isa = PBXBuildFile; productRef = XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */; };
 /* End PBXBuildFile section */
@@ -154,9 +94,22 @@
 		CL00D41B2F77B001001FEED1 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AD001FEED12F0000001D0E5F /* Exceptions for "NETR" folder in "NETR" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 105FC5792E9EAD3100EA8BCF /* NETR */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		105FC57C2E9EAD3100EA8BCF /* NETR */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				AD001FEED12F0000001D0E5F /* Exceptions for "NETR" folder in "NETR" target */,
+			);
 			path = NETR;
 			sourceTree = "<group>";
 		};
@@ -357,6 +310,7 @@
 			packageProductDependencies = (
 				XX1C9FF110ABBCE8BF456CXX /* Supabase */,
 				XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */,
+				AD003GOOGLE0000001D0E5F /* GoogleSignIn */,
 			);
 			productName = NETR;
 			productReference = 105FC57A2E9EAD3100EA8BCF /* NETR.app */;
@@ -443,6 +397,7 @@
 			packageReferences = (
 				XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				XX30AB8C2F7B19A3D1E045XX /* XCRemoteSwiftPackageReference "lucide-icons-swift" */,
+				AD002GOOGLE0000001D0E5F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 105FC57B2E9EAD3100EA8BCF /* Products */;
@@ -461,8 +416,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADB4D3D42F64A815001D0E5F /* Assets.xcassets in Resources */,
-				ADB4D3D52F64A815001D0E5F /* netr_vid.mp4 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -487,64 +440,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ADB4D3D62F64A815001D0E5F /* WeatherService.swift in Sources */,
-				ADB4D3D72F64A815001D0E5F /* CourtDetailView.swift in Sources */,
-				ADB4D3D82F64A815001D0E5F /* ContentView.swift in Sources */,
-				ADB4D3D92F64A815001D0E5F /* SelfAssessmentView.swift in Sources */,
-				ADB4D3DA2F64A815001D0E5F /* Player.swift in Sources */,
-				ADB4D3DB2F64A815001D0E5F /* NETRTheme.swift in Sources */,
-				ADB4D3DC2F64A815001D0E5F /* CreateGameView.swift in Sources */,
-				ADB4D3DD2F64A815001D0E5F /* ComposePostView.swift in Sources */,
-				ADB4D3DE2F64A815001D0E5F /* ProfileView.swift in Sources */,
-				CL00D41A2F77B001001FEED1 /* PublicPlayerProfileView.swift in Sources */,
-				CL00D41C2F77B001001FEED1 /* InviteView.swift in Sources */,
-				ADB4D3DF2F64A815001D0E5F /* PostCardView.swift in Sources */,
-				ADB4D3E02F64A815001D0E5F /* NETRComponents.swift in Sources */,
-				ADB4D3E12F64A815001D0E5F /* FeedView.swift in Sources */,
-				ADB4D3E22F64A815001D0E5F /* RateView.swift in Sources */,
-				ADB4D3E32F64A815001D0E5F /* GameModels.swift in Sources */,
-				ADB4D3E42F64A815001D0E5F /* FeedViewModel.swift in Sources */,
-				ADB4D3E52F64A815001D0E5F /* JoinGameView.swift in Sources */,
-				ADB4D3E62F64A815001D0E5F /* CourtCardView.swift in Sources */,
-				ADB4D3E72F64A815001D0E5F /* RateTabModels.swift in Sources */,
-				ADB4D3E82F64A815001D0E5F /* NETRRatingScale.swift in Sources */,
-				ADB4D3E92F64A815001D0E5F /* SkillRadarView.swift in Sources */,
-				ADB4D3EA2F64A815001D0E5F /* GameSession.swift in Sources */,
-				ADB4D3EB2F64A815001D0E5F /* VibeDecalView.swift in Sources */,
-				ADB4D3EC2F64A815001D0E5F /* BiometricAuthManager.swift in Sources */,
-				ADB4D3ED2F64A815001D0E5F /* NETRApp.swift in Sources */,
-				ADB4D3EE2F64A815001D0E5F /* SelfAssessmentSheetView.swift in Sources */,
-				ADB4D3EF2F64A815001D0E5F /* LucideIcon.swift in Sources */,
-				ADB4D3F02F64A815001D0E5F /* VibeAndRepView.swift in Sources */,
-				ADB4D3F12F64A815001D0E5F /* SelfAssessmentEngine.swift in Sources */,
-				ADB4D3F22F64A815001D0E5F /* SettingsView.swift in Sources */,
-				ADB4D3F32F64A815001D0E5F /* FeedPost.swift in Sources */,
-				ADB4D3F42F64A815001D0E5F /* WelcomeView.swift in Sources */,
-				ADB4D3F52F64A815001D0E5F /* CourtsViewModel.swift in Sources */,
-				ADB4D3F62F64A815001D0E5F /* LockScreenView.swift in Sources */,
-				ADB4D3F72F64A815001D0E5F /* MockDataStore.swift in Sources */,
-				ADB4D3F82F64A815001D0E5F /* CourtsView.swift in Sources */,
-				ADB4D3F92F64A815001D0E5F /* AppearanceManager.swift in Sources */,
-				ADB4D3FA2F64A815001D0E5F /* SupabaseManager.swift in Sources */,
-				ADB4D3FB2F64A815001D0E5F /* RateViewModel.swift in Sources */,
-				ADB4D3FC2F64A815001D0E5F /* CommentsView.swift in Sources */,
-				ADB4D3FD2F64A815001D0E5F /* EmailSignUpView.swift in Sources */,
-				ADB4D3FE2F64A815001D0E5F /* Court.swift in Sources */,
-				ADB4D3FF2F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift in Sources */,
-				ADB4D4002F64A815001D0E5F /* FeedModels.swift in Sources */,
-				ADB4D4012F64A815001D0E5F /* SignInView.swift in Sources */,
-				ADB4D4022F64A815001D0E5F /* RatingModels.swift in Sources */,
-				ADB4D4032F64A815001D0E5F /* GameViewModel.swift in Sources */,
-				ADB4D4042F64A815001D0E5F /* AddCourtView.swift in Sources */,
-				ADB4D4052F64A815001D0E5F /* RootView.swift in Sources */,
-				ADB4D4072F64A815001D0E5F /* ProfileViewModel.swift in Sources */,
-				ADB4D4082F64A815001D0E5F /* LoopingVideoView.swift in Sources */,
-				ADB4D4092F64A815001D0E5F /* OnboardingView.swift in Sources */,
-				ADB4D40A2F64A815001D0E5F /* PlayerCardView.swift in Sources */,
-				ADB4D40B2F64A815001D0E5F /* SelfAssessmentStore.swift in Sources */,
-				ADB4D40C2F64A815001D0E5F /* UserProfile.swift in Sources */,
-				ADB4D40D2F64A815001D0E5F /* RateTabViewModel.swift in Sources */,
-				ADB4D4112F64ADFD001D0E5F /* SelfAssessmentFlow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -895,6 +790,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		AD002GOOGLE0000001D0E5F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 		XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift.git";
@@ -914,6 +817,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		AD003GOOGLE0000001D0E5F /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AD002GOOGLE0000001D0E5F /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
 		XX1C9FF110ABBCE8BF456CXX /* Supabase */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = XX20EB7F6EA71E9F2E096CXX /* XCRemoteSwiftPackageReference "supabase-swift" */;
