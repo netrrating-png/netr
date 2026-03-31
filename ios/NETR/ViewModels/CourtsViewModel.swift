@@ -242,7 +242,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         do {
             let result: [Court] = try await client
                 .from("courts")
-                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
+                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
                 .execute()
                 .value
             courts = result

@@ -25,6 +25,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
     var zipCode: String?
     var courtRating: Double?
     var submittedBy: String?
+    var photoCount: Int?
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: lat, longitude: lng)
@@ -42,6 +43,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         case zipCode = "zip_code"
         case courtRating = "court_rating"
         case submittedBy = "submitted_by"
+        case photoCount = "photo_count"
     }
 
     init(
@@ -49,7 +51,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         lat: Double, lng: Double, surfaceType: SurfaceType, lights: Bool,
         indoor: Bool, fullCourt: Bool, verified: Bool, tags: [String]?,
         zipCode: String? = nil, courtRating: Double? = nil,
-        submittedBy: String? = nil
+        submittedBy: String? = nil, photoCount: Int? = nil
     ) {
         self.id = id
         self.name = name
@@ -67,6 +69,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         self.zipCode = zipCode
         self.courtRating = courtRating
         self.submittedBy = submittedBy
+        self.photoCount = photoCount
     }
 
     init(from decoder: Decoder) throws {
@@ -92,6 +95,7 @@ nonisolated struct Court: Identifiable, Equatable, Codable, Sendable {
         zipCode = try container.decodeIfPresent(String.self, forKey: .zipCode)
         courtRating = try container.decodeIfPresent(Double.self, forKey: .courtRating)
         submittedBy = try container.decodeIfPresent(String.self, forKey: .submittedBy)
+        photoCount = try container.decodeIfPresent(Int.self, forKey: .photoCount)
     }
 }
 
