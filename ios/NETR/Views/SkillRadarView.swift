@@ -188,29 +188,30 @@ struct SkillRadarView: View {
                 }
             }
 
-            // Start breathing center after last spoke settles
-            // Pattern: quick inhale → hold → slow exhale × 2, then settle to faint resting glow
+            // Start breathing center after last spoke settles — sequential async
             let b = 0.05 + Double(min(skills.count, 7) - 1) * 0.11 + 0.65
+            Task { @MainActor in
+                let ns = { (s: Double) in UInt64(s * 1_000_000_000) }
+                try? await Task.sleep(nanoseconds: ns(b))
 
-            // Breath 1 — full
-            withAnimation(.easeIn(duration: 0.72).delay(b)) {
-                breathePhase = 1.0
-            }
-            withAnimation(.easeOut(duration: 1.1).delay(b + 1.05)) {
-                breathePhase = 0.0
-            }
+                // Breath 1 — full inhale
+                withAnimation(.easeIn(duration: 0.72)) { breathePhase = 1.0 }
+                try? await Task.sleep(nanoseconds: ns(1.05))
 
-            // Breath 2 — slightly shallower
-            withAnimation(.easeIn(duration: 0.68).delay(b + 2.55)) {
-                breathePhase = 0.78
-            }
-            withAnimation(.easeOut(duration: 1.0).delay(b + 3.55)) {
-                breathePhase = 0.0
-            }
+                // Breath 1 — exhale
+                withAnimation(.easeOut(duration: 1.1)) { breathePhase = 0.0 }
+                try? await Task.sleep(nanoseconds: ns(1.5))
 
-            // Settle to a faint resting glow — just enough to feel alive without looping
-            withAnimation(.easeOut(duration: 1.6).delay(b + 5.1)) {
-                breathePhase = 0.14
+                // Breath 2 — slightly shallower inhale
+                withAnimation(.easeIn(duration: 0.68)) { breathePhase = 0.78 }
+                try? await Task.sleep(nanoseconds: ns(1.0))
+
+                // Breath 2 — exhale
+                withAnimation(.easeOut(duration: 1.0)) { breathePhase = 0.0 }
+                try? await Task.sleep(nanoseconds: ns(1.6))
+
+                // Settle to a faint resting glow
+                withAnimation(.easeOut(duration: 1.6)) { breathePhase = 0.14 }
             }
         }
     }
@@ -529,13 +530,16 @@ struct ArchetypeBadge: View {
     }
 
     private var displayName: String? {
+        // Always prefer live-computed from current skills; stored name is last resort
+        if let result = computedResult { return result.name }
         if let name = archetypeName, !name.isEmpty { return name }
-        return computedResult?.name
+        return nil
     }
 
     private var displayKey: String? {
+        if let result = computedResult { return result.key }
         if let key = archetypeKey, !key.isEmpty { return key }
-        return computedResult?.key
+        return nil
     }
 
     private var computedResult: ArchetypeEngine.Result? {
@@ -544,13 +548,13 @@ struct ArchetypeBadge: View {
         for skill in skills where skill.raw > 0 {
             let key: String
             switch skill.label {
-            case "SHT": key = "shooting"
-            case "FIN": key = "finishing"
-            case "HND": key = "handles"
-            case "PLY": key = "playmaking"
-            case "DEF": key = "defense"
-            case "REB": key = "rebounding"
-            case "IQ":  key = "iq"
+            case "Shooting":   key = "shooting"
+            case "Finishing":  key = "finishing"
+            case "Handles":    key = "handles"
+            case "Playmaking": key = "playmaking"
+            case "Defense":    key = "defense"
+            case "Rebounding": key = "rebounding"
+            case "IQ":         key = "iq"
             default: continue
             }
             scores[key] = skill.raw
