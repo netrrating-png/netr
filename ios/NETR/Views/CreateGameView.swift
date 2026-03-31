@@ -698,10 +698,9 @@ struct GameLobbyView: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
                 .padding(.horizontal, 16)
 
-                LucideIcon("qr-code", size: 80)
-                    .foregroundStyle(NETRTheme.subtext)
-                    .frame(width: 120, height: 120)
-                    .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                if let code = viewModel.game?.joinCode, !code.isEmpty {
+                    QRCodeView(content: code, size: 120)
+                }
 
                 HStack(spacing: 16) {
                     // Format — tappable for host while waiting
