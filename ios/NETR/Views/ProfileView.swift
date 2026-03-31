@@ -28,6 +28,7 @@ struct ProfileView: View {
     @State private var localCourtsVM = CourtsViewModel()
     @State private var crewViewModel = CrewViewModel()
     @State private var showMyCrews: Bool = false
+    @State private var showSkillBreakdown: Bool = false
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false), showPhotoBanner: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -96,12 +97,6 @@ struct ProfileView: View {
                                     .padding(.bottom, 24)
                                 Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
                             }
-
-                            courtRepRow(user: user)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 24)
-
-                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
 
                             crewRepRow
                                 .padding(.horizontal, 20)
@@ -496,6 +491,14 @@ struct ProfileView: View {
                 Text(user.position.rawValue)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(ratingColor(for: user))
+                let showAge = SupabaseManager.shared.currentProfile?.showAge ?? false
+                if showAge && user.age > 0 {
+                    Text("·")
+                        .foregroundStyle(NETRTheme.muted)
+                    Text("\(user.age)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
                 Text("·")
                     .foregroundStyle(NETRTheme.muted)
                 LucideIcon("map-pin", size: 11)
@@ -732,34 +735,103 @@ struct ProfileView: View {
 
     private func radarSection(user: Player) -> some View {
         let radarSkills = buildRadarSkills(from: user.skills)
-        return VStack(alignment: .leading, spacing: 16) {
+        let topSkills = radarSkills.sorted { $0.raw > $1.raw }.prefix(4)
+
+        return VStack(alignment: .leading, spacing: 12) {
             ArchetypeBadge(
                 archetypeName: viewModel.userProfile?.archetypeName,
                 archetypeKey: viewModel.userProfile?.archetypeKey,
                 skills: radarSkills
             )
 
-            HStack {
-                Text("SKILL BREAKDOWN")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(NETRTheme.subtext)
-                    .tracking(1.5)
-                Spacer()
-                if user.isProvisional && !user.isProspect {
-                    HStack(spacing: 4) {
-                        LucideIcon("lock", size: 9)
-                            .foregroundStyle(NETRTheme.subtext)
-                        Text("Self-assessed")
-                            .font(.system(size: 11))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
+            // Collapsible header row
+            Button {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.72)) {
+                    showSkillBreakdown.toggle()
                 }
-                Button { showScoreInfo = true } label: {
-                    ScoreInfoButton()
-                }
-            }
+            } label: {
+                HStack(spacing: 10) {
+                    Text("SKILL BREAKDOWN")
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.5)
+                        .foregroundStyle(showSkillBreakdown ? NETRTheme.text : NETRTheme.subtext)
 
-            SkillRadarView(skills: radarSkills, size: 280, animated: true, tierColor: NETRRating.color(for: user.rating))
+                    if !showSkillBreakdown {
+                        HStack(spacing: 5) {
+                            ForEach(Array(topSkills.enumerated()), id: \.element.label) { _, skill in
+                                HStack(spacing: 2) {
+                                    Circle()
+                                        .fill(skill.categoryColor)
+                                        .frame(width: 5, height: 5)
+                                        .shadow(color: skill.categoryColor.opacity(0.7), radius: 3)
+                                    Text(String(format: "%.1f", skill.raw))
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundStyle(skill.categoryColor)
+                                }
+                            }
+                        }
+                        .transition(.opacity)
+                    }
+
+                    Spacer()
+
+                    ZStack {
+                        Circle()
+                            .fill(showSkillBreakdown ? NETRTheme.neonGreen.opacity(0.12) : NETRTheme.card)
+                        LucideIcon(showSkillBreakdown ? "chevron-up" : "chevron-down", size: 10)
+                            .foregroundStyle(showSkillBreakdown ? NETRTheme.neonGreen : NETRTheme.subtext)
+                    }
+                    .frame(width: 26, height: 26)
+                    .overlay(Circle().stroke(
+                        showSkillBreakdown ? NETRTheme.neonGreen.opacity(0.3) : NETRTheme.border,
+                        lineWidth: 1
+                    ))
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 11)
+                .background(NETRTheme.card)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(showSkillBreakdown ? NETRTheme.neonGreen.opacity(0.3) : NETRTheme.border, lineWidth: 1)
+                )
+                .clipShape(.rect(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
+
+            if showSkillBreakdown {
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        if user.isProvisional && !user.isProspect {
+                            HStack(spacing: 4) {
+                                LucideIcon("lock", size: 9)
+                                    .foregroundStyle(NETRTheme.subtext)
+                                Text("Self-assessed")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(NETRTheme.subtext)
+                            }
+                        }
+                        Spacer()
+                        Button { showScoreInfo = true } label: {
+                            ScoreInfoButton()
+                        }
+                    }
+
+                    SkillRadarView(
+                        skills: radarSkills,
+                        size: 280,
+                        animated: true,
+                        tierColor: NETRRating.color(for: user.rating)
+                    )
+                }
+                .transition(
+                    .asymmetric(
+                        insertion: .scale(scale: 0.88, anchor: .top)
+                            .combined(with: .opacity),
+                        removal: .scale(scale: 0.88, anchor: .top)
+                            .combined(with: .opacity)
+                    )
+                )
+            }
         }
     }
 
@@ -826,63 +898,10 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Court Rep
-
-    private func courtRepRow(user: Player) -> some View {
-        let repLevel = min(max(user.games / 10, 1), 10)
-        let repXP = user.games * 5
-        let repXPToNext = max(50 - (repXP % 50), 1)
-        let repLevelName = repLevel <= 1 ? "Newcomer" : repLevel <= 3 ? "Regular" : repLevel <= 5 ? "Hooper" : "Legend"
-        let repColor = ratingColor(for: user)
-
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("COURT REP")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(NETRTheme.subtext)
-                .tracking(1.5)
-
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(repColor.opacity(0.12))
-                        .frame(width: 46, height: 46)
-                    Circle()
-                        .stroke(repColor, lineWidth: 1.5)
-                        .frame(width: 46, height: 46)
-                    Text("L\(repLevel)")
-                        .font(.system(.callout, design: .default, weight: .black).width(.compressed))
-                        .foregroundStyle(repColor)
-                }
-                .shadow(color: repColor.opacity(0.25), radius: 8)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(repLevelName)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(repColor)
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(NETRTheme.muted).frame(height: 4)
-                            Capsule()
-                                .fill(LinearGradient(
-                                    gradient: Gradient(colors: [repColor.opacity(0.6), repColor]),
-                                    startPoint: .leading, endPoint: .trailing
-                                ))
-                                .frame(width: geo.size.width * min(1, Double(repXP % 50) / 50.0), height: 4)
-                        }
-                    }
-                    .frame(height: 4)
-                    Text("\(repXP) XP · \(repXPToNext) to next level")
-                        .font(.system(size: 11))
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-            }
-        }
-    }
-
     // MARK: - Milestones
 
     private func milestonesSection(user: Player) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text("MILESTONES")
                     .font(.system(size: 10, weight: .bold))
@@ -890,14 +909,12 @@ struct ProfileView: View {
                     .tracking(1.5)
                 Spacer()
                 if viewModel.isCurrentUser {
-                    Button {
-                        showEditMilestones = true
-                    } label: {
+                    Button { showEditMilestones = true } label: {
                         HStack(spacing: 4) {
                             Image(systemName: viewModel.milestones.isEmpty ? "plus" : "pencil")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10))
                             Text(viewModel.milestones.isEmpty ? "Add" : "Edit")
-                                .font(.system(size: 12, weight: .medium))
+                                .font(.system(size: 11, weight: .semibold))
                         }
                         .foregroundStyle(NETRTheme.neonGreen)
                     }
@@ -906,83 +923,72 @@ struct ProfileView: View {
 
             if viewModel.milestones.isEmpty {
                 Text(viewModel.isCurrentUser
-                     ? "Add your basketball career — school team, AAU, college, pro, and more."
-                     : "No milestones added yet.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(NETRTheme.subtext)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                     ? "Add your career — school team, AAU, college, and more."
+                     : "No milestones yet.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NETRTheme.muted)
             } else {
                 let sorted = viewModel.milestones.sorted { $0.milestoneType.prestige > $1.milestoneType.prestige }
-                VStack(spacing: 0) {
-                    ForEach(Array(sorted.enumerated()), id: \.element.id) { index, milestone in
-                        let isTop = index == 0
-                        VStack(spacing: 0) {
-                            HStack(alignment: .top, spacing: 14) {
-                                // Badge with timeline line below
-                                VStack(spacing: 0) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(milestone.milestoneType.badgeColor.opacity(isTop ? 0.2 : 0.1))
-                                            .frame(width: 40, height: 40)
-                                        if isTop {
-                                            Circle()
-                                                .stroke(milestone.milestoneType.badgeColor.opacity(0.5), lineWidth: 1.5)
-                                                .frame(width: 40, height: 40)
-                                        }
-                                        Image(systemName: milestone.milestoneType.sfSymbol)
-                                            .font(.system(size: isTop ? 17 : 14, weight: .semibold))
-                                            .foregroundStyle(milestone.milestoneType.badgeColor)
-                                    }
-                                    if index < sorted.count - 1 {
-                                        Rectangle()
-                                            .fill(NETRTheme.border)
-                                            .frame(width: 1)
-                                            .frame(minHeight: 24)
-                                    }
-                                }
-                                .frame(width: 40)
 
-                                // Content
-                                VStack(alignment: .leading, spacing: 3) {
-                                    if isTop {
-                                        Text("HIGHEST LEVEL")
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundStyle(milestone.milestoneType.badgeColor.opacity(0.8))
-                                            .tracking(1.2)
-                                    }
+                // Top milestone — featured card
+                let top = sorted[0]
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(top.milestoneType.badgeColor.opacity(0.15))
+                            .frame(width: 38, height: 38)
+                        Image(systemName: top.milestoneType.sfSymbol)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(top.milestoneType.badgeColor)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("PEAK LEVEL")
+                            .font(.system(size: 8, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(top.milestoneType.badgeColor.opacity(0.7))
+                        Text(top.milestoneType.displayName)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(top.milestoneType.badgeColor)
+                        if let sub = top.subtitle {
+                            Text(sub)
+                                .font(.system(size: 11))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .background(top.milestoneType.badgeColor.opacity(0.07))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(top.milestoneType.badgeColor.opacity(0.2), lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+
+                // Remaining milestones as compact chips
+                if sorted.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(sorted.dropFirst()) { milestone in
+                                HStack(spacing: 6) {
+                                    Image(systemName: milestone.milestoneType.sfSymbol)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(milestone.milestoneType.badgeColor)
                                     Text(milestone.milestoneType.displayName)
-                                        .font(.system(size: isTop ? 15 : 14, weight: isTop ? .bold : .semibold))
-                                        .foregroundStyle(isTop ? milestone.milestoneType.badgeColor : NETRTheme.text)
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(NETRTheme.text)
                                     if let sub = milestone.subtitle {
-                                        Text(sub)
-                                            .font(.system(size: 12))
+                                        Text("· \(sub)")
+                                            .font(.system(size: 11))
                                             .foregroundStyle(NETRTheme.subtext)
                                     }
                                 }
-                                .padding(.top, 10)
-                                .padding(.bottom, index < sorted.count - 1 ? 20 : 12)
-
-                                Spacer()
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(NETRTheme.card)
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
+                                .clipShape(.rect(cornerRadius: 8))
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.top, isTop ? 10 : 0)
                         }
-                        .background(
-                            isTop
-                                ? milestone.milestoneType.badgeColor.opacity(0.06)
-                                : Color.clear
-                        )
-                        .clipShape(.rect(
-                            topLeadingRadius: isTop ? 12 : 0,
-                            bottomLeadingRadius: isTop && sorted.count == 1 ? 12 : 0,
-                            bottomTrailingRadius: isTop && sorted.count == 1 ? 12 : 0,
-                            topTrailingRadius: isTop ? 12 : 0
-                        ))
                     }
                 }
-                .background(NETRTheme.card)
-                .clipShape(.rect(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
             }
         }
     }
@@ -991,95 +997,73 @@ struct ProfileView: View {
 
     @ViewBuilder
     private var crewRepRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("MY CREW")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(NETRTheme.subtext)
-                    .tracking(1.5)
-                Spacer()
-                Button {
-                    showMyCrews = true
-                } label: {
-                    HStack(spacing: 4) {
-                        LucideIcon("users", size: 11)
-                        Text(crewViewModel.myCrews.isEmpty ? "Join a Crew" : "Manage")
-                            .font(.system(size: 11, weight: .bold))
+        VStack(alignment: .leading, spacing: 10) {
+        Text("MY CREW")
+            .font(.system(size: 10, weight: .bold))
+            .foregroundStyle(NETRTheme.subtext)
+            .tracking(1.5)
+        Button { showMyCrews = true } label: {
+            HStack(spacing: 12) {
+                if let primary = crewViewModel.primaryCrew {
+                    ZStack {
+                        Circle()
+                            .fill(NETRTheme.neonGreen.opacity(0.1))
+                            .frame(width: 36, height: 36)
+                        LucideIcon(primary.icon, size: 16)
+                            .foregroundStyle(NETRTheme.neonGreen)
                     }
-                    .foregroundStyle(NETRTheme.neonGreen)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
-                    .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
-                }
-                .buttonStyle(PressButtonStyle())
-            }
-
-            if let primary = crewViewModel.primaryCrew {
-                Button { showMyCrews = true } label: {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(NETRTheme.neonGreen.opacity(0.12))
-                                .frame(width: 48, height: 48)
-                            LucideIcon(primary.icon, size: 22)
-                                .foregroundStyle(NETRTheme.neonGreen)
-                        }
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 6) {
-                                Text(primary.name)
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundStyle(NETRTheme.text)
-                                Text("PRIMARY")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .tracking(0.8)
-                                    .foregroundStyle(NETRTheme.gold)
-                                    .padding(.horizontal, 5)
-                                    .padding(.vertical, 2)
-                                    .background(NETRTheme.gold.opacity(0.12), in: .rect(cornerRadius: 4))
-                            }
-                            Text("\(crewViewModel.myCrews.count) crew\(crewViewModel.myCrews.count == 1 ? "" : "s") total")
-                                .font(.system(size: 12))
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                        Spacer()
-                        LucideIcon("chevron-right", size: 14)
-                            .foregroundStyle(NETRTheme.muted)
-                    }
-                    .padding(14)
-                    .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1))
-                }
-                .buttonStyle(PressButtonStyle())
-            } else {
-                Button { showMyCrews = true } label: {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(NETRTheme.card)
-                                .frame(width: 44, height: 44)
-                            LucideIcon("users", size: 20)
-                                .foregroundStyle(NETRTheme.muted)
-                        }
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("No crew yet")
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(primary.name)
                                 .font(.system(size: 14, weight: .semibold))
-                                .foregroundStyle(NETRTheme.subtext)
-                            Text("Create or join a crew with your ballers")
-                                .font(.system(size: 12))
-                                .foregroundStyle(NETRTheme.muted)
+                                .foregroundStyle(NETRTheme.text)
+                            Text("PRIMARY")
+                                .font(.system(size: 8, weight: .bold))
+                                .tracking(0.6)
+                                .foregroundStyle(NETRTheme.gold)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(NETRTheme.gold.opacity(0.1), in: .rect(cornerRadius: 4))
                         }
-                        Spacer()
-                        LucideIcon("chevron-right", size: 14)
+                        Text("\(crewViewModel.myCrews.count) crew\(crewViewModel.myCrews.count == 1 ? "" : "s")")
+                            .font(.system(size: 11))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(NETRTheme.card)
+                            .frame(width: 36, height: 36)
+                        LucideIcon("users", size: 16)
                             .foregroundStyle(NETRTheme.muted)
                     }
-                    .padding(14)
-                    .background(NETRTheme.card, in: .rect(cornerRadius: 14))
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+                    Text("No crew yet · Find your squad")
+                        .font(.system(size: 13))
+                        .foregroundStyle(NETRTheme.subtext)
                 }
-                .buttonStyle(PressButtonStyle())
+                Spacer()
+                HStack(spacing: 4) {
+                    LucideIcon("users", size: 10)
+                    Text(crewViewModel.myCrews.isEmpty ? "Join" : "Manage")
+                        .font(.system(size: 11, weight: .bold))
+                }
+                .foregroundStyle(NETRTheme.neonGreen)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+                .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.25), lineWidth: 1))
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(NETRTheme.card)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(
+                crewViewModel.primaryCrew != nil ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.border,
+                lineWidth: 1
+            ))
+            .clipShape(.rect(cornerRadius: 14))
         }
+        .buttonStyle(PressButtonStyle())
+        } // VStack
         .task { await crewViewModel.loadMyCrews() }
     }
 

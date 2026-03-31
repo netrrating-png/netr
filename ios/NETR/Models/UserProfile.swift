@@ -27,6 +27,7 @@ nonisolated struct UserProfile: Codable, Sendable {
     var vibeEffort: Double?
     var vibeAttitude: Double?
     var vibeInclusion: Double?
+    var showAge: Bool?
     var isPrivate: Bool?
     var isVerifiedPro: Bool?
     var proVerificationPending: Bool?
@@ -61,6 +62,7 @@ nonisolated struct UserProfile: Codable, Sendable {
         case vibeEffort = "vibe_effort"
         case vibeAttitude = "vibe_attitude"
         case vibeInclusion = "vibe_inclusion"
+        case showAge = "show_age"
         case isPrivate = "is_private"
         case isVerifiedPro = "is_verified_pro"
         case proVerificationPending = "pro_verification_pending"
@@ -136,9 +138,12 @@ extension UserProfile {
     private func ageFromDOB() -> Int {
         guard let dob = dateOfBirth else { return 0 }
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: dob) else { return 0 }
-        let years = Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? 0
+        var cal = Calendar(identifier: .gregorian)
+        cal.locale = Locale(identifier: "en_US_POSIX")
+        let years = cal.dateComponents([.year], from: date, to: Date()).year ?? 0
         return years
     }
 }

@@ -32,8 +32,11 @@ struct SkillRadarView: View {
         self.tierColor = tierColor
     }
 
-    @State private var progress: Double = 0
-    @State private var labelOpacity: Double = 0
+    // Per-spoke progress — each animates independently with stagger
+    @State private var spokeProgress: [Double] = Array(repeating: 0, count: 7)
+    @State private var labelOpacity: [Double] = Array(repeating: 0, count: 7)
+    // Breathing center: 0 = exhale, 1 = inhale
+    @State private var breathePhase: CGFloat = 0
 
     private let levels = 5
     private let maxVal = 10.0
@@ -49,10 +52,24 @@ struct SkillRadarView: View {
     var body: some View {
         VStack(spacing: 16) {
             ZStack {
+                // Breathing center glow — driven by breathePhase (0=exhale, 1=inhale)
+                Canvas { ctx, _ in
+                    let r = 18 + breathePhase * 22        // 18...40
+                    let opac = 0.05 + breathePhase * 0.22 // 0.05...0.27
+                    let glow = Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2))
+                    ctx.fill(glow, with: .color(tierColor.opacity(Double(opac))))
+                    let ri = r * 0.45
+                    let inner = Path(ellipseIn: CGRect(x: cx - ri, y: cy - ri, width: ri * 2, height: ri * 2))
+                    ctx.fill(inner, with: .color(tierColor.opacity(Double(opac) * 0.65)))
+                }
+                .frame(width: size, height: size)
+                .blur(radius: 9)
+
+                // Main radar canvas
                 Canvas { context, _ in
                     let center = CGPoint(x: cx, y: cy)
 
-                    // Grid rings — match SA style
+                    // Grid rings
                     for li in 1...levels {
                         let frac = CGFloat(li) / CGFloat(levels)
                         let isOuter = li == levels
@@ -63,7 +80,7 @@ struct SkillRadarView: View {
                         context.stroke(ringPath, with: .color(isOuter ? ringOuter : ringDim), lineWidth: isOuter ? 1.2 : 0.7)
                     }
 
-                    // Spokes — match SA style
+                    // Spokes
                     let outerPoints = polygonPoints(radius: maxR)
                     for pt in outerPoints {
                         var spoke = Path()
@@ -82,48 +99,50 @@ struct SkillRadarView: View {
                         context.draw(context.resolve(text), at: CGPoint(x: pt.x, y: pt.y - 7))
                     }
 
-                    // Data points
+                    // Per-spoke data points — each has its own progress
                     let skillPoints = skills.enumerated().map { i, s in
-                        let raw = CGFloat(s.value) * CGFloat(progress)
-                        return polygonPoint(index: i, radius: maxR * raw)
+                        let p = i < spokeProgress.count ? CGFloat(spokeProgress[i]) : 0
+                        return polygonPoint(index: i, radius: maxR * CGFloat(s.value) * p)
                     }
 
-                    // Data fill — tier color, very low opacity (matching SA 0.07)
+                    // Overall fill progress = average of all spokes
+                    let avgProgress = spokeProgress.prefix(n).reduce(0, +) / Double(max(n, 1))
+
+                    // Data fill
                     var fillPath = Path()
                     fillPath.addLines(skillPoints)
                     fillPath.closeSubpath()
-                    context.fill(fillPath, with: .color(tierColor.opacity(0.07)))
+                    context.fill(fillPath, with: .color(tierColor.opacity(0.07 * avgProgress)))
 
-                    // Data stroke — tier color at 0.8 opacity, 1.8 lineWidth (matching SA)
+                    // Data stroke
                     var strokePath = Path()
                     strokePath.addLines(skillPoints)
                     strokePath.closeSubpath()
-                    context.stroke(strokePath, with: .color(tierColor.opacity(0.8)), style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
+                    context.stroke(strokePath, with: .color(tierColor.opacity(0.8 * avgProgress)), style: StrokeStyle(lineWidth: 1.8, lineJoin: .round))
 
-                    // Spoke lines from center to data point — faint tier color (matching SA 0.15)
-                    for pt in skillPoints {
+                    // Spoke lines center → data
+                    for (i, pt) in skillPoints.enumerated() {
+                        let p = i < spokeProgress.count ? spokeProgress[i] : 0
                         var spokeLine = Path()
                         spokeLine.move(to: center)
                         spokeLine.addLine(to: pt)
-                        context.stroke(spokeLine, with: .color(tierColor.opacity(0.15)), lineWidth: 1)
+                        context.stroke(spokeLine, with: .color(tierColor.opacity(0.18 * p)), lineWidth: 1)
                     }
 
-                    // Dots — 3-layer matching SA: glow halo, outer dot, inner dark fill
-                    for pt in skillPoints {
-                        // Glow halo — tier color
+                    // Dots — halo + outer + inner per spoke
+                    for (i, pt) in skillPoints.enumerated() {
+                        let p = i < spokeProgress.count ? spokeProgress[i] : 0
                         let halo = Path(ellipseIn: CGRect(x: pt.x - 7, y: pt.y - 7, width: 14, height: 14))
-                        context.fill(halo, with: .color(tierColor.opacity(0.12 * progress)))
-                        // Outer dot — tier color solid
+                        context.fill(halo, with: .color(tierColor.opacity(0.14 * p)))
                         let outer = Path(ellipseIn: CGRect(x: pt.x - 4.5, y: pt.y - 4.5, width: 9, height: 9))
-                        context.fill(outer, with: .color(tierColor.opacity(progress)))
-                        // Inner fill — dark background
+                        context.fill(outer, with: .color(tierColor.opacity(p)))
                         let inner = Path(ellipseIn: CGRect(x: pt.x - 2, y: pt.y - 2, width: 4, height: 4))
-                        context.fill(inner, with: .color(darkBg.opacity(progress)))
+                        context.fill(inner, with: .color(darkBg.opacity(p)))
                     }
                 }
                 .frame(width: size, height: size)
 
-                // Axis labels — per-category color (matching SA)
+                // Axis labels — staggered fade-in per spoke
                 ForEach(Array(skills.enumerated()), id: \.offset) { i, skill in
                     let pt = polygonPoint(index: i, radius: labelR)
                     VStack(spacing: 2) {
@@ -134,27 +153,64 @@ struct SkillRadarView: View {
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(skill.categoryColor)
                     }
-                    .opacity(labelOpacity)
+                    .opacity(i < labelOpacity.count ? labelOpacity[i] : 0)
+                    .scaleEffect(i < labelOpacity.count ? (0.7 + 0.3 * labelOpacity[i]) : 0.7)
                     .position(x: pt.x, y: pt.y)
                 }
             }
             .frame(width: size, height: size)
 
             legendGrid
+                .opacity(spokeProgress.reduce(0, +) / Double(max(n, 1)) > 0.5 ? 1 : 0)
+                .animation(.easeIn(duration: 0.4), value: spokeProgress.reduce(0, +))
 
             insightsSection
+                .opacity(spokeProgress.reduce(0, +) / Double(max(n, 1)) > 0.85 ? 1 : 0)
+                .animation(.easeIn(duration: 0.5), value: spokeProgress.reduce(0, +))
         }
         .onAppear {
-            if animated {
-                withAnimation(.easeOut(duration: 0.9).delay(0.15)) {
-                    progress = 1
+            guard animated else {
+                spokeProgress = Array(repeating: 1, count: 7)
+                labelOpacity = Array(repeating: 1, count: 7)
+                breathePhase = 0.5
+                return
+            }
+
+            // Stagger each spoke's spring reveal — one by one
+            for i in 0..<min(skills.count, 7) {
+                let delay = 0.05 + Double(i) * 0.11
+                withAnimation(.spring(response: 0.52, dampingFraction: 0.60).delay(delay)) {
+                    spokeProgress[i] = 1.0
                 }
-                withAnimation(.easeIn(duration: 0.5).delay(0.9)) {
-                    labelOpacity = 1
+                // Label pops in just after its dot arrives
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.65).delay(delay + 0.36)) {
+                    labelOpacity[i] = 1.0
                 }
-            } else {
-                progress = 1
-                labelOpacity = 1
+            }
+
+            // Start breathing center after last spoke settles
+            // Pattern: quick inhale → hold → slow exhale × 2, then settle to faint resting glow
+            let b = 0.05 + Double(min(skills.count, 7) - 1) * 0.11 + 0.65
+
+            // Breath 1 — full
+            withAnimation(.easeIn(duration: 0.72).delay(b)) {
+                breathePhase = 1.0
+            }
+            withAnimation(.easeOut(duration: 1.1).delay(b + 1.05)) {
+                breathePhase = 0.0
+            }
+
+            // Breath 2 — slightly shallower
+            withAnimation(.easeIn(duration: 0.68).delay(b + 2.55)) {
+                breathePhase = 0.78
+            }
+            withAnimation(.easeOut(duration: 1.0).delay(b + 3.55)) {
+                breathePhase = 0.0
+            }
+
+            // Settle to a faint resting glow — just enough to feel alive without looping
+            withAnimation(.easeOut(duration: 1.6).delay(b + 5.1)) {
+                breathePhase = 0.14
             }
         }
     }

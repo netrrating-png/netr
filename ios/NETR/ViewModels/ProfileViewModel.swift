@@ -348,7 +348,7 @@ class ProfileViewModel {
         await loadProfile()
     }
 
-    func updateFullProfile(fullName: String, username: String, bio: String?, city: String?, position: String?) async throws {
+    func updateFullProfile(fullName: String, username: String, bio: String?, city: String?, position: String?, showAge: Bool = false, dateOfBirth: Date? = nil) async throws {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
 
         nonisolated struct FullProfileUpdate: Encodable, Sendable {
@@ -357,21 +357,41 @@ class ProfileViewModel {
             let bio: String?
             let city: String?
             let position: String?
+            let showAge: Bool
+            let dateOfBirth: String?
             nonisolated enum CodingKeys: String, CodingKey {
                 case fullName = "full_name"
                 case username
                 case bio
                 case city
                 case position
+                case showAge = "show_age"
+                case dateOfBirth = "date_of_birth"
             }
         }
 
         isSaving = true
         defer { isSaving = false }
 
+        let dobString: String? = {
+            guard let dob = dateOfBirth else { return nil }
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = "yyyy-MM-dd"
+            return formatter.string(from: dob)
+        }()
+
         try await client
             .from("profiles")
-            .update(FullProfileUpdate(fullName: fullName, username: username, bio: bio, city: city, position: position))
+            .update(FullProfileUpdate(
+                fullName: fullName,
+                username: username,
+                bio: bio,
+                city: city,
+                position: position,
+                showAge: showAge,
+                dateOfBirth: dobString
+            ))
             .eq("id", value: userId)
             .execute()
 
