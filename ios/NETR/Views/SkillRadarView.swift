@@ -35,8 +35,8 @@ struct SkillRadarView: View {
     // Per-spoke progress — each animates independently with stagger
     @State private var spokeProgress: [Double] = Array(repeating: 0, count: 7)
     @State private var labelOpacity: [Double] = Array(repeating: 0, count: 7)
-    // Breathing center: 0 = exhale, 1 = inhale
-    @State private var breathePhase: CGFloat = 0
+    // Breathing center — driven by real Date timestamps for 60fps smoothness
+    @State private var breatheStartTime: Date? = nil
 
     private let levels = 5
     private let maxVal = 10.0
@@ -52,15 +52,18 @@ struct SkillRadarView: View {
     var body: some View {
         VStack(spacing: 16) {
             ZStack {
-                // Breathing center glow — driven by breathePhase (0=exhale, 1=inhale)
-                Canvas { ctx, _ in
-                    let r = 18 + breathePhase * 22        // 18...40
-                    let opac = 0.05 + breathePhase * 0.22 // 0.05...0.27
-                    let glow = Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2))
-                    ctx.fill(glow, with: .color(tierColor.opacity(Double(opac))))
-                    let ri = r * 0.45
-                    let inner = Path(ellipseIn: CGRect(x: cx - ri, y: cy - ri, width: ri * 2, height: ri * 2))
-                    ctx.fill(inner, with: .color(tierColor.opacity(Double(opac) * 0.65)))
+                // Breathing center glow — TimelineView for true 60fps smooth animation
+                TimelineView(.animation) { tl in
+                    Canvas { ctx, _ in
+                        let phase = glowPhase(at: tl.date)
+                        let r = 18 + phase * 22        // 18...40
+                        let opac = 0.05 + phase * 0.22 // 0.05...0.27
+                        let glow = Path(ellipseIn: CGRect(x: cx - r, y: cy - r, width: r * 2, height: r * 2))
+                        ctx.fill(glow, with: .color(tierColor.opacity(Double(opac))))
+                        let ri = r * 0.45
+                        let inner = Path(ellipseIn: CGRect(x: cx - ri, y: cy - ri, width: ri * 2, height: ri * 2))
+                        ctx.fill(inner, with: .color(tierColor.opacity(Double(opac) * 0.65)))
+                    }
                 }
                 .frame(width: size, height: size)
                 .blur(radius: 9)
@@ -172,7 +175,7 @@ struct SkillRadarView: View {
             guard animated else {
                 spokeProgress = Array(repeating: 1, count: 7)
                 labelOpacity = Array(repeating: 1, count: 7)
-                breathePhase = 0.5
+                // Static display — no breathing for non-animated use
                 return
             }
 
@@ -188,30 +191,11 @@ struct SkillRadarView: View {
                 }
             }
 
-            // Start breathing center after last spoke settles — sequential async
+            // Arm the breathing clock — glowPhase() does continuous sine math from this Date
             let b = 0.05 + Double(min(skills.count, 7) - 1) * 0.11 + 0.65
             Task { @MainActor in
-                let ns = { (s: Double) in UInt64(s * 1_000_000_000) }
-                try? await Task.sleep(nanoseconds: ns(b))
-
-                // Breath 1 — full inhale
-                withAnimation(.easeIn(duration: 0.72)) { breathePhase = 1.0 }
-                try? await Task.sleep(nanoseconds: ns(1.05))
-
-                // Breath 1 — exhale
-                withAnimation(.easeOut(duration: 1.1)) { breathePhase = 0.0 }
-                try? await Task.sleep(nanoseconds: ns(1.5))
-
-                // Breath 2 — slightly shallower inhale
-                withAnimation(.easeIn(duration: 0.68)) { breathePhase = 0.78 }
-                try? await Task.sleep(nanoseconds: ns(1.0))
-
-                // Breath 2 — exhale
-                withAnimation(.easeOut(duration: 1.0)) { breathePhase = 0.0 }
-                try? await Task.sleep(nanoseconds: ns(1.6))
-
-                // Settle to a faint resting glow
-                withAnimation(.easeOut(duration: 1.6)) { breathePhase = 0.14 }
+                try? await Task.sleep(nanoseconds: UInt64(b * 1_000_000_000))
+                breatheStartTime = Date()
             }
         }
     }
@@ -259,6 +243,29 @@ struct SkillRadarView: View {
             .background(NETRTheme.surface, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
         }
+    }
+
+    /// Continuous breathing curve driven by real time — no SwiftUI interpolation steps.
+    /// Two asymmetric breath cycles (faster inhale / slower exhale), then settles to resting glow.
+    private func glowPhase(at date: Date) -> CGFloat {
+        guard let start = breatheStartTime else { return 0 }
+        let elapsed = date.timeIntervalSince(start)
+        guard elapsed >= 0 else { return 0 }
+
+        let cycleDuration = 4.5   // seconds per breath
+        let totalDuration = cycleDuration * 2.0  // 2 full breaths
+
+        if elapsed >= totalDuration { return 0.14 }  // resting glow
+
+        let t = elapsed.truncatingRemainder(dividingBy: cycleDuration) / cycleDuration
+        // Asymmetric: inhale over first 38%, exhale over remaining 62% — like real breathing
+        let raw: Double
+        if t < 0.38 {
+            raw = sin((t / 0.38) * .pi / 2)           // 0 → 1 (inhale)
+        } else {
+            raw = cos(((t - 0.38) / 0.62) * .pi / 2)  // 1 → 0 (exhale)
+        }
+        return CGFloat(raw)
     }
 
     private func polygonPoint(index: Int, radius: CGFloat) -> CGPoint {
