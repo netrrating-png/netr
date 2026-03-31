@@ -962,7 +962,13 @@ struct GameLobbyView: View {
         .background(NETRTheme.background)
         .onAppear {
             if let gameId = viewModel.game?.id {
-                Task { await viewModel.loadPlayers(gameId: gameId) }
+                Task {
+                    // Subscribe first so any join during load isn't missed
+                    if !viewModel.isSubscribed {
+                        await viewModel.subscribeToLobby(gameId: gameId)
+                    }
+                    await viewModel.loadPlayers(gameId: gameId)
+                }
             }
             startCountdownIfNeeded()
         }
