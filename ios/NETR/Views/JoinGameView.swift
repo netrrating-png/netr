@@ -306,7 +306,7 @@ class JoinGameViewModel {
     }
 
     func joinGameDirectly(_ game: NearbyGame) async -> SupabaseGame? {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return nil }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return nil }
         isJoining = true
         errorMessage = nil
 
