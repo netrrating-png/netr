@@ -318,13 +318,12 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             let games: [GameCourtId] = try await client
                 .from("games")
                 .select("court_id")
-                .eq("status", value: "waiting")
+                .in("status", values: ["scheduled", "waiting"])
                 .gte("scheduled_at", value: now)
                 .lte("scheduled_at", value: future)
-                .not("scheduled_at", operator: .is, value: "null")
                 .execute()
                 .value
-            scheduledCourtIds = Set(games.map { $0.courtId })
+            scheduledCourtIds = Set(games.compactMap { $0.courtId.isEmpty ? nil : $0.courtId })
         } catch {
             print("Scheduled courts load error: \(error)")
         }
