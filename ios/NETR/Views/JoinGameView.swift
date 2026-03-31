@@ -232,11 +232,73 @@ class JoinGameViewModel {
 
             liveGames = filteredLive
             scheduledGames = scheduled
+
+            // Resolve player counts for games where the FK join failed (game_players is nil)
+            await resolvePlayerCounts()
         } catch {
             errorMessage = error.localizedDescription
         }
 
         isLoading = false
+    }
+
+    /// Fetch actual player counts and host names for all games where FK joins returned nil.
+    private func resolvePlayerCounts() async {
+        let allGames = liveGames + scheduledGames
+        guard !allGames.isEmpty else { return }
+
+        nonisolated struct CountRow: Decodable, Sendable {
+            let gameId: String
+            nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+        }
+        nonisolated struct ProfileName: Decodable, Sendable {
+            let id: String
+            let fullName: String?
+            let username: String?
+            nonisolated enum CodingKeys: String, CodingKey {
+                case id; case fullName = "full_name"; case username
+            }
+        }
+
+        for game in allGames {
+            // Resolve player count if FK join failed
+            if game.game_players == nil {
+                let rows: [CountRow]? = try? await client
+                    .from("game_players")
+                    .select("game_id")
+                    .eq("game_id", value: game.id)
+                    .execute()
+                    .value
+                let count = rows?.count ?? 0
+
+                if let i = liveGames.firstIndex(where: { $0.id == game.id }) {
+                    liveGames[i].playerCount = count
+                }
+                if let i = scheduledGames.firstIndex(where: { $0.id == game.id }) {
+                    scheduledGames[i].playerCount = count
+                }
+            }
+
+            // Resolve host name if FK join failed
+            if game.host == nil, let hostId = game.host_id {
+                let profile: ProfileName? = try? await client
+                    .from("profiles")
+                    .select("id, full_name, username")
+                    .eq("id", value: hostId)
+                    .single()
+                    .execute()
+                    .value
+                let name = profile?.fullName ?? profile?.username.map { "@\($0)" }
+                if let name {
+                    if let i = liveGames.firstIndex(where: { $0.id == game.id }) {
+                        liveGames[i].resolvedHostName = name
+                    }
+                    if let i = scheduledGames.firstIndex(where: { $0.id == game.id }) {
+                        scheduledGames[i].resolvedHostName = name
+                    }
+                }
+            }
+        }
     }
 
     func isJoined(_ gameId: String) -> Bool {
@@ -439,6 +501,7 @@ struct JoinGameView: View {
                                 Task {
                                     if let joined = await joinVM.joinGameDirectly(game) {
                                         gameViewModel.game = joined
+                                        await gameViewModel.subscribeToLobby(gameId: joined.id)
                                         await gameViewModel.loadPlayers(gameId: joined.id)
                                         showLobby = true
                                     }
@@ -533,6 +596,7 @@ struct JoinGameView: View {
                                 Task {
                                     if let joined = await joinVM.joinGameDirectly(game) {
                                         gameViewModel.game = joined
+                                        await gameViewModel.subscribeToLobby(gameId: joined.id)
                                         await gameViewModel.loadPlayers(gameId: joined.id)
                                         showLobby = true
                                     }
