@@ -58,6 +58,16 @@ class ProfileViewModel {
                 bridgedPlayer = mergeLocalAssessment(into: bridgedPlayer)
             }
 
+            // Count games played from game_players (total_games column doesn't exist in DB)
+            // Try lowercase first (new inserts), fall back to uppercase (legacy inserts)
+            nonisolated struct GPCount: Decodable, Sendable {
+                let gameId: String
+                nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+            }
+            // Count only games that: user participated in (game_players row exists),
+            // the game is completed, AND the user rated at least 1 player in that game.
+            bridgedPlayer.games = await countVerifiedGames(userId: targetId.lowercased())
+
             player = bridgedPlayer
             userProfile = profile
             vibeScore = profile.vibeScore
@@ -80,6 +90,53 @@ class ProfileViewModel {
             isLoading = false
             print("Profile load error: \(error)")
         }
+    }
+
+    /// A "verified game" = user was in a completed game AND rated at least 1 player in it.
+    private func countVerifiedGames(userId: String) async -> Int {
+        nonisolated struct GPRow: Decodable, Sendable {
+            let gameId: String
+            nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+        }
+        nonisolated struct GameRow: Decodable, Sendable {
+            let id: String
+        }
+
+        // Step 1: completed games the user was in
+        guard let participated: [GPRow] = try? await client
+            .from("game_players")
+            .select("game_id")
+            .eq("user_id", value: userId)
+            .execute()
+            .value,
+            !participated.isEmpty
+        else { return 0 }
+
+        let gameIds = participated.map { $0.gameId }
+        guard let completedGames: [GameRow] = try? await client
+            .from("games")
+            .select("id")
+            .in("id", values: gameIds)
+            .eq("status", value: "completed")
+            .execute()
+            .value,
+            !completedGames.isEmpty
+        else { return 0 }
+
+        let completedIds = Set(completedGames.map { $0.id })
+
+        // Step 2: which of those games did the user rate someone in?
+        guard let ratingRows: [GPRow] = try? await client
+            .from("ratings")
+            .select("game_id")
+            .eq("rater_id", value: userId)
+            .in("game_id", values: Array(completedIds))
+            .execute()
+            .value
+        else { return 0 }
+
+        let ratedGameIds = Set(ratingRows.map { $0.gameId })
+        return completedIds.intersection(ratedGameIds).count
     }
 
     func loadMilestones(userId: String) async {
