@@ -22,6 +22,8 @@ nonisolated struct UserProfile: Codable, Sendable {
     var catRebounding: Double?
     var catBasketballIq: Double?
     var vibeScore: Double?
+    var vibeRatingCount: Int?
+    var vibeLastRatedAt: String?
     var vibeCommunication: Double?
     var vibeUnselfishness: Double?
     var vibeEffort: Double?
@@ -57,6 +59,8 @@ nonisolated struct UserProfile: Codable, Sendable {
         case catRebounding = "cat_rebounding"
         case catBasketballIq = "cat_basketball_iq"
         case vibeScore = "vibe_score"
+        case vibeRatingCount = "vibe_rating_count"
+        case vibeLastRatedAt = "vibe_last_rated_at"
         case vibeCommunication = "vibe_communication"
         case vibeUnselfishness = "vibe_unselfishness"
         case vibeEffort = "vibe_effort"

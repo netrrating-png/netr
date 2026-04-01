@@ -52,14 +52,15 @@ struct VibeDecalView: View {
                         .frame(width: 12, height: 12)
                         .shadow(color: vibeColor.opacity(0.9), radius: 6)
                     Text(tier.label.uppercased())
-                        .font(.system(size: 11, weight: .black))
+                        .font(.system(size: 18, weight: .black))
                         .tracking(1.2)
                         .foregroundStyle(vibeColor)
                 }
-                if let vibe {
-                    Text(String(format: "%.1f VIBE", vibe))
-                        .font(.system(size: 22, weight: .black))
-                        .foregroundStyle(vibeColor)
+                if let sublabel = tier.sublabel {
+                    Text(sublabel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .multilineTextAlignment(.center)
                 }
             }
             .padding(.horizontal, 16)

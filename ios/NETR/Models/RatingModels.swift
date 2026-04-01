@@ -45,7 +45,7 @@ struct PlayerToRate: Identifiable {
     var currentNetr: Double?
     var currentVibe: Double?
     var skillRatings: InProgressSkillRatings = InProgressSkillRatings()
-    var vibeRunAgain: Int? = nil
+    var vibeRunAgain: Int? = 4  // Default to "Definitely" — rater must actively choose to go lower
     var isSubmitted: Bool = false
 
     struct InProgressSkillRatings {
@@ -110,11 +110,12 @@ let vibeRunAgainOptions: [VibeRunAgainOption] = [
     VibeRunAgainOption(id: 1, label: "No Thanks",     sublabel: "Didn't enjoy the run",      colorHex: "#FF3B30"),
 ]
 
-// ─── VIBE TIER (display helper, maps vibe_score 1–5 to tier) ─
+// ─── VIBE TIER (display helper, maps vibe_score 1–4 to tier) ─
 
 nonisolated struct VibeTier: Sendable {
     let label: String
     let emoji: String
+    let sublabel: String?
     let color: VibeColor
 
     nonisolated enum VibeColor: Sendable {
@@ -143,22 +144,54 @@ nonisolated struct VibeTier: Sendable {
         }
     }
 
-    static func from(score: Double?) -> VibeTier? {
+    /// Map a raw vibe_score to a display tier.
+    /// Applies provisional period (< 5 ratings = Great Vibe) and Red floor (< 7 ratings = min 2.0).
+    static func from(score: Double?, ratingCount: Int? = nil) -> VibeTier? {
         guard let score else { return nil }
-        switch score {
-        case 3.5...:      return VibeTier(label: "Great Vibe", emoji: "🟢", color: .great)
-        case 2.5..<3.5:   return VibeTier(label: "Solid",      emoji: "🟡", color: .solid)
-        case 1.75..<2.5:  return VibeTier(label: "Mixed",      emoji: "🟠", color: .mixed)
-        default:          return VibeTier(label: "Bad Vibe",   emoji: "🔴", color: .bad)
+
+        let count = ratingCount ?? 999
+
+        // Provisional period: fewer than 5 ratings → always Great Vibe
+        if count < 5 {
+            return VibeTier(label: "Great Vibe", emoji: "🟢", sublabel: nil, color: .great)
+        }
+
+        // Red floor protection: fewer than 7 ratings → floor at 2.0 (Mixed at worst)
+        let displayScore = (count < 7 && score < 2.0) ? 2.0 : score
+
+        switch displayScore {
+        case 3.5...:       return VibeTier(label: "Great Vibe", emoji: "🟢", sublabel: nil, color: .great)
+        case 2.8..<3.5:    return VibeTier(label: "Solid",      emoji: "🟡", sublabel: nil, color: .solid)
+        case 2.0..<2.8:    return VibeTier(label: "Mixed",      emoji: "🟠", sublabel: "Some mixed feedback from the community", color: .mixed)
+        default:           return VibeTier(label: "Bad Vibe",   emoji: "🔴", sublabel: "Consistent feedback suggests room for improvement", color: .bad)
         }
     }
 
-    /// Returns a tier for display purposes — defaults to Great Vibe (green) for new users with no score yet.
-    static func display(score: Double?) -> VibeTier {
-        from(score: score) ?? VibeTier(label: "Great Vibe", emoji: "🟢", color: .great)
+    /// Returns a tier for display purposes — defaults to Great Vibe (green) for unrated players.
+    static func display(score: Double?, ratingCount: Int? = nil) -> VibeTier {
+        from(score: score, ratingCount: ratingCount) ?? VibeTier(label: "Great Vibe", emoji: "🟢", sublabel: nil, color: .great)
     }
 
     static var none: VibeTier {
-        VibeTier(label: "No Vibe Yet", emoji: "⚪️", color: .none)
+        VibeTier(label: "No Vibe Yet", emoji: "⚪️", sublabel: nil, color: .none)
+    }
+
+    /// Apply decay toward green: if last rated 30+ days ago, add +0.1 per week elapsed, max 4.0
+    static func applyDecay(score: Double, lastRatedAt: String?) -> Double {
+        guard let lastRatedStr = lastRatedAt else { return score }
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let lastRated = fmt.date(from: lastRatedStr) ?? {
+            let f2 = ISO8601DateFormatter()
+            f2.formatOptions = [.withInternetDateTime]
+            return f2.date(from: lastRatedStr)
+        }() else { return score }
+
+        let daysSince = -lastRated.timeIntervalSinceNow / 86400
+        guard daysSince > 30 else { return score }
+
+        let weeksElapsed = (daysSince - 30) / 7
+        let bonus = weeksElapsed * 0.1
+        return min(score + bonus, 4.0)
     }
 }

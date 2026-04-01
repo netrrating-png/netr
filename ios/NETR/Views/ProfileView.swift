@@ -363,7 +363,8 @@ struct ProfileView: View {
                     )
                 }
 
-                let vibeTier = VibeTier.display(score: viewModel.vibeScore)
+                let adjustedVibe = VibeTier.applyDecay(score: viewModel.vibeScore ?? 4.0, lastRatedAt: viewModel.userProfile?.vibeLastRatedAt)
+                let vibeTier = VibeTier.display(score: adjustedVibe, ratingCount: viewModel.userProfile?.vibeRatingCount)
                 let vibeColor = Color(red: vibeTier.color.red, green: vibeTier.color.green, blue: vibeTier.color.blue)
                 ZStack {
                     Circle()
@@ -867,7 +868,8 @@ struct ProfileView: View {
     // MARK: - Vibe Row
 
     private func vibeRow(score: Double) -> some View {
-        let tier = VibeTier.from(score: score)
+        let adjusted = VibeTier.applyDecay(score: score, lastRatedAt: viewModel.userProfile?.vibeLastRatedAt)
+        let tier = VibeTier.from(score: adjusted, ratingCount: viewModel.userProfile?.vibeRatingCount)
         let vibeColor = tier.map { Color(red: $0.color.red, green: $0.color.green, blue: $0.color.blue) } ?? NETRTheme.subtext
         let vibeLabel = tier?.label ?? "Unknown"
 
