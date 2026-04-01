@@ -59,17 +59,24 @@ class ProfileViewModel {
             }
 
             // Count games played from game_players (total_games column doesn't exist in DB)
+            // Try lowercase first (new inserts), fall back to uppercase (legacy inserts)
             nonisolated struct GPCount: Decodable, Sendable {
                 let gameId: String
                 nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
             }
-            let gpRows: [GPCount] = (try? await client
+            let lowerRows: [GPCount] = (try? await client
                 .from("game_players")
                 .select("game_id")
                 .eq("user_id", value: targetId.lowercased())
                 .execute()
                 .value) ?? []
-            bridgedPlayer.games = gpRows.count
+            let upperRows: [GPCount] = lowerRows.isEmpty ? ((try? await client
+                .from("game_players")
+                .select("game_id")
+                .eq("user_id", value: targetId.uppercased())
+                .execute()
+                .value) ?? []) : []
+            bridgedPlayer.games = max(lowerRows.count, upperRows.count)
 
             player = bridgedPlayer
             userProfile = profile
