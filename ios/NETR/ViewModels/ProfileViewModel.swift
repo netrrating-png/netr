@@ -58,6 +58,19 @@ class ProfileViewModel {
                 bridgedPlayer = mergeLocalAssessment(into: bridgedPlayer)
             }
 
+            // Count games played from game_players (total_games column doesn't exist in DB)
+            nonisolated struct GPCount: Decodable, Sendable {
+                let gameId: String
+                nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
+            }
+            let gpRows: [GPCount] = (try? await client
+                .from("game_players")
+                .select("game_id")
+                .eq("user_id", value: targetId.lowercased())
+                .execute()
+                .value) ?? []
+            bridgedPlayer.games = gpRows.count
+
             player = bridgedPlayer
             userProfile = profile
             vibeScore = profile.vibeScore
