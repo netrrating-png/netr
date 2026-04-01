@@ -64,19 +64,20 @@ class ProfileViewModel {
                 let gameId: String
                 nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
             }
-            let lowerRows: [GPCount] = (try? await client
-                .from("game_players")
-                .select("game_id")
-                .eq("user_id", value: targetId.lowercased())
-                .execute()
-                .value) ?? []
-            let upperRows: [GPCount] = lowerRows.isEmpty ? ((try? await client
-                .from("game_players")
-                .select("game_id")
-                .eq("user_id", value: targetId.uppercased())
-                .execute()
-                .value) ?? []) : []
-            bridgedPlayer.games = max(lowerRows.count, upperRows.count)
+            var gameCount = 0
+            do {
+                let gpRows: [GPCount] = try await client
+                    .from("game_players")
+                    .select("game_id")
+                    .eq("user_id", value: targetId.lowercased())
+                    .execute()
+                    .value
+                gameCount = gpRows.count
+                print("[ProfileVM] game_players query OK — targetId=\(targetId.lowercased()) count=\(gameCount)")
+            } catch {
+                print("[ProfileVM] game_players query FAILED — \(error)")
+            }
+            bridgedPlayer.games = gameCount
 
             player = bridgedPlayer
             userProfile = profile
