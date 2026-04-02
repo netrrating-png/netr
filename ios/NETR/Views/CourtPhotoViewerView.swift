@@ -29,7 +29,9 @@ struct CourtPhotoViewerView: View {
             Color.black.ignoresSafeArea()
 
             TabView(selection: $currentIndex) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                ForEach(Array(photos.enumerated()), id: \.element.id) { item in
+                    let index = item.offset
+                    let photo = item.element
                     VStack(spacing: 0) {
                         Spacer()
 
