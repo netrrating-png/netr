@@ -175,7 +175,8 @@ struct NETRRating {
     static func formattedParts(_ score: Double?) -> (main: String, cents: String)? {
         guard let score else { return nil }
         let full = String(format: "%.2f", score)
-        return (main: String(full.dropLast()), cents: String(full.last!))
+        guard let last = full.last else { return nil }
+        return (main: String(full.dropLast()), cents: String(last))
     }
 
     /// Bayesian prior — the assumed mean before peer reviews come in
