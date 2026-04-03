@@ -215,10 +215,8 @@ struct NotificationPreferencesView: View {
                     .padding(14)
                 }
 
-                if prefs.gameStarting.wrappedValue || !prefs.gameStarting.wrappedValue {
-                    divider
-                    prefToggle(icon: "play", title: "Games starting soon", binding: prefs.gameStarting)
-                }
+                divider
+                prefToggle(icon: "play", title: "Games starting soon", binding: prefs.gameStarting)
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))

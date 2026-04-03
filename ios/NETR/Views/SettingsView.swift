@@ -505,7 +505,13 @@ struct SettingsView: View {
         .padding(.horizontal, 16)
         .alert("Sign Out?", isPresented: $showSignOutConfirm) {
             Button("Sign Out", role: .destructive) {
-                Task { try? await supabase.signOut() }
+                Task {
+                    do {
+                        try await supabase.signOut()
+                    } catch {
+                        print("[NETR] Sign out error: \(error)")
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -568,25 +574,34 @@ struct SettingsView: View {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let client = SupabaseManager.shared.client
 
-        do {
-            // Delete user data from all tables
-            try? await client.from("feed_posts").delete().eq("author_id", value: userId).execute()
-            try? await client.from("comments").delete().eq("author_id", value: userId).execute()
-            try? await client.from("likes").delete().eq("user_id", value: userId).execute()
-            try? await client.from("comment_likes").delete().eq("user_id", value: userId).execute()
-            try? await client.from("bookmarks").delete().eq("user_id", value: userId).execute()
-            try? await client.from("follows").delete().eq("follower_id", value: userId).execute()
-            try? await client.from("follows").delete().eq("following_id", value: userId).execute()
-            try? await client.from("mentions").delete().eq("mentioned_user_id", value: userId).execute()
-            try? await client.from("mentions").delete().eq("mentioning_user_id", value: userId).execute()
-            try? await client.from("notifications").delete().eq("user_id", value: userId).execute()
-            try? await client.from("notification_preferences").delete().eq("user_id", value: userId).execute()
-            try? await client.from("court_favorites").delete().eq("user_id", value: userId).execute()
-            try? await client.from("profiles").delete().eq("id", value: userId).execute()
+        // Helper to delete from a table with logging on failure
+        func deleteFrom(_ table: String, column: String) async {
+            do {
+                try await client.from(table).delete().eq(column, value: userId).execute()
+            } catch {
+                print("[NETR] Delete from \(table) error: \(error)")
+            }
+        }
 
+        // Delete user data from all tables (continue on individual failures)
+        await deleteFrom("feed_posts", column: "author_id")
+        await deleteFrom("comments", column: "author_id")
+        await deleteFrom("likes", column: "user_id")
+        await deleteFrom("comment_likes", column: "user_id")
+        await deleteFrom("bookmarks", column: "user_id")
+        await deleteFrom("follows", column: "follower_id")
+        await deleteFrom("follows", column: "following_id")
+        await deleteFrom("mentions", column: "mentioned_user_id")
+        await deleteFrom("mentions", column: "mentioning_user_id")
+        await deleteFrom("notifications", column: "user_id")
+        await deleteFrom("notification_preferences", column: "user_id")
+        await deleteFrom("court_favorites", column: "user_id")
+        await deleteFrom("profiles", column: "id")
+
+        do {
             try await supabase.signOut()
         } catch {
-            print("[NETR] Delete account error: \(error)")
+            print("[NETR] Sign out after delete error: \(error)")
         }
     }
 }
