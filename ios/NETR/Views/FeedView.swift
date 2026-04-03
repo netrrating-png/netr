@@ -250,18 +250,19 @@ struct FeedView: View {
                 let isFollowing = viewModel.followingIds.contains(user.id)
                 Button {
                     Task {
+                        guard let currentId = SupabaseManager.shared.session?.user.id.uuidString else { return }
                         if isFollowing {
                             try? await SupabaseManager.shared.client
                                 .from("follows")
                                 .delete()
-                                .eq("follower_id", value: SupabaseManager.shared.session?.user.id.uuidString ?? "")
+                                .eq("follower_id", value: currentId)
                                 .eq("following_id", value: user.id)
                                 .execute()
                             viewModel.followingIds.remove(user.id)
                         } else {
                             try? await SupabaseManager.shared.client
                                 .from("follows")
-                                .insert(["follower_id": SupabaseManager.shared.session?.user.id.uuidString ?? "", "following_id": user.id])
+                                .insert(["follower_id": currentId, "following_id": user.id])
                                 .execute()
                             viewModel.followingIds.insert(user.id)
                         }
