@@ -236,7 +236,7 @@ struct CourtDetailView: View {
                 Task { await viewModel.setHomeCourt(courtId: court.id) }
             } label: {
                 HStack(spacing: 6) {
-                    LucideIcon(isHome ? "home" : "home")
+                    LucideIcon(isHome ? "home" : "map-pin")
                         .foregroundStyle(isHome ? NETRTheme.neonGreen : NETRTheme.text)
                     Text(isHome ? "Home Court" : "Set Home Court")
                         .font(.caption.weight(.semibold))
@@ -258,7 +258,7 @@ struct CourtDetailView: View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 DetailChip(icon: "layout-grid", text: court.surfaceType.rawValue)
-                DetailChip(icon: court.lights ? "lightbulb" : "lightbulb", text: court.lights ? "Lights" : "No Lights")
+                DetailChip(icon: court.lights ? "lightbulb" : "lightbulb-off", text: court.lights ? "Lights" : "No Lights")
                 DetailChip(icon: court.indoor ? "building-2" : "sun", text: court.indoor ? "Indoor" : "Outdoor")
                 DetailChip(icon: "circle-dot", text: court.fullCourt ? "Full Court" : "Half Court")
             }
@@ -691,7 +691,7 @@ struct CourtDetailView: View {
                 let isHostGame = g.host_id?.lowercased() == currentUserId?.lowercased()
                 g.playerCount = dbCount > 0 ? dbCount : (isHostGame ? 1 : 0)
                 if let p = hostMap[g.host_id ?? ""] {
-                    let name = p.fullName?.isEmpty == false ? p.fullName! : (p.username.map { "@\($0)" } ?? "")
+                    let name = (p.fullName?.isEmpty == false ? p.fullName : nil) ?? p.username.map { "@\($0)" } ?? ""
                     if !name.isEmpty { g.resolvedHostName = name }
                 }
                 return g
