@@ -41,7 +41,8 @@ struct DMInboxView: View {
             if let convo = selectedConversation {
                 ChatThreadView(
                     otherUserId: convo.otherUserId,
-                    otherUser: convo.otherUser
+                    otherUser: convo.otherUser,
+                    dmViewModel: viewModel
                 )
             }
         }

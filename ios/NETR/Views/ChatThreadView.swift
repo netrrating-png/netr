@@ -3,15 +3,19 @@ import SwiftUI
 struct ChatThreadView: View {
     let otherUserId: String
     let otherUser: FeedAuthor?
+    var dmViewModel: DMViewModel?
     @State private var viewModel: ChatViewModel
     @State private var showCourtPicker: Bool = false
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
 
-    init(otherUserId: String, otherUser: FeedAuthor?) {
+    init(otherUserId: String, otherUser: FeedAuthor?, dmViewModel: DMViewModel? = nil) {
         self.otherUserId = otherUserId
         self.otherUser = otherUser
-        self._viewModel = State(initialValue: ChatViewModel(otherUserId: otherUserId, otherUser: otherUser))
+        self.dmViewModel = dmViewModel
+        let chatVM = ChatViewModel(otherUserId: otherUserId, otherUser: otherUser)
+        chatVM.dmViewModel = dmViewModel
+        self._viewModel = State(initialValue: chatVM)
     }
 
     var body: some View {
@@ -26,11 +30,19 @@ struct ChatThreadView: View {
         .task {
             await viewModel.loadMessages()
             await viewModel.subscribeToMessages()
-            // Mark messages from this user as read
-            await DMViewModel().markAsRead(otherUserId: otherUserId)
+            // Fix 4: Mark messages as read using shared DMViewModel
+            if let dm = dmViewModel {
+                await dm.markAsRead(otherUserId: otherUserId)
+            } else {
+                // Fallback: create temporary instance for standalone usage
+                await DMViewModel().markAsRead(otherUserId: otherUserId)
+            }
+            // Track active conversation so banners don't show for this chat
+            dmViewModel?.notificationManager.activeConversationUserId = otherUserId
         }
         .onDisappear {
             Task { await viewModel.unsubscribe() }
+            dmViewModel?.notificationManager.activeConversationUserId = nil
         }
     }
 
