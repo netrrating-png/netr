@@ -19,6 +19,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     var selectedFilter: String = "All"
     var selectedNeighborhood: String?
     var liveCourtIds: Set<String> = []
+    var scheduledCourtIds: Set<String> = []
     /// Set to true when the user explicitly wants to browse all courts
     var isExploring: Bool = false
 
@@ -40,7 +41,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
     private let client = SupabaseManager.shared.client
 
-    private let filters = ["All", "Favorites", "Live Now", "Lights", "Indoor", "Verified"]
+    private let filters = ["All", "Favorites", "Live Now", "Scheduled", "Verified"]
 
     var neighborhoods: [String] {
         let hoods = Set(courts.map { $0.neighborhood }).sorted()
@@ -94,11 +95,10 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         switch selectedFilter {
-        case "Live Now":  results = results.filter { liveCourtIds.contains($0.id) }
-        case "Favorites": results = results.filter { favoriteCourtIds.contains($0.id) }
-        case "Lights":    results = results.filter { $0.lights }
-        case "Indoor":    results = results.filter { $0.indoor }
-        case "Verified":  results = results.filter { $0.verified }
+        case "Live Now":   results = results.filter { liveCourtIds.contains($0.id) }
+        case "Favorites":  results = results.filter { favoriteCourtIds.contains($0.id) }
+        case "Scheduled":  results = results.filter { scheduledCourtIds.contains($0.id) }
+        case "Verified":   results = results.filter { $0.verified }
         default: break
         }
 
@@ -217,6 +217,16 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
     }
 
+    /// All courts within 3 miles of the user — always shown on the map regardless of list filters.
+    var mapCourts: [Court] {
+        guard let loc = userLocation else { return courts }
+        let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
+        let maxMeters = 3.0 * 1609.34
+        return courts
+            .filter { CLLocation(latitude: $0.lat, longitude: $0.lng).distance(from: origin) <= maxMeters }
+            .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
+    }
+
     func searchCourts(query: String) -> [Court] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return [] }
@@ -256,7 +266,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         do {
             let result: [Court] = try await client
                 .from("courts")
-                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by")
+                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
                 .execute()
                 .value
             courts = result
@@ -297,6 +307,25 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             liveCourtIds = Set(games.map { $0.courtId })
         } catch {
             print("[NETR] Live courts load error: \(error)")
+        }
+    }
+
+    func loadScheduledCourts() async {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let future = ISO8601DateFormatter().string(from: Date().addingTimeInterval(48 * 3600))
+        do {
+            struct GameCourtId: Decodable { let courtId: String; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
+            let games: [GameCourtId] = try await client
+                .from("games")
+                .select("court_id")
+                .in("status", values: ["scheduled", "waiting"])
+                .gte("scheduled_at", value: now)
+                .lte("scheduled_at", value: future)
+                .execute()
+                .value
+            scheduledCourtIds = Set(games.compactMap { $0.courtId.isEmpty ? nil : $0.courtId })
+        } catch {
+            print("Scheduled courts load error: \(error)")
         }
     }
 

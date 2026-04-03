@@ -20,11 +20,18 @@ struct CourtDetailView: View {
     @State private var weatherService = WeatherService.shared
     @State private var courtPhotos: [CourtPhoto] = []
     @State private var isLoadingPhotos: Bool = false
-    @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isUploadingPhoto: Bool = false
     @State private var fullScreenPhotoUrl: String?
     @State private var fullScreenPhoto: CourtPhoto?
     @State private var showDeletePhotoConfirm: Bool = false
+    @State private var showPhotoActionSheet: Bool = false
+    @State private var showCameraPermissionAlert: Bool = false
+    @State private var pendingUploadImage: UIImage?
+    @State private var photoCaption: String = ""
+    @State private var showPhotoPreview: Bool = false
+    @State private var showPhotoGrid: Bool = false
+    @State private var selectedPhotoIndex: Int?
+    private let photoPicker = PhotoPickerManager()
 
     // Leaderboard
     @State private var leaderboardPlayers: [LeaderboardEntry] = []
@@ -649,16 +656,13 @@ struct CourtDetailView: View {
                 let gameId: String
                 nonisolated enum CodingKeys: String, CodingKey { case gameId = "game_id" }
             }
-            // game_players.game_id is UUID — fetch all rows and filter client-side
-            // to avoid PostgREST text-vs-uuid cast issues with .in()
             let allPlayerRows: [GameIdRow] = (try? await client
                 .from("game_players")
                 .select("game_id")
+                .in("game_id", values: allGameIds)
                 .execute()
                 .value) ?? []
-            let gameIdSet = Set(allGameIds)
-            let playerRows = allPlayerRows.filter { gameIdSet.contains($0.gameId) }
-            let countMap = Dictionary(grouping: playerRows, by: { $0.gameId })
+            let countMap = Dictionary(grouping: allPlayerRows, by: { $0.gameId })
                 .mapValues { $0.count }
 
             // Host names
@@ -805,22 +809,40 @@ struct CourtDetailView: View {
         .padding(16)
     }
 
+    private let courtPhotoSelectQuery = "id, court_id, user_id, photo_url, caption, is_approved, created_at, profiles(id, full_name, username, avatar_url, netr_score)"
+
     private var photosTab: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("PHOTOS")
-                    .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
-                    .tracking(1)
-                    .foregroundStyle(NETRTheme.subtext)
+                HStack(spacing: 6) {
+                    Text("PHOTOS")
+                        .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                        .tracking(1)
+                        .foregroundStyle(NETRTheme.subtext)
+                    if !courtPhotos.isEmpty {
+                        Text("\(courtPhotos.count)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(NETRTheme.background)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(NETRTheme.neonGreen, in: Capsule())
+                    }
+                }
 
                 Spacer()
 
-                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                if !courtPhotos.isEmpty {
+                    Button { showPhotoGrid = true } label: {
+                        Text("See all")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(NETRTheme.neonGreen)
+                    }
+                }
+
+                Button { showPhotoActionSheet = true } label: {
                     HStack(spacing: 4) {
                         if isUploadingPhoto {
-                            ProgressView()
-                                .tint(NETRTheme.neonGreen)
-                                .scaleEffect(0.7)
+                            ProgressView().tint(NETRTheme.neonGreen).scaleEffect(0.7)
                         } else {
                             LucideIcon("camera", size: 12)
                         }
@@ -833,31 +855,39 @@ struct CourtDetailView: View {
             }
 
             if isLoadingPhotos {
-                HStack {
-                    Spacer()
-                    ProgressView()
-                        .tint(NETRTheme.neonGreen)
-                    Spacer()
-                }
-                .padding(.vertical, 20)
+                HStack { Spacer(); ProgressView().tint(NETRTheme.neonGreen); Spacer() }
+                    .padding(.vertical, 20)
             } else if courtPhotos.isEmpty {
                 VStack(spacing: 8) {
-                    LucideIcon("image", size: 28)
+                    LucideIcon("camera", size: 28)
                         .foregroundStyle(NETRTheme.muted)
-                    Text("No photos yet")
+                    Text("Be the first to add a photo of this court")
                         .font(.subheadline)
                         .foregroundStyle(NETRTheme.subtext)
-                    Text("Be the first to share a photo of this court")
-                        .font(.caption)
-                        .foregroundStyle(NETRTheme.muted)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
             } else {
                 ScrollView(.horizontal) {
                     HStack(spacing: 12) {
-                        ForEach(courtPhotos) { photo in
-                            courtPhotoCard(photo)
+                        ForEach(Array(courtPhotos.prefix(5).enumerated()), id: \.element.id) { index, photo in
+                            courtPhotoCard(photo, index: index)
+                        }
+                        // Add photo button at end of strip
+                        Button { showPhotoActionSheet = true } label: {
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(NETRTheme.card)
+                                .frame(width: 100, height: 150)
+                                .overlay {
+                                    VStack(spacing: 6) {
+                                        LucideIcon("plus", size: 20)
+                                            .foregroundStyle(NETRTheme.neonGreen)
+                                        Text("Add")
+                                            .font(.caption2.weight(.semibold))
+                                            .foregroundStyle(NETRTheme.neonGreen)
+                                    }
+                                }
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
                         }
                     }
                 }
@@ -866,15 +896,39 @@ struct CourtDetailView: View {
             }
         }
         .padding(16)
-        .onChange(of: selectedPhotoItem) { _, newValue in
-            guard let item = newValue else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
-                    await uploadCourtPhoto(image: image)
+        .confirmationDialog("Add Court Photo", isPresented: $showPhotoActionSheet, titleVisibility: .hidden) {
+            if photoPicker.isCameraAvailable {
+                Button("Take a Photo") {
+                    photoPicker.showCamera(completion: { img in
+                        pendingUploadImage = img
+                        showPhotoPreview = true
+                    }, onPermissionDenied: { showCameraPermissionAlert = true })
                 }
-                selectedPhotoItem = nil
             }
+            Button("Choose from Library") {
+                photoPicker.showLibrary { img in
+                    pendingUploadImage = img
+                    showPhotoPreview = true
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .alert("Camera Access Required", isPresented: $showCameraPermissionAlert) {
+            Button("Open Settings") { photoPicker.openSettings() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Camera access is needed to take a photo. Enable it in Settings.")
+        }
+        .sheet(isPresented: $showPhotoPreview) {
+            photoPreviewSheet
+        }
+        .sheet(isPresented: $showPhotoGrid) {
+            courtPhotoGridSheet
+        }
+        .fullScreenCover(item: $selectedPhotoIndex) { index in
+            CourtPhotoViewerView(photos: courtPhotos, initialIndex: index, onDelete: { deletedId in
+                courtPhotos.removeAll { $0.id == deletedId }
+            })
         }
         .task {
             await fetchCourtPhotos()
@@ -893,12 +947,141 @@ struct CourtDetailView: View {
         }
     }
 
-    private func courtPhotoCard(_ photo: CourtPhoto) -> some View {
+    // MARK: - Photo Preview (before upload)
+
+    private var photoPreviewSheet: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                if let image = pendingUploadImage {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxHeight: 350)
+                        .clipShape(.rect(cornerRadius: 12))
+                        .padding(.horizontal, 16)
+                }
+
+                TextField("Add a caption...", text: $photoCaption)
+                    .font(.subheadline)
+                    .foregroundStyle(NETRTheme.text)
+                    .padding(12)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+                    .padding(.horizontal, 16)
+
+                if photoCaption.count > 100 {
+                    Text("\(photoCaption.count)/100")
+                        .font(.caption)
+                        .foregroundStyle(NETRTheme.red)
+                }
+
+                Spacer()
+
+                Button {
+                    guard let image = pendingUploadImage else { return }
+                    showPhotoPreview = false
+                    Task { await uploadCourtPhoto(image: image, caption: photoCaption.isEmpty ? nil : String(photoCaption.prefix(100))) }
+                    photoCaption = ""
+                    pendingUploadImage = nil
+                } label: {
+                    HStack(spacing: 8) {
+                        if isUploadingPhoto {
+                            ProgressView().tint(Color.black)
+                        }
+                        Text("Post Photo")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(Color.black)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                }
+                .disabled(isUploadingPhoto || photoCaption.count > 100)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 24)
+            }
+            .background(Color.black)
+            .navigationTitle("New Photo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showPhotoPreview = false
+                        pendingUploadImage = nil
+                        photoCaption = ""
+                    }
+                    .foregroundStyle(NETRTheme.subtext)
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color.black)
+    }
+
+    // MARK: - Photo Grid Sheet
+
+    private var courtPhotoGridSheet: some View {
+        NavigationStack {
+            ScrollView {
+                if courtPhotos.isEmpty {
+                    VStack(spacing: 12) {
+                        Spacer(minLength: 60)
+                        LucideIcon("camera", size: 32).foregroundStyle(NETRTheme.muted)
+                        Text("No photos yet — add the first one!")
+                            .font(.subheadline)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                    .frame(maxWidth: .infinity)
+                } else {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
+                        ForEach(Array(courtPhotos.enumerated()), id: \.element.id) { index, photo in
+                            AsyncImage(url: URL(string: photo.photoUrl)) { phase in
+                                if let image = phase.image {
+                                    image.resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(minHeight: 120)
+                                        .clipped()
+                                } else {
+                                    RoundedRectangle(cornerRadius: 0)
+                                        .fill(NETRTheme.card)
+                                        .frame(minHeight: 120)
+                                }
+                            }
+                            .aspectRatio(1, contentMode: .fill)
+                            .clipped()
+                            .onTapGesture { selectedPhotoIndex = index }
+                        }
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+            .background(Color.black)
+            .navigationTitle("\(court.name) Photos")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showPhotoActionSheet = true } label: {
+                        LucideIcon("plus", size: 16).foregroundStyle(NETRTheme.neonGreen)
+                    }
+                }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { showPhotoGrid = false }
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+            }
+            .refreshable { await fetchCourtPhotos() }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color.black)
+    }
+
+    private func courtPhotoCard(_ photo: CourtPhoto, index: Int) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             AsyncImage(url: URL(string: photo.photoUrl)) { phase in
                 if let image = phase.image {
-                    image
-                        .resizable()
+                    image.resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: 200, height: 150)
                         .clipShape(.rect(cornerRadius: 10))
@@ -910,18 +1093,12 @@ struct CourtDetailView: View {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(NETRTheme.card)
                         .frame(width: 200, height: 150)
-                        .overlay {
-                            LucideIcon("image-off", size: 20)
-                                .foregroundStyle(NETRTheme.muted)
-                        }
+                        .overlay { LucideIcon("image-off", size: 20).foregroundStyle(NETRTheme.muted) }
                 } else {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(NETRTheme.card)
                         .frame(width: 200, height: 150)
-                        .overlay {
-                            ProgressView()
-                                .tint(NETRTheme.neonGreen)
-                        }
+                        .overlay { ProgressView().tint(NETRTheme.neonGreen) }
                 }
             }
 
@@ -929,35 +1106,36 @@ struct CourtDetailView: View {
                 Text(photo.uploader?.displayName ?? "Player")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(NETRTheme.text)
-                Text("·")
-                    .foregroundStyle(NETRTheme.muted)
-                Text(photo.createdAt.relativeTimeFromISO)
-                    .font(.caption2)
-                    .foregroundStyle(NETRTheme.subtext)
+                if let caption = photo.caption, !caption.isEmpty {
+                    Text("· \(caption)")
+                        .font(.caption2)
+                        .foregroundStyle(NETRTheme.subtext)
+                        .lineLimit(1)
+                }
             }
         }
     }
 
     private func fetchCourtPhotos() async {
         isLoadingPhotos = true
-        let client = SupabaseManager.shared.client
         do {
-            let photos: [CourtPhoto] = try await client
+            let photos: [CourtPhoto] = try await SupabaseManager.shared.client
                 .from("court_photos")
-                .select("id, court_id, user_id, photo_url, created_at, profiles(id, full_name, username, avatar_url, netr_score)")
+                .select(courtPhotoSelectQuery)
                 .eq("court_id", value: court.id)
+                .eq("is_approved", value: true)
                 .order("created_at", ascending: false)
-                .limit(20)
+                .limit(50)
                 .execute()
                 .value
             courtPhotos = photos
         } catch {
-            print("[NETR] Fetch court photos error: \(error)")
+            print("[NETR Courts] Fetch court photos error: \(error)")
         }
         isLoadingPhotos = false
     }
 
-    private func uploadCourtPhoto(image: UIImage) async {
+    private func uploadCourtPhoto(image: UIImage, caption: String? = nil) async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         guard let data = image.jpegData(compressionQuality: 0.8) else { return }
         isUploadingPhoto = true
@@ -979,20 +1157,22 @@ struct CourtDetailView: View {
             let payload = CreateCourtPhotoPayload(
                 courtId: court.id,
                 userId: userId,
-                photoUrl: url.absoluteString
+                photoUrl: url.absoluteString,
+                caption: caption
             )
 
             let created: CourtPhoto = try await client
                 .from("court_photos")
                 .insert(payload)
-                .select("id, court_id, user_id, photo_url, created_at, profiles(id, full_name, username, avatar_url, netr_score)")
+                .select(courtPhotoSelectQuery)
                 .single()
                 .execute()
                 .value
 
             courtPhotos.insert(created, at: 0)
+            print("[NETR Courts] Photo uploaded successfully")
         } catch {
-            print("[NETR] Court photo upload error: \(error)")
+            print("[NETR Courts] Photo upload error: \(error)")
         }
         isUploadingPhoto = false
     }

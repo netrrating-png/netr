@@ -59,6 +59,18 @@ struct CourtCardView: View {
                 }
 
                 Spacer(minLength: 0)
+
+                if let count = court.photoCount, count > 0 {
+                    HStack(spacing: 3) {
+                        LucideIcon("camera", size: 9)
+                        Text("\(count)")
+                            .font(.system(size: 9, weight: .bold))
+                    }
+                    .foregroundStyle(NETRTheme.neonGreen)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(NETRTheme.neonGreen.opacity(0.12), in: Capsule())
+                }
             }
 
             HStack(spacing: 8) {

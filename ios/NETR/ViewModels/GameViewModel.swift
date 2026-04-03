@@ -25,6 +25,7 @@ class GameViewModel {
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
+    var isSubscribed: Bool { realtimeChannel != nil }
 
     func createGame(
         courtId: String?,
@@ -32,7 +33,7 @@ class GameViewModel {
         skillLevel: String,
         scheduledAt: Date? = nil
     ) async throws -> SupabaseGame {
-        guard let hostId = SupabaseManager.shared.session?.user.id.uuidString else {
+        guard let hostId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else {
             throw NSError(domain: "NETR", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not signed in"])
         }
 
@@ -82,7 +83,7 @@ class GameViewModel {
                 .from("games")
                 .select()
                 .eq("join_code", value: code.uppercased())
-                .eq("status", value: "waiting")
+                .in("status", values: ["waiting", "scheduled"])
                 .single()
                 .execute()
                 .value
@@ -100,13 +101,13 @@ class GameViewModel {
     }
 
     private func addPlayerToGame(gameId: String) async throws {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let now = fmt.string(from: Date())
         try await client
             .from("game_players")
-            .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
+            .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: now))
             .execute()
     }
 
@@ -116,7 +117,6 @@ class GameViewModel {
             .from("game_players")
             .select("id, user_id, game_id, checked_in_at, checked_out_at, removed, profiles(id, full_name, username, position, avatar_url, netr_score, vibe_score, total_ratings)")
             .eq("game_id", value: gameId)
-            .order("created_at", ascending: true)
             .execute()
             .value, !result.isEmpty {
             players = result.filter { !$0.isRemoved }
@@ -296,13 +296,8 @@ class GameViewModel {
 
     func checkOut() async {
         guard let gameId = game?.id,
-              let userId = SupabaseManager.shared.session?.user.id.uuidString
+              let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
         else { return }
-
-        if !canCheckOut {
-            checkOutError = "You must be checked in for at least 15 minutes before checking out."
-            return
-        }
 
         isCheckingOut = true
         checkOutError = nil
@@ -338,8 +333,8 @@ class GameViewModel {
     }
 
     var currentUserCheckedOut: Bool {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return false }
-        return players.first(where: { $0.userId == userId })?.isCheckedOut ?? false
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return false }
+        return players.first(where: { $0.userId.lowercased() == userId })?.isCheckedOut ?? false
     }
 
     var checkedInPlayerIds: Set<String> {
@@ -353,26 +348,14 @@ class GameViewModel {
     // MARK: - 15-Minute Checkout Guard
 
     var canCheckOut: Bool {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
-              let player = players.first(where: { $0.userId == userId }),
-              let checkedInStr = player.checkedInAt
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
         else { return false }
-
-        let fmt = ISO8601DateFormatter()
-        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = fmt.date(from: checkedInStr) {
-            return Date().timeIntervalSince(d) >= 900
-        }
-        fmt.formatOptions = [.withInternetDateTime]
-        if let d = fmt.date(from: checkedInStr) {
-            return Date().timeIntervalSince(d) >= 900
-        }
-        return true
+        return players.contains(where: { $0.userId.lowercased() == userId && !$0.isCheckedOut && !$0.isRemoved })
     }
 
     var minutesUntilCheckOut: Int {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
-              let player = players.first(where: { $0.userId == userId }),
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased(),
+              let player = players.first(where: { $0.userId.lowercased() == userId }),
               let checkedInStr = player.checkedInAt
         else { return 0 }
 
@@ -392,7 +375,7 @@ class GameViewModel {
     // MARK: - Join Game Directly (by ID)
 
     func joinGameDirectly(_ gameId: String) async -> SupabaseGame? {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return nil }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return nil }
         isJoining = true
         joinError = nil
 
@@ -403,7 +386,7 @@ class GameViewModel {
             let now = fmt.string(from: Date())
             try await client
                 .from("game_players")
-                .insert(GamePlayerPayload(gameId: gameId, userId: userId, joinedAt: now, checkedInAt: now))
+                .insert(GamePlayerPayload(gameId: gameId, userId: userId, checkedInAt: now))
                 .execute()
 
             let found: SupabaseGame = try await client

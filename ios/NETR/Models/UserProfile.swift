@@ -22,11 +22,14 @@ nonisolated struct UserProfile: Codable, Sendable {
     var catRebounding: Double?
     var catBasketballIq: Double?
     var vibeScore: Double?
+    var vibeRatingCount: Int?
+    var vibeLastRatedAt: String?
     var vibeCommunication: Double?
     var vibeUnselfishness: Double?
     var vibeEffort: Double?
     var vibeAttitude: Double?
     var vibeInclusion: Double?
+    var showAge: Bool?
     var isPrivate: Bool?
     var isVerifiedPro: Bool?
     var proVerificationPending: Bool?
@@ -56,11 +59,14 @@ nonisolated struct UserProfile: Codable, Sendable {
         case catRebounding = "cat_rebounding"
         case catBasketballIq = "cat_basketball_iq"
         case vibeScore = "vibe_score"
+        case vibeRatingCount = "vibe_rating_count"
+        case vibeLastRatedAt = "vibe_last_rated_at"
         case vibeCommunication = "vibe_communication"
         case vibeUnselfishness = "vibe_unselfishness"
         case vibeEffort = "vibe_effort"
         case vibeAttitude = "vibe_attitude"
         case vibeInclusion = "vibe_inclusion"
+        case showAge = "show_age"
         case isPrivate = "is_private"
         case isVerifiedPro = "is_verified_pro"
         case proVerificationPending = "pro_verification_pending"
@@ -136,9 +142,12 @@ extension UserProfile {
     private func ageFromDOB() -> Int {
         guard let dob = dateOfBirth else { return 0 }
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"
         guard let date = formatter.date(from: dob) else { return 0 }
-        let years = Calendar.current.dateComponents([.year], from: date, to: Date()).year ?? 0
+        var cal = Calendar(identifier: .gregorian)
+        cal.locale = Locale(identifier: "en_US_POSIX")
+        let years = cal.dateComponents([.year], from: date, to: Date()).year ?? 0
         return years
     }
 }

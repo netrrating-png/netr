@@ -1,4 +1,37 @@
 import SwiftUI
+import CoreImage.CIFilterBuiltins
+
+// MARK: - QR Code (CoreImage — free, offline, no library)
+
+struct QRCodeView: View {
+    let content: String
+    let size: CGFloat
+
+    var body: some View {
+        if let img = generateQR(from: content) {
+            Image(uiImage: img)
+                .interpolation(.none)   // keep pixels crisp — no blur
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .padding(12)
+                .background(Color.white, in: .rect(cornerRadius: 12))
+        }
+    }
+
+    private func generateQR(from string: String) -> UIImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(string.utf8)
+        filter.correctionLevel = "M"
+        guard let output = filter.outputImage else { return nil }
+        // Scale up to avoid blurriness
+        let scale = size / output.extent.width * UIScreen.main.scale
+        let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+}
 
 struct NETRTextField: View {
     let placeholder: String

@@ -310,6 +310,8 @@ nonisolated struct CourtPhoto: Identifiable, Sendable {
     let courtId: String
     let userId: String
     let photoUrl: String
+    let caption: String?
+    let isApproved: Bool
     let createdAt: String
     var uploader: FeedAuthor?
 }
@@ -320,8 +322,22 @@ extension CourtPhoto: Decodable {
         case courtId = "court_id"
         case userId = "user_id"
         case photoUrl = "photo_url"
+        case caption
+        case isApproved = "is_approved"
         case createdAt = "created_at"
         case uploader = "profiles"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        courtId = try container.decode(String.self, forKey: .courtId)
+        userId = try container.decode(String.self, forKey: .userId)
+        photoUrl = try container.decode(String.self, forKey: .photoUrl)
+        caption = try container.decodeIfPresent(String.self, forKey: .caption)
+        isApproved = try container.decodeIfPresent(Bool.self, forKey: .isApproved) ?? true
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        uploader = try container.decodeIfPresent(FeedAuthor.self, forKey: .uploader)
     }
 }
 
@@ -329,11 +345,13 @@ nonisolated struct CreateCourtPhotoPayload: Encodable, Sendable {
     let courtId: String
     let userId: String
     let photoUrl: String
+    let caption: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case courtId = "court_id"
         case userId = "user_id"
         case photoUrl = "photo_url"
+        case caption
     }
 }
 

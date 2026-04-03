@@ -14,6 +14,10 @@ struct EditProfileView: View {
     @State private var bio: String = ""
     @State private var city: String = ""
     @State private var selectedPosition: Position = .unknown
+    @State private var showAge: Bool = false
+    @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
+    @State private var hasDOB: Bool = false
+    @State private var showDOBPicker: Bool = false
 
     @State private var showCourtPicker: Bool = false
     @State private var allCourts: [Court] = []
@@ -34,6 +38,14 @@ struct EditProfileView: View {
     @State private var showSaveSuccess: Bool = false
 
     private let maxBioChars = 150
+
+    private var dobDisplayString: String {
+        guard hasDOB else { return "Set your date of birth" }
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        return f.string(from: dateOfBirth)
+    }
 
     var body: some View {
         NavigationStack {
@@ -303,6 +315,65 @@ struct EditProfileView: View {
                     }
                 }
             }
+
+            // Date of Birth picker
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Date of Birth")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+
+                Button { showDOBPicker.toggle() } label: {
+                    HStack(spacing: 10) {
+                        LucideIcon("calendar", size: 14)
+                            .foregroundStyle(hasDOB ? NETRTheme.neonGreen : NETRTheme.subtext)
+                        Text(dobDisplayString)
+                            .font(.system(size: 14))
+                            .foregroundStyle(hasDOB ? NETRTheme.text : NETRTheme.subtext)
+                        Spacer()
+                        LucideIcon(showDOBPicker ? "chevron-up" : "chevron-down", size: 12)
+                            .foregroundStyle(NETRTheme.muted)
+                    }
+                    .padding(12)
+                    .background(NETRTheme.card)
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(
+                        hasDOB ? NETRTheme.neonGreen.opacity(0.4) : NETRTheme.border,
+                        lineWidth: 1
+                    ))
+                    .clipShape(.rect(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+
+                if showDOBPicker {
+                    DatePicker("", selection: $dateOfBirth, in: ...Date(), displayedComponents: .date)
+                        .datePickerStyle(.graphical)
+                        .tint(NETRTheme.neonGreen)
+                        .labelsHidden()
+                        .padding(8)
+                        .background(NETRTheme.card)
+                        .clipShape(.rect(cornerRadius: 12))
+                        .onChange(of: dateOfBirth) { _, _ in hasDOB = true }
+                }
+            }
+
+            // Show Age toggle
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Show Age on Profile")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                    Text("Displays your age next to your position")
+                        .font(.system(size: 12))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+                Spacer()
+                Toggle("", isOn: $showAge)
+                    .tint(NETRTheme.neonGreen)
+                    .labelsHidden()
+            }
+            .padding(14)
+            .background(NETRTheme.card)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+            .clipShape(.rect(cornerRadius: 12))
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -406,6 +477,16 @@ struct EditProfileView: View {
         bio = viewModel.bio ?? ""
         city = player.city
         selectedPosition = player.position
+        showAge = SupabaseManager.shared.currentProfile?.showAge ?? false
+        if let dobStr = SupabaseManager.shared.currentProfile?.dateOfBirth {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateFormat = "yyyy-MM-dd"
+            if let parsed = formatter.date(from: dobStr) {
+                dateOfBirth = parsed
+                hasDOB = true
+            }
+        }
     }
 
     private func save() {
@@ -430,7 +511,9 @@ struct EditProfileView: View {
                     username: username,
                     bio: bio,
                     city: city.isEmpty ? nil : city,
-                    position: selectedPosition == .unknown ? nil : selectedPosition.rawValue
+                    position: selectedPosition == .unknown ? nil : selectedPosition.rawValue,
+                    showAge: showAge,
+                    dateOfBirth: hasDOB ? dateOfBirth : nil
                 )
 
                 isSaving = false
