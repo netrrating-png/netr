@@ -84,12 +84,13 @@ struct DMNotificationBanner: View {
             )
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    // App icon indicator
-                    Image("AppIconSmall")
-                        .resizable()
+                HStack(spacing: 4) {
+                    // App logo indicator
+                    Text("N")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(Color.black)
                         .frame(width: 14, height: 14)
-                        .clipShape(RoundedRectangle(cornerRadius: 3))
+                        .background(NETRTheme.neonGreen, in: RoundedRectangle(cornerRadius: 3))
 
                     Text("NETR")
                         .font(.system(size: 10, weight: .bold))

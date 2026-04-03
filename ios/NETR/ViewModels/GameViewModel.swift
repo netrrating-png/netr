@@ -227,7 +227,7 @@ class GameViewModel {
             isStarting = false
         } catch {
             isStarting = false
-            print("Start game error: \(error)")
+            print("[NETR] Start game error: \(error)")
         }
     }
 
@@ -258,7 +258,7 @@ class GameViewModel {
             completedGameId = gameId
             showRateScreen = true
         } catch {
-            print("End game error: \(error)")
+            print("[NETR] End game error: \(error)")
         }
     }
 
@@ -290,7 +290,7 @@ class GameViewModel {
                 .value
             game = updated
         } catch {
-            print("Update format error: \(error)")
+            print("[NETR] Update format error: \(error)")
         }
     }
 
@@ -333,7 +333,7 @@ class GameViewModel {
             showRateScreen = true
         } catch {
             isCheckingOut = false
-            print("Check out error: \(error)")
+            print("[NETR] Check out error: \(error)")
         }
     }
 
@@ -442,7 +442,7 @@ class GameViewModel {
 
             await loadPlayers(gameId: gameId)
         } catch {
-            print("Kick player error: \(error)")
+            print("[NETR] Kick player error: \(error)")
         }
     }
 
@@ -473,7 +473,7 @@ class GameViewModel {
 
             await loadNoShowReports(gameId: gameId)
         } catch {
-            print("Report no-show error: \(error)")
+            print("[NETR] Report no-show error: \(error)")
         }
     }
 
@@ -486,7 +486,7 @@ class GameViewModel {
                 .execute()
                 .value
         } catch {
-            print("Load no-show reports error: \(error)")
+            print("[NETR] Load no-show reports error: \(error)")
         }
     }
 

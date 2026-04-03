@@ -170,7 +170,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("Location error: \(error.localizedDescription)")
+        print("[NETR] Location error: \(error.localizedDescription)")
     }
 
     func distanceString(for court: Court) -> String {
@@ -274,12 +274,12 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             case .dataCorrupted(let context):
                 print("Courts decode dataCorrupted: \(context.debugDescription)")
             @unknown default:
-                print("Courts decode error: \(decodingError)")
+                print("[NETR] Courts decode error: \(decodingError)")
             }
         } catch {
             self.error = "Failed to load courts"
             isLoading = false
-            print("Courts load error: \(error)")
+            print("[NETR] Courts load error: \(error)")
         }
     }
 
@@ -296,7 +296,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                 .value
             liveCourtIds = Set(games.map { $0.courtId })
         } catch {
-            print("Live courts load error: \(error)")
+            print("[NETR] Live courts load error: \(error)")
         }
     }
 
@@ -312,7 +312,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             favoriteCourtIds = Set(favs.map { $0.courtId })
             homeCourtId = favs.first(where: { $0.isHomeCourt })?.courtId
         } catch {
-            print("Favorites load error: \(error)")
+            print("[NETR] Favorites load error: \(error)")
         }
     }
 
@@ -331,7 +331,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                     .execute()
             } catch {
                 favoriteCourtIds.insert(courtId)
-                print("Remove favorite error: \(error)")
+                print("[NETR] Remove favorite error: \(error)")
             }
         } else {
             favoriteCourtIds.insert(courtId)
@@ -354,7 +354,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                     .execute()
             } catch {
                 favoriteCourtIds.remove(courtId)
-                print("Add favorite error: \(error)")
+                print("[NETR] Add favorite error: \(error)")
             }
         }
     }
@@ -411,7 +411,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         } catch {
             homeCourtId = previousHome
             if !wasAlreadyFavorite { favoriteCourtIds.remove(courtId) }
-            print("Set home court error: \(error)")
+            print("[NETR] Set home court error: \(error)")
         }
     }
 
@@ -467,7 +467,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             await loadCourts()
             return true
         } catch {
-            print("Add court error: \(error)")
+            print("[NETR] Add court error: \(error)")
             return false
         }
     }

@@ -78,7 +78,7 @@ class ProfileViewModel {
             }
             self.error = "Failed to load profile"
             isLoading = false
-            print("Profile load error: \(error)")
+            print("[NETR] Profile load error: \(error)")
         }
     }
 
@@ -140,7 +140,7 @@ class ProfileViewModel {
                 try await client.from("court_favorites").update(HomeUpdate(isHomeCourt: true)).eq("user_id", value: userId).eq("court_id", value: courtId).execute()
             }
         } catch {
-            print("Set home court error: \(error)")
+            print("[NETR] Set home court error: \(error)")
         }
         await loadHomeCourt(userId: userId)
     }
@@ -245,7 +245,7 @@ class ProfileViewModel {
                 followerCount += 1
             }
         } catch {
-            print("Follow toggle error: \(error)")
+            print("[NETR] Follow toggle error: \(error)")
         }
     }
 
@@ -423,7 +423,7 @@ class ProfileViewModel {
 
             return cacheBustedUrl
         } catch {
-            print("Banner upload error: \(error)")
+            print("[NETR] Banner upload error: \(error)")
             return nil
         }
     }

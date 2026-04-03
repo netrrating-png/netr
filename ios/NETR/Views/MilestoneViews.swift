@@ -201,7 +201,7 @@ struct EditMilestonesView: View {
                 .execute()
             milestones.removeAll { $0.id == m.id }
         } catch {
-            print("Milestone delete error: \(error)")
+            print("[NETR] Milestone delete error: \(error)")
         }
         deletingId = nil
     }
@@ -372,7 +372,7 @@ struct MilestoneFormView: View {
                     onSave(first)
                 }
             } catch {
-                print("Milestone update error: \(error)")
+                print("[NETR] Milestone update error: \(error)")
             }
         } else {
             // INSERT
@@ -393,7 +393,7 @@ struct MilestoneFormView: View {
                     onSave(first)
                 }
             } catch {
-                print("Milestone insert error: \(error)")
+                print("[NETR] Milestone insert error: \(error)")
             }
         }
         isSaving = false

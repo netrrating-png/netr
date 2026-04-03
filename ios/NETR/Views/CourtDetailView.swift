@@ -943,7 +943,7 @@ struct CourtDetailView: View {
                 .value
             courtPhotos = photos
         } catch {
-            print("Fetch court photos error: \(error)")
+            print("[NETR] Fetch court photos error: \(error)")
         }
         isLoadingPhotos = false
     }
@@ -983,7 +983,7 @@ struct CourtDetailView: View {
 
             courtPhotos.insert(created, at: 0)
         } catch {
-            print("Court photo upload error: \(error)")
+            print("[NETR] Court photo upload error: \(error)")
         }
         isUploadingPhoto = false
     }

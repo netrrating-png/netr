@@ -193,7 +193,7 @@ class FeedViewModel {
             self.error = "Failed to load feed"
             isLoading = false
             hasLoadedOnce = true
-            print("Feed fetch error: \(error)")
+            print("[NETR] Feed fetch error: \(error)")
         }
     }
 
@@ -395,7 +395,7 @@ class FeedViewModel {
             }
             if wasLiked { likedPostIds.insert(post.id) } else { likedPostIds.remove(post.id) }
             showToast("Failed to update like")
-            print("Like error: \(error)")
+            print("[NETR] Like error: \(error)")
         }
     }
 
@@ -514,7 +514,7 @@ class FeedViewModel {
             posts.removeAll { $0.id == post.id }
         } catch {
             showToast("Failed to delete post")
-            print("Delete post error: \(error)")
+            print("[NETR] Delete post error: \(error)")
         }
     }
 

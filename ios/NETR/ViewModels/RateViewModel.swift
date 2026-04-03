@@ -107,7 +107,7 @@ class RateViewModel {
         } catch {
             self.error = "Failed to submit rating"
             isSubmitting = false
-            print("Rating submit error: \(error)")
+            print("[NETR] Rating submit error: \(error)")
         }
     }
 }

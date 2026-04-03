@@ -467,9 +467,8 @@ class ChatViewModel {
 // MARK: - Supabase JSON Decoder Helper
 
 private extension JSONDecoder {
+    /// Plain decoder — DirectMessage already has CodingKeys for snake_case mapping
     static var supabaseDecoder: JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return decoder
+        JSONDecoder()
     }
 }

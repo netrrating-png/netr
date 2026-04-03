@@ -56,7 +56,7 @@ nonisolated struct LeaderboardEntry: Identifiable, Decodable, Sendable {
 
             return entries
         } catch {
-            print("Leaderboard load error: \(error)")
+            print("[NETR] Leaderboard load error: \(error)")
             return []
         }
     }

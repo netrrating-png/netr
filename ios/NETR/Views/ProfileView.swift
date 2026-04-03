@@ -1324,7 +1324,7 @@ struct ProfileFollowListSheet: View {
                 targetIds = rows.compactMap { $0.followingId }
             }
         } catch {
-            print("FollowList fetch error: \(error)")
+            print("[NETR] FollowList fetch error: \(error)")
             return
         }
 
@@ -1355,7 +1355,7 @@ struct ProfileFollowListSheet: View {
                 .execute()
                 .value
         } catch {
-            print("FollowList profiles fetch error: \(error)")
+            print("[NETR] FollowList profiles fetch error: \(error)")
             return
         }
 
@@ -1428,7 +1428,7 @@ struct ProfileFollowListSheet: View {
             }
         } catch {
             users[idx].isFollowing = wasFollowing  // revert on failure
-            print("Follow toggle error: \(error)")
+            print("[NETR] Follow toggle error: \(error)")
         }
     }
 }

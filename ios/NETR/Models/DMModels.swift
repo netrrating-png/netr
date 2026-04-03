@@ -78,6 +78,7 @@ struct DMConversation: Identifiable, Equatable {
 
     static func == (lhs: DMConversation, rhs: DMConversation) -> Bool {
         lhs.otherUserId == rhs.otherUserId
+            && lhs.lastMessage == rhs.lastMessage
             && lhs.lastMessageAt == rhs.lastMessageAt
             && lhs.unreadCount == rhs.unreadCount
     }

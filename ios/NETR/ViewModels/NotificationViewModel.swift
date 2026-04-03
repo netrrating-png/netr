@@ -65,7 +65,7 @@ class NotificationViewModel {
         } catch {
             isLoading = false
             self.error = "Failed to load notifications"
-            print("Fetch notifications error: \(error)")
+            print("[NETR] Fetch notifications error: \(error)")
         }
     }
 
@@ -90,7 +90,7 @@ class NotificationViewModel {
             if let idx = notifications.firstIndex(where: { $0.id == notification.id }) {
                 notifications[idx].notification.read = false
             }
-            print("Mark read error: \(error)")
+            print("[NETR] Mark read error: \(error)")
         }
     }
 
@@ -114,7 +114,7 @@ class NotificationViewModel {
                 .execute()
         } catch {
             notifications = previous
-            print("Mark all read error: \(error)")
+            print("[NETR] Mark all read error: \(error)")
         }
     }
 
@@ -174,7 +174,7 @@ class NotificationViewModel {
                     .execute()
                 return defaults
             } catch {
-                print("Create default preferences error: \(error)")
+                print("[NETR] Create default preferences error: \(error)")
                 return defaults
             }
         }
@@ -187,7 +187,7 @@ class NotificationViewModel {
                 .upsert(prefs)
                 .execute()
         } catch {
-            print("Save preferences error: \(error)")
+            print("[NETR] Save preferences error: \(error)")
         }
     }
 }
