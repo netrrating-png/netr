@@ -21,6 +21,10 @@ struct CommentsView: View {
     @State private var activeMentionQuery: String = ""
     @State private var mentionSearchTask: Task<Void, Never>?
 
+    // Profile navigation
+    @State private var selectedProfileUserId: String?
+    @State private var mentionLookupTask: Task<Void, Never>?
+
     @Environment(\.dismiss) private var dismiss
 
     private let client = SupabaseManager.shared.client
@@ -79,11 +83,38 @@ struct CommentsView: View {
             .onDisappear {
                 realtimeTask?.cancel()
                 mentionSearchTask?.cancel()
+                mentionLookupTask?.cancel()
                 Task {
                     if let channel = realtimeChannel {
                         await client.realtimeV2.removeChannel(channel)
                     }
                 }
+            }
+            .fullScreenCover(item: $selectedProfileUserId) { userId in
+                PublicPlayerProfileView(userId: userId)
+            }
+        }
+    }
+
+    // MARK: - Mention → Profile Lookup
+
+    private func lookupAndNavigate(username: String) {
+        mentionLookupTask?.cancel()
+        mentionLookupTask = Task {
+            do {
+                nonisolated struct IdRow: Decodable, Sendable { let id: String }
+                let rows: [IdRow] = try await client
+                    .from("profiles")
+                    .select("id")
+                    .eq("username", value: username)
+                    .limit(1)
+                    .execute()
+                    .value
+                if let user = rows.first {
+                    selectedProfileUserId = user.id
+                }
+            } catch {
+                print("[NETR] Mention lookup error for @\(username): \(error)")
             }
         }
     }
@@ -155,7 +186,8 @@ struct CommentsView: View {
                     isLiked: likedCommentIds.contains(comment.id),
                     onLike: { Task { await toggleCommentLike(comment) } },
                     onReply: { startReply(to: comment) },
-                    onProfileTap: nil
+                    onProfileTap: { userId in selectedProfileUserId = userId },
+                    onMentionTap: { username in lookupAndNavigate(username: username) }
                 )
                 Divider().background(NETRTheme.border)
 
@@ -172,7 +204,8 @@ struct CommentsView: View {
                             onLike: { Task { await toggleCommentLike(reply) } },
                             onReply: { startReply(to: reply) },
                             isReply: true,
-                            onProfileTap: nil
+                            onProfileTap: { userId in selectedProfileUserId = userId },
+                            onMentionTap: { username in lookupAndNavigate(username: username) }
                         )
                     }
                     Divider().background(NETRTheme.border)
@@ -539,18 +572,31 @@ struct CommentRow: View {
     let onReply: () -> Void
     var isReply: Bool = false
     var onProfileTap: ((String) -> Void)? = nil
+    var onMentionTap: ((String) -> Void)? = nil
 
     @State private var likeScale: CGFloat = 1.0
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            commentAvatar
+            // Tappable avatar
+            Button {
+                if let authorId = comment.author?.id { onProfileTap?(authorId) }
+            } label: {
+                commentAvatar
+            }
+            .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
-                    Text(comment.author?.name ?? "Player")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(NETRTheme.text)
+                    // Tappable username
+                    Button {
+                        if let authorId = comment.author?.id { onProfileTap?(authorId) }
+                    } label: {
+                        Text(comment.author?.name ?? "Player")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(NETRTheme.text)
+                    }
+                    .buttonStyle(.plain)
 
                     if let netr = comment.author?.netrScore {
                         Text(String(format: "%.1f", netr))
@@ -572,7 +618,11 @@ struct CommentRow: View {
                 }
 
                 if !comment.content.isEmpty {
-                    styledCommentContent(comment.content)
+                    MentionTextView(
+                        text: comment.content,
+                        font: .preferredFont(forTextStyle: .subheadline),
+                        onMentionTap: onMentionTap
+                    )
                 }
 
                 HStack(spacing: 16) {
@@ -616,31 +666,6 @@ struct CommentRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-    }
-
-    /// Renders comment content with @mentions in lime green
-    private func styledCommentContent(_ text: String) -> some View {
-        Text(styledText(text))
-            .font(.subheadline)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private func styledText(_ text: String) -> AttributedString {
-        var result = AttributedString(text)
-        result.foregroundColor = UIColor(NETRTheme.text)
-
-        let mentionPattern = #"@\w+"#
-        if let regex = try? NSRegularExpression(pattern: mentionPattern) {
-            let range = NSRange(text.startIndex..., in: text)
-            for match in regex.matches(in: text, range: range) {
-                if let swiftRange = Range(match.range, in: text),
-                   let attrRange = Range(swiftRange, in: result) {
-                    result[attrRange].foregroundColor = UIColor(NETRTheme.neonGreen)
-                }
-            }
-        }
-
-        return result
     }
 
     private var commentAvatar: some View {

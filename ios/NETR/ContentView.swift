@@ -22,6 +22,10 @@ struct ContentView: View {
     @State private var activeGameLobbyVM = GameViewModel()
     @State private var showActiveGameSheet: Bool = false
 
+    // DM notification banner tap -> open conversation
+    @State private var dmBannerTargetUserId: String?
+    @State private var dmBannerShowChat: Bool = false
+
     private var isUnrated: Bool {
         guard let profile = supabase.currentProfile else { return false }
         return profile.netrScore == nil && SelfAssessmentStore.savedScore == nil
@@ -80,11 +84,38 @@ struct ContentView: View {
 
             customTabBar
         }
+        .modifier(DMNotificationOverlay(
+            manager: dmViewModel.notificationManager,
+            onOpenConversation: { userId in
+                dmBannerTargetUserId = userId
+                selectedTab = .dm
+                dmBannerShowChat = true
+            }
+        ))
+        .fullScreenCover(isPresented: $dmBannerShowChat, onDismiss: {
+            dmBannerTargetUserId = nil
+            Task { await dmViewModel.loadConversations() }
+        }) {
+            if let targetId = dmBannerTargetUserId {
+                let profile = dmViewModel.conversations.first(where: { $0.otherUserId == targetId })?.otherUser
+                ChatThreadView(
+                    otherUserId: targetId,
+                    otherUser: profile,
+                    dmViewModel: dmViewModel
+                )
+            }
+        }
         .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showSelfAssessment) {
             SelfAssessmentSheetView(onComplete: {
                 dismissedAssessmentBanner = true
             })
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            // Clear unread badge when user opens DM inbox
+            if newTab == .dm {
+                Task { await dmViewModel.loadConversations() }
+            }
         }
         .onChange(of: supabase.currentProfile?.fullName) { _, _ in
             if let profile = supabase.currentProfile {
@@ -352,13 +383,12 @@ struct ContentView: View {
 
                                 // Unread badge for DMs tab
                                 if tab == .dm && dmViewModel.totalUnread > 0 {
-                                    Text("\(min(dmViewModel.totalUnread, 99))")
-                                        .font(.system(size: 9, weight: .bold))
+                                    Text(dmViewModel.totalUnread > 9 ? "9+" : "\(dmViewModel.totalUnread)")
+                                        .font(.system(size: 10, weight: .bold))
                                         .foregroundStyle(Color.black)
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 1)
-                                        .background(NETRTheme.neonGreen, in: Capsule())
-                                        .offset(x: 10, y: -8)
+                                        .frame(minWidth: 18, minHeight: 18)
+                                        .background(NETRTheme.neonGreen, in: Circle())
+                                        .offset(x: 12, y: -10)
                                 }
 
                                 // Photo reminder badge for Profile tab (first 3 sessions after skip)

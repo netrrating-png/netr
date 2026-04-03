@@ -3,15 +3,20 @@ import SwiftUI
 struct ChatThreadView: View {
     let otherUserId: String
     let otherUser: FeedAuthor?
+    var dmViewModel: DMViewModel?
     @State private var viewModel: ChatViewModel
     @State private var showCourtPicker: Bool = false
+    @State private var mentionProfileUserId: String?
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
 
-    init(otherUserId: String, otherUser: FeedAuthor?) {
+    init(otherUserId: String, otherUser: FeedAuthor?, dmViewModel: DMViewModel? = nil) {
         self.otherUserId = otherUserId
         self.otherUser = otherUser
-        self._viewModel = State(initialValue: ChatViewModel(otherUserId: otherUserId, otherUser: otherUser))
+        self.dmViewModel = dmViewModel
+        let chatVM = ChatViewModel(otherUserId: otherUserId, otherUser: otherUser)
+        chatVM.dmViewModel = dmViewModel
+        self._viewModel = State(initialValue: chatVM)
     }
 
     var body: some View {
@@ -26,11 +31,38 @@ struct ChatThreadView: View {
         .task {
             await viewModel.loadMessages()
             await viewModel.subscribeToMessages()
-            // Mark messages from this user as read
-            await DMViewModel().markAsRead(otherUserId: otherUserId)
+            // Fix 4: Mark messages as read using shared DMViewModel
+            if let dm = dmViewModel {
+                await dm.markAsRead(otherUserId: otherUserId)
+            } else {
+                // Fallback: create temporary instance for standalone usage
+                await DMViewModel().markAsRead(otherUserId: otherUserId)
+            }
+            // Track active conversation so banners don't show for this chat
+            dmViewModel?.notificationManager.activeConversationUserId = otherUserId
         }
         .onDisappear {
             Task { await viewModel.unsubscribe() }
+            dmViewModel?.notificationManager.activeConversationUserId = nil
+        }
+        .fullScreenCover(item: $mentionProfileUserId) { userId in
+            PublicPlayerProfileView(userId: userId)
+        }
+    }
+
+    private func lookupMention(username: String) {
+        Task {
+            nonisolated struct IdRow: Decodable, Sendable { let id: String }
+            let rows: [IdRow]? = try? await SupabaseManager.shared.client
+                .from("profiles")
+                .select("id")
+                .eq("username", value: username)
+                .limit(1)
+                .execute()
+                .value
+            if let user = rows?.first {
+                mentionProfileUserId = user.id
+            }
         }
     }
 
@@ -109,7 +141,8 @@ struct ChatThreadView: View {
                             }
                             MessageBubble(
                                 message: message,
-                                isCurrentUser: message.senderId == viewModel.currentUserId
+                                isCurrentUser: message.senderId == viewModel.currentUserId,
+                                onMentionTap: { username in lookupMention(username: username) }
                             )
                             .id(message.id)
                         }
@@ -286,23 +319,27 @@ struct ChatThreadView: View {
 struct MessageBubble: View {
     let message: DirectMessage
     let isCurrentUser: Bool
+    var onMentionTap: ((String) -> Void)? = nil
 
     var body: some View {
         HStack {
             if isCurrentUser { Spacer(minLength: 60) }
 
             VStack(alignment: isCurrentUser ? .trailing : .leading, spacing: 3) {
-                // Text content (if any)
+                // Text content with tappable @mentions
                 if !message.content.isEmpty {
-                    Text(message.content)
-                        .font(.subheadline)
-                        .foregroundStyle(isCurrentUser ? Color.black : NETRTheme.text)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(
-                            isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
-                            in: BubbleShape(isCurrentUser: isCurrentUser)
-                        )
+                    MentionTextView(
+                        text: message.content,
+                        textColor: isCurrentUser ? .black : NETRTheme.text,
+                        mentionColor: isCurrentUser ? Color(white: 0.15) : NETRTheme.neonGreen,
+                        onMentionTap: onMentionTap
+                    )
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(
+                        isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
+                        in: BubbleShape(isCurrentUser: isCurrentUser)
+                    )
                 }
 
                 // Court tag card (if attached)

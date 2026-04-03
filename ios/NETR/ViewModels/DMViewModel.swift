@@ -15,6 +15,9 @@ class DMViewModel {
     var isSearching: Bool = false
     var showNewMessage: Bool = false
 
+    // Notification manager for DM banners
+    var notificationManager = DMNotificationManager()
+
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
@@ -86,7 +89,27 @@ class DMViewModel {
             isLoading = false
         } catch {
             isLoading = false
-            print("Load conversations error: \(error)")
+            print("[NETR DM] Load conversations error: \(error)")
+        }
+    }
+
+    // MARK: - Load Unread Count Only (lightweight)
+
+    func loadUnreadCount() async {
+        guard let userId = currentUserId else { return }
+
+        do {
+            let unread: [DirectMessage] = try await client
+                .from("direct_messages")
+                .select("id, sender_id, recipient_id, content, read, court_tag_id, court_tag_name, created_at")
+                .eq("recipient_id", value: userId)
+                .eq("read", value: false)
+                .execute()
+                .value
+
+            totalUnread = unread.count
+        } catch {
+            print("[NETR DM] Load unread count error: \(error)")
         }
     }
 
@@ -102,7 +125,42 @@ class DMViewModel {
         return convo
     }
 
-    // MARK: - Mark as Read
+    // MARK: - Auto-populate Conversation After Send (Fix 3)
+
+    func ensureConversationExists(
+        recipientId: String,
+        recipientName: String?,
+        recipientAvatar: String?,
+        recipientScore: Double?,
+        messageContent: String
+    ) {
+        if let idx = conversations.firstIndex(where: { $0.otherUserId == recipientId }) {
+            // Update existing conversation with latest message
+            conversations[idx].lastMessage = messageContent
+            conversations[idx].lastMessageAt = ISO8601DateFormatter().string(from: Date())
+            // Move to top
+            let convo = conversations.remove(at: idx)
+            conversations.insert(convo, at: 0)
+        } else {
+            // Create new local conversation immediately
+            var newConvo = DMConversation(
+                otherUserId: recipientId,
+                lastMessage: messageContent,
+                lastMessageAt: ISO8601DateFormatter().string(from: Date()),
+                unreadCount: 0
+            )
+            newConvo.otherUser = FeedAuthor(
+                id: recipientId,
+                displayName: recipientName,
+                username: nil,
+                avatarUrl: recipientAvatar,
+                netrScore: recipientScore
+            )
+            conversations.insert(newConvo, at: 0)
+        }
+    }
+
+    // MARK: - Mark as Read (Fix 4)
 
     func markAsRead(otherUserId: String) async {
         guard let userId = currentUserId else { return }
@@ -117,11 +175,12 @@ class DMViewModel {
                 .execute()
 
             if let idx = conversations.firstIndex(where: { $0.otherUserId == otherUserId }) {
+                let previousUnread = conversations[idx].unreadCount
                 conversations[idx].unreadCount = 0
-                totalUnread = conversations.reduce(0) { $0 + $1.unreadCount }
+                totalUnread = max(0, totalUnread - previousUnread)
             }
         } catch {
-            print("Mark read error: \(error)")
+            print("[NETR DM] Mark read error: \(error)")
         }
     }
 
@@ -158,7 +217,7 @@ class DMViewModel {
             } catch {
                 guard !Task.isCancelled else { return }
                 isSearching = false
-                print("DM user search error: \(error)")
+                print("[NETR DM] User search error: \(error)")
             }
         }
     }
@@ -166,6 +225,7 @@ class DMViewModel {
     // MARK: - Realtime
 
     func subscribeToConversations() async {
+        guard let userId = currentUserId else { return }
         realtimeChannel = client.realtimeV2.channel("dm-inbox")
         guard let channel = realtimeChannel else { return }
 
@@ -178,7 +238,36 @@ class DMViewModel {
         await channel.subscribe()
 
         realtimeTask = Task {
-            for await _ in messageChanges {
+            for await insert in messageChanges {
+                // Try to decode the new message for notification
+                do {
+                    let msg = try insert.decodeRecord(as: DirectMessage.self, decoder: JSONDecoder.supabaseDecoder)
+
+                    // Only notify for messages sent TO us (not our own sends)
+                    if msg.recipientId == userId {
+                        let senderId = msg.senderId
+                        // Look up sender profile (check local cache first)
+                        let senderProfile: FeedAuthor?
+                        if let existing = self.conversations.first(where: { $0.otherUserId == senderId })?.otherUser {
+                            senderProfile = existing
+                        } else {
+                            senderProfile = await self.loadUserProfile(userId: senderId)
+                        }
+
+                        let notification = DMNotificationInfo(
+                            senderUserId: senderId,
+                            senderName: senderProfile?.name ?? "Player",
+                            senderAvatarUrl: senderProfile?.avatarUrl,
+                            messagePreview: msg.content,
+                            timestamp: Date()
+                        )
+                        self.notificationManager.enqueue(notification)
+                    }
+                } catch {
+                    print("[NETR DM] Decode realtime insert error: \(error)")
+                }
+
+                // Reload conversations and unread count
                 await self.loadConversations()
             }
         }
@@ -196,13 +285,19 @@ class DMViewModel {
     // MARK: - Helpers
 
     private func loadUserProfile(userId: String) async -> FeedAuthor? {
-        try? await client
-            .from("profiles")
-            .select("id, full_name, username, avatar_url, netr_score")
-            .eq("id", value: userId)
-            .single()
-            .execute()
-            .value
+        do {
+            let profile: FeedAuthor = try await client
+                .from("profiles")
+                .select("id, full_name, username, avatar_url, netr_score")
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+            return profile
+        } catch {
+            print("[NETR DM] Load profile error: \(error)")
+            return nil
+        }
     }
 }
 
@@ -218,6 +313,9 @@ class ChatViewModel {
     var isSending: Bool = false
     var messageText: String = ""
     var error: String?
+
+    /// Reference to parent DM view model for auto-populating inbox
+    weak var dmViewModel: DMViewModel?
 
     private let client = SupabaseManager.shared.client
     private var realtimeChannel: RealtimeChannelV2?
@@ -279,7 +377,7 @@ class ChatViewModel {
             isLoading = false
         } catch {
             isLoading = false
-            print("Load messages error: \(error)")
+            print("[NETR DM] Load messages error: \(error)")
         }
     }
 
@@ -317,12 +415,21 @@ class ChatViewModel {
 
             messages.append(created)
             isSending = false
+
+            // Fix 3: Auto-populate conversation in DM inbox
+            dmViewModel?.ensureConversationExists(
+                recipientId: otherUserId,
+                recipientName: otherUser?.displayName,
+                recipientAvatar: otherUser?.avatarUrl,
+                recipientScore: otherUser?.netrScore,
+                messageContent: text
+            )
         } catch {
             isSending = false
             messageText = sentText
             courtTag = sentCourt
             self.error = "Failed to send message"
-            print("[NETR] Send message error: \(error)")
+            print("[NETR DM] Send message error: \(error)")
         }
     }
 
@@ -354,5 +461,15 @@ class ChatViewModel {
             await client.realtimeV2.removeChannel(channel)
         }
         realtimeChannel = nil
+    }
+}
+
+// MARK: - Supabase JSON Decoder Helper
+
+private extension JSONDecoder {
+    static var supabaseDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
     }
 }
