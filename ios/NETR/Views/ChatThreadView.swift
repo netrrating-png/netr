@@ -1,4 +1,5 @@
 import SwiftUI
+import PostgREST
 
 struct ChatThreadView: View {
     let otherUserId: String
