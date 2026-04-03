@@ -236,6 +236,9 @@ struct PostCardView: View {
 
 struct MentionTextView: UIViewRepresentable {
     let text: String
+    var textColor: Color = NETRTheme.text
+    var mentionColor: Color = NETRTheme.neonGreen
+    var font: UIFont = .preferredFont(forTextStyle: .subheadline)
     var onMentionTap: ((String) -> Void)?
 
     func makeCoordinator() -> Coordinator {
@@ -253,7 +256,7 @@ struct MentionTextView: UIViewRepresentable {
         tv.setContentHuggingPriority(.defaultLow, for: .horizontal)
         tv.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         tv.linkTextAttributes = [
-            .foregroundColor: UIColor(NETRTheme.neonGreen),
+            .foregroundColor: UIColor(mentionColor),
             .underlineStyle: 0
         ]
         return tv
@@ -261,6 +264,10 @@ struct MentionTextView: UIViewRepresentable {
 
     func updateUIView(_ tv: UITextView, context: Context) {
         context.coordinator.onMentionTap = onMentionTap
+        tv.linkTextAttributes = [
+            .foregroundColor: UIColor(mentionColor),
+            .underlineStyle: 0
+        ]
         let built = buildAttributedString(text)
         if tv.attributedText != built {
             tv.attributedText = built
@@ -269,10 +276,9 @@ struct MentionTextView: UIViewRepresentable {
     }
 
     private func buildAttributedString(_ text: String) -> NSAttributedString {
-        let font = UIFont.preferredFont(forTextStyle: .subheadline)
         let result = NSMutableAttributedString(
             string: text,
-            attributes: [.font: font, .foregroundColor: UIColor(NETRTheme.text)]
+            attributes: [.font: font, .foregroundColor: UIColor(textColor)]
         )
         let pattern = #"@(\w+)"#
         if let regex = try? NSRegularExpression(pattern: pattern) {
@@ -283,7 +289,7 @@ struct MentionTextView: UIViewRepresentable {
                 if let swiftRange = Range(usernameRange, in: text),
                    let url = URL(string: "mention://\(String(text[swiftRange]))") {
                     result.addAttributes([
-                        .foregroundColor: UIColor(NETRTheme.neonGreen),
+                        .foregroundColor: UIColor(mentionColor),
                         .link: url
                     ], range: fullRange)
                 }

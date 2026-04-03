@@ -9,6 +9,7 @@ struct PublicPlayerProfileView: View {
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
     @State private var showDMChat: Bool = false
+    @State private var mentionProfileUserId: String?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -85,6 +86,25 @@ struct PublicPlayerProfileView: View {
                     netrScore: player.rating
                 )
                 ChatThreadView(otherUserId: userId, otherUser: otherUser)
+            }
+        }
+        .fullScreenCover(item: $mentionProfileUserId) { uid in
+            PublicPlayerProfileView(userId: uid)
+        }
+    }
+
+    private func lookupMentionProfile(username: String) {
+        Task {
+            nonisolated struct IdRow: Decodable, Sendable { let id: String }
+            let rows: [IdRow]? = try? await SupabaseManager.shared.client
+                .from("profiles")
+                .select("id")
+                .eq("username", value: username)
+                .limit(1)
+                .execute()
+                .value
+            if let user = rows?.first {
+                mentionProfileUserId = user.id
             }
         }
     }
@@ -421,7 +441,8 @@ struct PublicPlayerProfileView: View {
                         onLike: {},
                         onComment: { commentPost = post },
                         onDelete: {},
-                        onBlock: {}
+                        onBlock: {},
+                        onMentionTap: { username in lookupMentionProfile(username: username) }
                     )
                     Divider().background(NETRTheme.border)
                 }
