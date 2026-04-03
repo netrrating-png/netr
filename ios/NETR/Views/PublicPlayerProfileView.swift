@@ -1,4 +1,5 @@
 import SwiftUI
+import PostgREST
 
 struct PublicPlayerProfileView: View {
     let userId: String
