@@ -6,6 +6,7 @@ struct NETRPlayerCardView: View {
     let user: Player
     let milestones: [PlayerMilestone]
     let homeCourt: Court?
+    var avatarImage: UIImage? = nil
 
     @State private var shimmerX: CGFloat = -400
     @State private var glowPulse: CGFloat = 0.3
@@ -188,7 +189,14 @@ struct NETRPlayerCardView: View {
                         )
                         .frame(width: 148, height: 148)
                         .shadow(color: tierColor.opacity(glowPulse), radius: 14)
-                    if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                    if let avatarImage {
+                        // Pre-loaded image (used for ImageRenderer export)
+                        Image(uiImage: avatarImage)
+                            .resizable().scaledToFill()
+                            .frame(width: 138, height: 138)
+                            .clipShape(Circle())
+                    } else if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                        // Async image (used for on-screen display)
                         AsyncImage(url: url) { phase in
                             switch phase {
                             case .success(let img):
@@ -572,12 +580,22 @@ struct NETRPlayerCardSheet: View {
     @MainActor
     private func renderCard() {
         isRendering = true
-        let renderer = ImageRenderer(
-            content: NETRPlayerCardView(user: user, milestones: milestones, homeCourt: homeCourt)
-                .environment(\.colorScheme, .dark)
-        )
-        renderer.scale = 3.0
-        cardImage = renderer.uiImage
-        isRendering = false
+        Task {
+            // Pre-download avatar so ImageRenderer captures it (AsyncImage won't work in snapshots)
+            var downloadedAvatar: UIImage? = nil
+            if let urlStr = user.avatarUrl, let url = URL(string: urlStr) {
+                if let (data, _) = try? await URLSession.shared.data(from: url) {
+                    downloadedAvatar = UIImage(data: data)
+                }
+            }
+
+            let renderer = ImageRenderer(
+                content: NETRPlayerCardView(user: user, milestones: milestones, homeCourt: homeCourt, avatarImage: downloadedAvatar)
+                    .environment(\.colorScheme, .dark)
+            )
+            renderer.scale = 3.0
+            cardImage = renderer.uiImage
+            isRendering = false
+        }
     }
 }
