@@ -414,7 +414,9 @@ struct EditProfileView: View {
             do {
                 // Upload banner if changed
                 if let bannerImg = bannerImage {
-                    _ = await viewModel.uploadBanner(bannerImg)
+                    if await viewModel.uploadBanner(bannerImg) == nil {
+                        print("[NETR] Banner upload returned nil — may have failed silently")
+                    }
                 }
 
                 // Upload avatar if changed

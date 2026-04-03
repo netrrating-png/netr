@@ -208,7 +208,6 @@ struct ProfileView: View {
             await viewModel.loadProfile(userId: profileUserId)
         }
         .onAppear {
-            Task { await viewModel.loadProfile(userId: profileUserId) }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) { ratingAnimated = true }
             }
@@ -503,14 +502,14 @@ struct ProfileView: View {
                 Text(user.city)
                     .font(.system(size: 12))
                     .foregroundStyle(NETRTheme.subtext)
-                if let _ = viewModel.homeCourt {
+                if let court = viewModel.homeCourt {
                     Text("·")
                         .foregroundStyle(NETRTheme.muted)
                     Button { showCourtLeaderboard = true } label: {
                         HStack(spacing: 3) {
                             LucideIcon("house", size: 11)
                                 .foregroundStyle(NETRTheme.neonGreen)
-                            Text(viewModel.homeCourt!.name)
+                            Text(court.name)
                                 .font(.system(size: 12))
                                 .foregroundStyle(NETRTheme.neonGreen)
                                 .lineLimit(1)
