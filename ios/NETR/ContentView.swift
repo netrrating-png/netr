@@ -8,6 +8,7 @@ struct ContentView: View {
     @Environment(AppearanceManager.self) private var appearance
     @Environment(SupabaseManager.self) private var supabase
     @State private var selectedTab: Tab = .feed
+    @State private var feedScrollToTop: Bool = false
     @State private var courtsViewModel = CourtsViewModel()
     @State private var dmViewModel = DMViewModel()
     @State private var showSelfAssessment: Bool = false
@@ -166,7 +167,7 @@ struct ContentView: View {
         Group {
             switch tab {
             case .feed:
-                FeedView()
+                FeedView(scrollToTopTrigger: $feedScrollToTop)
             case .courts:
                 CourtsView(viewModel: courtsViewModel)
             case .rate:
@@ -335,6 +336,9 @@ struct ContentView: View {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             selectedTab = tab
                         }
+                    } else if tab == .feed {
+                        // Double-tap Feed tab → scroll to top
+                        feedScrollToTop.toggle()
                     } else if tab == .profile && photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             showPhotoBanner = true

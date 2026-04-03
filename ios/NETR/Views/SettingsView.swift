@@ -29,6 +29,7 @@ struct SettingsView: View {
     @State private var avatarUploadError: String?
     @State private var showAvatarError: Bool = false
     @State private var showRatingInsights: Bool = false
+    @State private var showSignOutError: Bool = false
 
     private var user: Player { store.currentUser }
 
@@ -509,13 +510,19 @@ struct SettingsView: View {
                     do {
                         try await supabase.signOut()
                     } catch {
-                        print("[NETR] Sign out error: \(error)")
+                        print("[NETR Settings] Sign out error: \(error)")
+                        showSignOutError = true
                     }
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("You'll need to sign in again to access your account.")
+        }
+        .alert("Sign Out Failed", isPresented: $showSignOutError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Sign out failed. Please try again.")
         }
     }
 

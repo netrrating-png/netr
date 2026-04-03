@@ -594,17 +594,23 @@ class FeedViewModel {
     // MARK: - Suggested Players
 
     func fetchSuggestedPlayers() async -> [UserSearchResult] {
+        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+
+        // Fetch all users — don't filter by netr_score (most testers won't have one yet)
+        // Order: scored users first (by score DESC), then unscored by newest
         let results: [UserSearchResult]? = try? await client
             .from("profiles")
             .select("id, username, full_name, avatar_url, netr_score")
-            .not("netr_score", operator: .is, value: "null")
-            .order("netr_score", ascending: false)
-            .limit(10)
+            .neq("id", value: currentUserId ?? "")
+            .order("netr_score", ascending: false, nullsFirst: false)
+            .order("created_at", ascending: false)
+            .limit(30)
             .execute()
             .value
 
-        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
-        return (results ?? []).filter { $0.id != currentUserId && !followingIds.contains($0.id) }
+        return (results ?? []).filter { !followingIds.contains($0.id) }
+            .prefix(20)
+            .map { $0 }
     }
 
     // MARK: - Open Profile by Username (for mention taps)

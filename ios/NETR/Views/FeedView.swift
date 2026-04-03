@@ -10,6 +10,7 @@ struct FeedView: View {
     @State private var showComments: Bool = false
     @State private var quotePost: SupabaseFeedPost?
     @State private var suggestedPlayers: [UserSearchResult] = []
+    @Binding var scrollToTopTrigger: Bool
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -350,38 +351,48 @@ struct FeedView: View {
             }
             .frame(maxWidth: .infinity)
         } else {
-            ScrollView {
-                VStack(spacing: 0) {
-                    if viewModel.posts.isEmpty {
-                        if viewModel.activeTab == .forYou {
-                            forYouEmptyState
-                        } else {
-                            emptyFeedState
-                        }
-                    } else {
-                        LazyVStack(spacing: 0) {
-                            ForEach(viewModel.posts) { post in
-                                postCard(for: post)
-                                Divider().background(NETRTheme.border)
-                                    .onAppear {
-                                        Task { await viewModel.loadMoreIfNeeded(currentPost: post) }
-                                    }
-                            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Invisible anchor for scroll-to-top
+                        Color.clear.frame(height: 0).id("feedTop")
 
-                            if viewModel.isLoading && viewModel.hasLoadedOnce {
-                                ProgressView()
-                                    .tint(NETRTheme.neonGreen)
-                                    .padding(.vertical, 20)
+                        if viewModel.posts.isEmpty {
+                            if viewModel.activeTab == .forYou {
+                                forYouEmptyState
+                            } else {
+                                emptyFeedState
+                            }
+                        } else {
+                            LazyVStack(spacing: 0) {
+                                ForEach(viewModel.posts) { post in
+                                    postCard(for: post)
+                                    Divider().background(NETRTheme.border)
+                                        .onAppear {
+                                            Task { await viewModel.loadMoreIfNeeded(currentPost: post) }
+                                        }
+                                }
+
+                                if viewModel.isLoading && viewModel.hasLoadedOnce {
+                                    ProgressView()
+                                        .tint(NETRTheme.neonGreen)
+                                        .padding(.vertical, 20)
+                                }
                             }
                         }
                     }
+                    .padding(.bottom, 100)
                 }
-                .padding(.bottom, 100)
-            }
-            .scrollIndicators(.hidden)
-            .dismissKeyboardOnScroll()
-            .refreshable {
-                await viewModel.fetchFeed(tab: viewModel.activeTab)
+                .scrollIndicators(.hidden)
+                .dismissKeyboardOnScroll()
+                .refreshable {
+                    await viewModel.fetchFeed(tab: viewModel.activeTab)
+                }
+                .onChange(of: scrollToTopTrigger) { _, _ in
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        proxy.scrollTo("feedTop", anchor: .top)
+                    }
+                }
             }
         }
     }
@@ -486,23 +497,29 @@ struct FeedView: View {
 
     // MARK: - Empty States
 
+    // MARK: - For You Empty State (P5)
+
     private var forYouEmptyState: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             VStack(spacing: 12) {
-                LucideIcon("users", size: 44)
-                    .foregroundStyle(NETRTheme.muted)
-                Text("Your feed is empty")
-                    .font(.headline)
+                Text("🏀")
+                    .font(.system(size: 48))
+
+                Text("Your feed is empty.\nLet's fix that.")
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(NETRTheme.text)
-                Text("Follow players to see their posts here.")
+                    .multilineTextAlignment(.center)
+
+                Text("Follow players to see their posts, ratings, and game activity.")
                     .font(.subheadline)
                     .foregroundStyle(NETRTheme.subtext)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
             }
 
             if !suggestedPlayers.isEmpty {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("DISCOVER PLAYERS")
+                    Text("PLAYERS YOU MIGHT KNOW")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(NETRTheme.subtext)
                         .tracking(1.5)
@@ -519,50 +536,132 @@ struct FeedView: View {
                     .scrollIndicators(.hidden)
                 }
             }
+
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    viewModel.activeTab = .discover
+                }
+                viewModel.requestDiscoverLocation()
+            } label: {
+                HStack(spacing: 8) {
+                    LucideIcon("search", size: 14)
+                    Text("FIND PLAYERS")
+                        .font(.system(.subheadline, design: .default, weight: .bold).width(.compressed))
+                        .tracking(1)
+                }
+                .foregroundStyle(NETRTheme.background)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
+            }
+            .buttonStyle(PressButtonStyle())
+            .padding(.horizontal, 32)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 60)
+        .padding(.top, 40)
         .task {
             suggestedPlayers = await viewModel.fetchSuggestedPlayers()
         }
     }
 
+    // MARK: - Suggested Player Card
+
     private func suggestedPlayerCard(_ player: UserSearchResult) -> some View {
-        Button {
-            viewModel.selectedProfileUserId = player.id
-        } label: {
-            VStack(spacing: 8) {
-                AvatarView(url: player.avatarUrl, name: player.displayName, size: 56)
+        let isFollowing = viewModel.followingIds.contains(player.id)
+        return VStack(spacing: 8) {
+            Button {
+                viewModel.selectedProfileUserId = player.id
+            } label: {
+                VStack(spacing: 6) {
+                    AvatarView(url: player.avatarUrl, name: player.displayName, size: 52)
 
-                Text(player.displayName ?? "Player")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(NETRTheme.text)
-                    .lineLimit(1)
+                    Text(player.displayName ?? "Player")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(NETRTheme.text)
+                        .lineLimit(1)
 
-                if let score = player.netrScore {
-                    Text(String(format: "%.1f", score))
-                        .font(.system(size: 10, weight: .black))
-                        .foregroundStyle(NETRRating.color(for: score))
+                    if let score = player.netrScore {
+                        Text(String(format: "%.1f", score))
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundStyle(NETRRating.color(for: score))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 4))
+                    }
                 }
             }
-            .frame(width: 90)
-            .padding(.vertical, 12)
-            .background(NETRTheme.card, in: .rect(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+            .buttonStyle(.plain)
+
+            Button {
+                Task {
+                    guard let currentId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+                    do {
+                        if isFollowing {
+                            try await SupabaseManager.shared.client
+                                .from("follows")
+                                .delete()
+                                .eq("follower_id", value: currentId)
+                                .eq("following_id", value: player.id)
+                                .execute()
+                            viewModel.followingIds.remove(player.id)
+                        } else {
+                            try await SupabaseManager.shared.client
+                                .from("follows")
+                                .insert(["follower_id": currentId, "following_id": player.id])
+                                .execute()
+                            viewModel.followingIds.insert(player.id)
+                        }
+                    } catch {
+                        print("[NETR] Discover follow error: \(error)")
+                    }
+                }
+            } label: {
+                Text(isFollowing ? "Following" : "Follow")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(isFollowing ? NETRTheme.subtext : NETRTheme.background)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(
+                        isFollowing ? NETRTheme.card : NETRTheme.neonGreen,
+                        in: Capsule()
+                    )
+                    .overlay(Capsule().stroke(isFollowing ? NETRTheme.border : Color.clear, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
+        .frame(width: 100)
+        .padding(.vertical, 12)
+        .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
     }
 
+    // MARK: - Live Empty State (P5)
+
     private var emptyFeedState: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 20) {
             LucideIcon("messages-square", size: 44)
                 .foregroundStyle(NETRTheme.muted)
-            Text("Nothing here yet")
+            Text("No posts in the last 24 hours")
                 .font(.headline)
                 .foregroundStyle(NETRTheme.text)
-            Text("Be the first to post about the run")
+            Text("Be the first to post.")
                 .font(.subheadline)
                 .foregroundStyle(NETRTheme.subtext)
+            Button {
+                viewModel.showCompose = true
+            } label: {
+                HStack(spacing: 6) {
+                    LucideIcon("pencil", size: 12)
+                    Text("POST")
+                        .font(.system(.caption, design: .default, weight: .black).width(.compressed))
+                        .tracking(1)
+                }
+                .foregroundStyle(NETRTheme.background)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(NETRTheme.neonGreen, in: Capsule())
+            }
+            .buttonStyle(PressButtonStyle())
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 60)

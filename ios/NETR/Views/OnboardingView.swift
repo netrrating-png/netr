@@ -633,39 +633,51 @@ struct OnboardingView: View {
     }
 
     private var photoPickerSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 16) {
             PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
-                ZStack(alignment: .bottomTrailing) {
+                ZStack {
                     if let data = profileImageData,
                        let uiImage = UIImage(data: data) {
                         Image(uiImage: uiImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: 100, height: 100)
+                            .frame(width: 140, height: 140)
                             .clipShape(Circle())
                             .overlay(Circle().stroke(NETRTheme.neonGreen, lineWidth: 3))
+                            .overlay(alignment: .bottomTrailing) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(NETRTheme.neonGreen)
+                                    .background(Color.black, in: Circle())
+                                    .offset(x: -4, y: -4)
+                            }
                     } else {
                         Circle()
                             .fill(NETRTheme.card)
-                            .frame(width: 100, height: 100)
+                            .frame(width: 140, height: 140)
                             .overlay(
-                                LucideIcon("user", size: 40)
+                                Circle()
+                                    .stroke(
+                                        NETRTheme.neonGreen.opacity(0.5),
+                                        style: StrokeStyle(lineWidth: 2, dash: [8, 6])
+                                    )
+                            )
+                            .overlay(
+                                LucideIcon("camera", size: 36)
                                     .foregroundStyle(NETRTheme.muted)
                             )
-                            .overlay(Circle().stroke(NETRTheme.border, lineWidth: 2))
                     }
-
-                    LucideIcon("camera", size: 12)
-                        .foregroundStyle(NETRTheme.background)
-                        .frame(width: 30, height: 30)
-                        .background(NETRTheme.neonGreen, in: Circle())
-                        .overlay(Circle().stroke(NETRTheme.background, lineWidth: 2))
                 }
             }
 
-            Text("Add a photo")
-                .font(.caption.weight(.semibold))
+            Text("Put a face to your game.")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(NETRTheme.text)
+
+            Text("Players who add a photo get more ratings\nand build trust faster.")
+                .font(.caption)
                 .foregroundStyle(NETRTheme.subtext)
+                .multilineTextAlignment(.center)
         }
     }
 }

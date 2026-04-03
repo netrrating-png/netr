@@ -23,6 +23,8 @@ struct CourtDetailView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var isUploadingPhoto: Bool = false
     @State private var fullScreenPhotoUrl: String?
+    @State private var fullScreenPhoto: CourtPhoto?
+    @State private var showDeletePhotoConfirm: Bool = false
 
     // Leaderboard
     @State private var leaderboardPlayers: [LeaderboardEntry] = []
@@ -879,9 +881,15 @@ struct CourtDetailView: View {
         }
         .fullScreenCover(item: Binding(
             get: { fullScreenPhotoUrl.map { IdentifiableURL(url: $0) } },
-            set: { fullScreenPhotoUrl = $0?.url }
+            set: { fullScreenPhotoUrl = $0?.url; if $0 == nil { fullScreenPhoto = nil } }
         )) { item in
-            CourtPhotoFullScreen(url: item.url)
+            CourtPhotoFullScreen(
+                url: item.url,
+                photo: fullScreenPhoto,
+                onDelete: { photo in
+                    Task { await deleteCourtPhoto(photo) }
+                }
+            )
         }
     }
 
@@ -895,6 +903,7 @@ struct CourtDetailView: View {
                         .frame(width: 200, height: 150)
                         .clipShape(.rect(cornerRadius: 10))
                         .onTapGesture {
+                            fullScreenPhoto = photo
                             fullScreenPhotoUrl = photo.photoUrl
                         }
                 } else if phase.error != nil {
@@ -988,6 +997,36 @@ struct CourtDetailView: View {
         isUploadingPhoto = false
     }
 
+    private func deleteCourtPhoto(_ photo: CourtPhoto) async {
+        let client = SupabaseManager.shared.client
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+              photo.userId == userId else { return }
+
+        do {
+            // Delete from court_photos table
+            try await client
+                .from("court_photos")
+                .delete()
+                .eq("id", value: photo.id)
+                .eq("user_id", value: userId)
+                .execute()
+
+            // Try to delete from storage (extract path from URL)
+            if let url = URL(string: photo.photoUrl),
+               let pathStart = photo.photoUrl.range(of: "court-photos/") {
+                let storagePath = String(photo.photoUrl[pathStart.upperBound...])
+                try? await client.storage.from("court-photos").remove(paths: [storagePath])
+            }
+
+            // Remove from local array
+            courtPhotos.removeAll { $0.id == photo.id }
+            fullScreenPhotoUrl = nil
+            fullScreenPhoto = nil
+        } catch {
+            print("[NETR Courts] Delete photo error: \(error)")
+        }
+    }
+
     private var bottomCTA: some View {
         HStack(spacing: 12) {
             Button {
@@ -1077,10 +1116,19 @@ private struct IdentifiableURL: Identifiable {
 
 struct CourtPhotoFullScreen: View {
     let url: String
+    var photo: CourtPhoto?
+    var onDelete: ((CourtPhoto) -> Void)?
     @Environment(\.dismiss) private var dismiss
+    @State private var showDeleteConfirm: Bool = false
+
+    private var isOwnPhoto: Bool {
+        guard let photo else { return false }
+        return photo.userId == SupabaseManager.shared.session?.user.id.uuidString.lowercased()
+            || photo.userId == SupabaseManager.shared.session?.user.id.uuidString
+    }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             Color.black.ignoresSafeArea()
 
             if let imageUrl = URL(string: url) {
@@ -1097,15 +1145,42 @@ struct CourtPhotoFullScreen: View {
                 }
             }
 
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.white.opacity(0.8))
-                    .shadow(radius: 4)
+            // Top bar
+            VStack {
+                HStack {
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .shadow(radius: 4)
+                    }
+
+                    Spacer()
+
+                    if isOwnPhoto {
+                        Button { showDeleteConfirm = true } label: {
+                            Image(systemName: "trash.circle.fill")
+                                .font(.title)
+                                .foregroundStyle(NETRTheme.red.opacity(0.9))
+                                .shadow(radius: 4)
+                        }
+                    }
+                }
+                .padding(20)
+
+                Spacer()
             }
-            .padding(20)
+        }
+        .alert("Delete this photo?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let photo {
+                    onDelete?(photo)
+                    dismiss()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 }
