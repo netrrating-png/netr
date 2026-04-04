@@ -487,8 +487,9 @@ class SelfAssessmentViewModel: ObservableObject {
     @Published var ageText: String      = ""
     @Published var questionIndex: Int   = 0
     @Published var answers: [UUID: Int] = [:]
-    @Published var showResult: Bool     = false
-    @Published var finalScore: Double   = 0
+    @Published var showResult: Bool       = false
+    @Published var showCalculating: Bool  = false
+    @Published var finalScore: Double     = 0
     @Published var categoryScores: [SASkillCategory: Double] = [:]
 
     let questions            = saAssessmentQuestions
@@ -516,7 +517,13 @@ class SelfAssessmentViewModel: ObservableObject {
             let (score, cats) = calculateFinalScore()
             finalScore     = score
             categoryScores = cats
-            withAnimation(.spring(response: 0.5)) { showResult = true }
+            withAnimation(.spring(response: 0.5)) { showCalculating = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                withAnimation(.spring(response: 0.5)) {
+                    self.showCalculating = false
+                    self.showResult = true
+                }
+            }
         } else {
             withAnimation(.easeInOut(duration: 0.22)) { questionIndex += 1 }
         }
@@ -580,6 +587,9 @@ struct SelfAssessmentFlowView: View {
                     }
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if vm.showCalculating {
+                CalculatingView()
+                    .transition(.opacity)
             } else if vm.onboardingComplete {
                 QuestionFlowView(vm: vm)
                     .transition(.asymmetric(
@@ -595,6 +605,7 @@ struct SelfAssessmentFlowView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: vm.showResult)
+        .animation(.easeInOut(duration: 0.4), value: vm.showCalculating)
         .animation(.spring(response: 0.55, dampingFraction: 0.82), value: vm.onboardingComplete)
         .onAppear {
             vm.profile.age = initialAge ?? 20
@@ -1206,7 +1217,7 @@ struct AssessmentResultView: View {
                         .rotationEffect(.degrees(-90)).frame(width: 180, height: 180)
                         .animation(.easeOut(duration: 1.4), value: ringProgress)
                     VStack(spacing: 6) {
-                        Text(String(format: "%.1f", score))
+                        Text(String(format: "%.2f", score))
                             .font(.custom("BarlowCondensed-Black", size: 58))
                             .foregroundColor(tierColor)
                             .shadow(color: tierColor.opacity(0.45), radius: 12)
@@ -1320,5 +1331,202 @@ struct AssessmentResultView: View {
         case .rec:       return "Rec"
         case .pickup:    return "Pickup"
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// MARK: — Calculating View
+// ─────────────────────────────────────────────────────────────
+
+struct CalculatingView: View {
+    private let neon   = Color(hex: "#39FF14")
+    private let bg     = Color(hex: "#050507")
+    private let sub    = Color(hex: "#6A6A82")
+    private let card   = Color(hex: "#111116")
+    private let border = Color(hex: "#1E1E26")
+
+    private let skills = ["Shooting", "Finishing", "Handles", "Playmaking", "Defense", "Rebounding", "IQ"]
+    private let skillColors: [Color] = [
+        Color(hex: "#39FF14"),
+        Color(hex: "#FF7A00"),
+        Color(hex: "#FFC247"),
+        Color(hex: "#2DA8FF"),
+        Color(hex: "#FF3B30"),
+        Color(hex: "#2DA8FF"),
+        Color(hex: "#9B8BFF"),
+    ]
+
+    @State private var appeared      = false
+    @State private var pulseRing     = false
+    @State private var phaseIndex    = 0
+    @State private var barWidths     = Array(repeating: 0.0, count: 7)
+    @State private var dotsVisible   = [false, false, false]
+
+    private let phases = [
+        "Analyzing your answers",
+        "Weighing your skills",
+        "Calibrating your score",
+        "Almost ready",
+    ]
+
+    var body: some View {
+        ZStack {
+            bg.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Pulsing ring
+                ZStack {
+                    Circle()
+                        .stroke(neon.opacity(pulseRing ? 0.12 : 0.04), lineWidth: pulseRing ? 28 : 14)
+                        .frame(width: 140, height: 140)
+                        .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulseRing)
+
+                    Circle()
+                        .stroke(Color(hex: "#1E1E26"), lineWidth: 5)
+                        .frame(width: 116, height: 116)
+
+                    SpinningArc(color: neon)
+                        .frame(width: 116, height: 116)
+
+                    VStack(spacing: 3) {
+                        Text("NETR")
+                            .font(.system(size: 10, weight: .bold)).kerning(2.5)
+                            .foregroundColor(neon.opacity(0.7))
+                        Image(systemName: "waveform")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(neon)
+                            .scaleEffect(pulseRing ? 1.12 : 0.92)
+                            .animation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true), value: pulseRing)
+                    }
+                }
+                .opacity(appeared ? 1 : 0)
+                .scaleEffect(appeared ? 1 : 0.7)
+                .animation(.spring(response: 0.65, dampingFraction: 0.6).delay(0.1), value: appeared)
+
+                Spacer().frame(height: 28)
+
+                // Phase text
+                VStack(spacing: 6) {
+                    Text("CALCULATING")
+                        .font(.system(size: 10, weight: .bold)).kerning(2.5)
+                        .foregroundColor(neon)
+                        .opacity(appeared ? 1 : 0)
+                        .animation(.easeOut(duration: 0.4).delay(0.3), value: appeared)
+
+                    HStack(spacing: 0) {
+                        Text(phases[phaseIndex])
+                            .font(.custom("BarlowCondensed-Black", size: 30))
+                            .foregroundColor(.white)
+                            .id(phaseIndex)
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            ))
+
+                        HStack(spacing: 3) {
+                            ForEach(0..<3, id: \.self) { i in
+                                Circle()
+                                    .fill(neon)
+                                    .frame(width: 4, height: 4)
+                                    .opacity(dotsVisible[i] ? 1 : 0.2)
+                            }
+                        }
+                        .padding(.leading, 6)
+                        .padding(.bottom, 2)
+                    }
+                    .opacity(appeared ? 1 : 0)
+                    .animation(.easeOut(duration: 0.4).delay(0.4), value: appeared)
+                }
+
+                Spacer().frame(height: 28)
+
+                // Skill bars
+                VStack(spacing: 0) {
+                    ForEach(0..<7, id: \.self) { i in
+                        HStack(spacing: 10) {
+                            Text(skills[i])
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(sub)
+                                .frame(width: 80, alignment: .trailing)
+
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(Color(hex: "#1A1A20"))
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(skillColors[i])
+                                        .frame(width: geo.size.width * barWidths[i])
+                                        .animation(.easeOut(duration: 0.55).delay(Double(i) * 0.08 + 0.5), value: barWidths[i])
+                                }
+                            }
+                            .frame(height: 6)
+                        }
+                        .padding(.vertical, 5)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(16)
+                .background(card)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(border, lineWidth: 1))
+                .padding(.horizontal, 28)
+                .opacity(appeared ? 1 : 0)
+                .offset(y: appeared ? 0 : 16)
+                .animation(.easeOut(duration: 0.5).delay(0.5), value: appeared)
+
+                Spacer()
+            }
+        }
+        .onAppear {
+            appeared  = true
+            pulseRing = true
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                for i in 0..<7 { barWidths[i] = Double.random(in: 0.45...0.92) }
+            }
+
+            animateDots()
+
+            for p in 1..<phases.count {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(p) * 1.2) {
+                    withAnimation(.easeInOut(duration: 0.3)) { phaseIndex = p }
+                }
+            }
+        }
+    }
+
+    private func animateDots() {
+        for i in 0..<3 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.25) {
+                withAnimation(.easeInOut(duration: 0.3)) { dotsVisible[i] = true }
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            for i in 0..<3 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.25) {
+                    withAnimation(.easeInOut(duration: 0.3)) { dotsVisible[i] = false }
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { animateDots() }
+        }
+    }
+}
+
+struct SpinningArc: View {
+    let color: Color
+    @State private var rotation = 0.0
+
+    var body: some View {
+        Circle()
+            .trim(from: 0, to: 0.22)
+            .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+            .rotationEffect(.degrees(rotation))
+            .onAppear {
+                withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
+                    rotation = 360
+                }
+            }
     }
 }

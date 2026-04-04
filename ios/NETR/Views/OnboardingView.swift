@@ -25,7 +25,7 @@ struct OnboardingView: View {
     @State private var signUpError: String?
     @State private var isSigningUp: Bool = false
 
-    private let totalSteps = 7
+    private let totalSteps = 8
 
     var body: some View {
         ZStack {
@@ -186,7 +186,7 @@ struct OnboardingView: View {
                 Spacer(minLength: 40)
 
                 Button {
-                    withAnimation { currentStep = 3 }
+                    withAnimation { currentStep = 3 }  // → photo prompt
                 } label: {
                     Text("CONTINUE")
                         .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -342,7 +342,7 @@ struct OnboardingView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    withAnimation { currentStep = 4 }
+                    withAnimation { currentStep = 5 }
                 } label: {
                     Text("START SELF ASSESSMENT")
                         .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -377,10 +377,10 @@ struct OnboardingView: View {
     private var disclaimerStep: some View {
         SelfAssessmentDisclaimerView(
             onContinue: {
-                withAnimation { currentStep = 5 }
+                withAnimation { currentStep = 6 }
             },
             onBack: {
-                withAnimation { currentStep = 3 }
+                withAnimation { currentStep = 4 }
             }
         )
     }
@@ -395,12 +395,7 @@ struct OnboardingView: View {
             selfAssessmentCategoryScores = catScores
             selfAssessmentIsProClaim = (profile.highestLevel == .nba)
             SelfAssessmentStore.save(score: score, categoryScores: catScores)
-            withAnimation { currentStep = 6 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
-                    showRatingReveal = true
-                }
-            }
+            performSignUp()
         }
     }
 
@@ -538,10 +533,15 @@ struct OnboardingView: View {
         case 2:
             accountStep
         case 3:
-            ratingExplainedStep
+            // Photo prompt — right after username/profile setup
+            ProfilePhotoPromptView {
+                withAnimation { currentStep = 4 }
+            }
         case 4:
-            disclaimerStep
+            ratingExplainedStep
         case 5:
+            disclaimerStep
+        case 6:
             selfAssessmentStep
         default:
             ratingRevealStep

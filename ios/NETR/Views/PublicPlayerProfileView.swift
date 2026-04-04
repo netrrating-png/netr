@@ -293,9 +293,22 @@ struct PublicPlayerProfileView: View {
                     .foregroundStyle(NETRTheme.subtext)
                 Text("·")
                     .foregroundStyle(NETRTheme.muted)
-                Text(user.position.rawValue)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(NETRRating.color(for: user.rating))
+                // Position + optional age badge
+                HStack(spacing: 4) {
+                    Text(user.position.rawValue)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(NETRRating.color(for: user.rating))
+                    let showAge = viewModel.userProfile?.showAge ?? false
+                    let age = user.age
+                    if showAge && age > 0 {
+                        Text("·")
+                            .foregroundStyle(NETRTheme.muted)
+                            .font(.system(size: 12))
+                        Text("\(age)")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
                 if !user.city.isEmpty {
                     Text("·")
                         .foregroundStyle(NETRTheme.muted)

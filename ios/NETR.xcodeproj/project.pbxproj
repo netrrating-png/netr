@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AD5E44D32F7AB82F00A7FB8C /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AD003GOOGLE0000001D0E5F /* GoogleSignIn */; };
 		XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = XX1C9FF110ABBCE8BF456CXX /* Supabase */; };
 		XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */ = {isa = PBXBuildFile; productRef = XX40CD9E3A8C2AB4E2F156XX /* LucideIcons */; };
 /* End PBXBuildFile section */
@@ -130,6 +131,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AD5E44D32F7AB82F00A7FB8C /* GoogleSignIn in Frameworks */,
 				XX50D61ED0BAE05FA2F8E9XX /* Supabase in Frameworks */,
 				XX60EF1A5B0E4CD6A4A378XX /* LucideIcons in Frameworks */,
 			);
