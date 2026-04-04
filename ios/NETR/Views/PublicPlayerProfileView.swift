@@ -10,6 +10,8 @@ struct PublicPlayerProfileView: View {
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
     @State private var showDMChat: Bool = false
+    @State private var showFollowers: Bool = false
+    @State private var showFollowing: Bool = false
     @State private var mentionProfileUserId: String?
     @Environment(\.dismiss) private var dismiss
 
@@ -91,6 +93,20 @@ struct PublicPlayerProfileView: View {
         }
         .fullScreenCover(item: $mentionProfileUserId) { uid in
             PublicPlayerProfileView(userId: uid)
+        }
+        .sheet(isPresented: $showFollowers) {
+            FollowListView(
+                userId: userId,
+                mode: .followers,
+                initialCount: viewModel.followerCount
+            )
+        }
+        .sheet(isPresented: $showFollowing) {
+            FollowListView(
+                userId: userId,
+                mode: .following,
+                initialCount: viewModel.followingCount
+            )
         }
     }
 
@@ -313,13 +329,17 @@ struct PublicPlayerProfileView: View {
 
     private func socialCountsRow(user: Player) -> some View {
         HStack(spacing: 24) {
-            socialStat(count: viewModel.followerCount, label: viewModel.followerCount == 1 ? "Follower" : "Followers")
+            tappableSocialStat(count: viewModel.followerCount, label: viewModel.followerCount == 1 ? "Follower" : "Followers") {
+                showFollowers = true
+            }
 
             Rectangle()
                 .fill(NETRTheme.muted)
                 .frame(width: 1, height: 28)
 
-            socialStat(count: viewModel.followingCount, label: "Following")
+            tappableSocialStat(count: viewModel.followingCount, label: "Following") {
+                showFollowing = true
+            }
 
             Rectangle()
                 .fill(NETRTheme.muted)
@@ -336,6 +356,26 @@ struct PublicPlayerProfileView: View {
             Spacer()
         }
         .padding(.top, 14)
+    }
+
+    private func tappableSocialStat(count: Int, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(count >= 1000 ? String(format: "%.1fK", Double(count) / 1000) : "\(count)")
+                    .font(.system(.title3, design: .default, weight: .black).width(.compressed))
+                    .foregroundStyle(NETRTheme.text)
+                Text(label)
+                    .font(.system(size: 11))
+                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(NETRTheme.neonGreen.opacity(0.3))
+                            .frame(height: 1)
+                            .offset(y: 2)
+                    }
+            }
+        }
+        .buttonStyle(ScalePressStyle())
     }
 
     private func socialStat(count: Int, label: String) -> some View {

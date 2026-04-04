@@ -227,21 +227,19 @@ struct ProfileView: View {
         .sheet(isPresented: $showScoreInfo) { ScoreInfoSheet() }
         .sheet(isPresented: $showFollowers) {
             if let uid = profileUserId ?? SupabaseManager.shared.session?.user.id.uuidString {
-                ProfileFollowListSheet(
-                    title: "Followers",
+                FollowListView(
                     userId: uid,
                     mode: .followers,
-                    currentUserId: SupabaseManager.shared.session?.user.id.uuidString
+                    initialCount: viewModel.followerCount
                 )
             }
         }
         .sheet(isPresented: $showFollowing) {
             if let uid = profileUserId ?? SupabaseManager.shared.session?.user.id.uuidString {
-                ProfileFollowListSheet(
-                    title: "Following",
+                FollowListView(
                     userId: uid,
                     mode: .following,
-                    currentUserId: SupabaseManager.shared.session?.user.id.uuidString
+                    initialCount: viewModel.followingCount
                 )
             }
         }
@@ -617,10 +615,16 @@ struct ProfileView: View {
                     .foregroundStyle(NETRTheme.text)
                 Text(label)
                     .font(.system(size: 12))
-                    .foregroundStyle(NETRTheme.subtext)
+                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(NETRTheme.neonGreen.opacity(0.3))
+                            .frame(height: 1)
+                            .offset(y: 2)
+                    }
             }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ScalePressStyle())
     }
 
     // MARK: - Rating Hero
