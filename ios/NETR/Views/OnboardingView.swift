@@ -24,6 +24,8 @@ struct OnboardingView: View {
     @State private var showRatingReveal: Bool = false
     @State private var signUpError: String?
     @State private var isSigningUp: Bool = false
+    @State private var isGoogleUser: Bool = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
     private let totalSteps = 8
 
@@ -496,7 +498,11 @@ struct OnboardingView: View {
                 Spacer()
 
                 Button {
-                    performSignUp()
+                    if isGoogleUser {
+                        performGoogleProfileSave()
+                    } else {
+                        performSignUp()
+                    }
                 } label: {
                     HStack(spacing: 8) {
                         if isSigningUp {
@@ -532,7 +538,16 @@ struct OnboardingView: View {
     private func onboardingStep(for step: Int) -> some View {
         switch step {
         case 0:
-            WelcomeView { withAnimation { currentStep = 1 } }
+            WelcomeView(
+                onContinue: { withAnimation { currentStep = 1 } },
+                onGoogleSignedInAsNewUser: {
+                    isGoogleUser = true
+                    withAnimation { currentStep = 2 } // skip location, go to name/username
+                },
+                onGoogleSignedInAsExistingUser: {
+                    hasCompletedOnboarding = true
+                }
+            )
         case 1:
             locationStep
         case 2:
@@ -641,6 +656,41 @@ struct OnboardingView: View {
                 }
 
                 biometrics.isUnlocked = true
+                hasCompletedOnboarding = true
+            } catch {
+                signUpError = error.localizedDescription
+            }
+            isSigningUp = false
+        }
+    }
+
+    private func performGoogleProfileSave() {
+        guard let userId = supabase.session?.user.id.uuidString.lowercased() else {
+            signUpError = "Session not found. Please try signing in again."
+            return
+        }
+        isSigningUp = true
+        signUpError = nil
+        Task {
+            do {
+                try await supabase.saveProfile(
+                    userId: userId,
+                    fullName: fullName,
+                    username: username,
+                    dateOfBirth: dateOfBirth,
+                    position: "?"
+                )
+                if let score = selfAssessmentScore {
+                    try await supabase.saveSelfAssessmentScore(
+                        score: score,
+                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
+                    )
+                    if selfAssessmentIsProClaim {
+                        try? await supabase.flagProVerificationPending()
+                    }
+                }
+                biometrics.isUnlocked = true
+                hasCompletedOnboarding = true
             } catch {
                 signUpError = error.localizedDescription
             }

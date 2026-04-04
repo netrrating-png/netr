@@ -1,4 +1,6 @@
 import SwiftUI
+import Supabase
+import PostgREST
 
 struct NotificationsView: View {
     @State private var viewModel = NotificationViewModel()

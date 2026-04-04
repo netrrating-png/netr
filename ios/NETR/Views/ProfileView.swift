@@ -257,7 +257,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
         .sheet(isPresented: $showInvite) { InviteView() }
-        .sheet(isPresented: $showEditProfile) {
+        .sheet(isPresented: $showEditProfile, onDismiss: {
+            Task { await viewModel.loadProfile(userId: profileUserId) }
+        }) {
             if let user = viewModel.player {
                 EditProfileView(viewModel: viewModel, player: user)
                     .presentationDetents([.large])

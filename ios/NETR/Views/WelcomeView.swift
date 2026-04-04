@@ -4,6 +4,8 @@ import Auth
 struct WelcomeView: View {
     @Environment(SupabaseManager.self) private var supabase
     let onContinue: () -> Void
+    var onGoogleSignedInAsNewUser: (() -> Void)? = nil
+    var onGoogleSignedInAsExistingUser: (() -> Void)? = nil
 
     @State private var showSignIn: Bool = false
     @State private var showEmailSignUp: Bool = false
@@ -78,6 +80,18 @@ struct WelcomeView: View {
                         Task {
                             do {
                                 try await supabase.signInWithGoogle()
+                                // Wait up to 3s for loadProfile to finish
+                                for _ in 0..<6 {
+                                    if supabase.currentProfile != nil { break }
+                                    try? await Task.sleep(for: .milliseconds(500))
+                                }
+                                if supabase.currentProfile == nil {
+                                    // New Google user — no profile yet, go through setup
+                                    onGoogleSignedInAsNewUser?()
+                                } else {
+                                    // Returning Google user — profile exists, go straight in
+                                    onGoogleSignedInAsExistingUser?()
+                                }
                             } catch is CancellationError {
                                 // User dismissed — no error to show
                             } catch {

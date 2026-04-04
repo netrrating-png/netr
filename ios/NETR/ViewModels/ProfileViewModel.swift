@@ -266,7 +266,10 @@ class ProfileViewModel {
     }
 
     func toggleFollow() async {
-        guard let currentId = SupabaseManager.shared.session?.user.id.uuidString,
+        let sessionId = SupabaseManager.shared.session?.user.id.uuidString
+        let profileId = SupabaseManager.shared.currentProfile?.id
+        print("[NETR] toggleFollow debug — session.user.id: \(sessionId ?? "nil"), currentProfile.id: \(profileId ?? "nil"), profileUserId: \(profileUserId ?? "nil")")
+        guard let currentId = profileId,
               let targetId = profileUserId,
               currentId != targetId else { return }
 
@@ -406,7 +409,10 @@ class ProfileViewModel {
     }
 
     func updateFullProfile(fullName: String, username: String, bio: String?, city: String?, position: String?, showAge: Bool = false, dateOfBirth: Date? = nil) async throws {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.currentProfile?.id
+                        ?? SupabaseManager.shared.session?.user.id.uuidString.lowercased() else {
+            throw NSError(domain: "NETR", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not logged in. Please sign in and try again."])
+        }
 
         nonisolated struct FullProfileUpdate: Encodable, Sendable {
             let fullName: String

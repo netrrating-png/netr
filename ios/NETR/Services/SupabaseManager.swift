@@ -192,22 +192,61 @@ class SupabaseManager {
     }
 
     func loadProfile(userId: String) async {
+        // Try both the given format and lowercase — Supabase returns UUIDs lowercase
+        // but Swift's uuidString is uppercase. Handle both TEXT and UUID column types.
+        let lower = userId.lowercased()
+        let candidates = userId == lower ? [userId] : [userId, lower]
+        for candidate in candidates {
+            if let profile = try? await client
+                .from("profiles")
+                .select()
+                .eq("id", value: candidate)
+                .single()
+                .execute()
+                .value as UserProfile {
+                self.currentProfile = profile
+                if let avatarUrl = profile.avatarUrl {
+                    self.currentUserAvatarUrl = avatarUrl
+                }
+                print("[NETR] Profile loaded (id: \(profile.id)), avatar_url: \(profile.avatarUrl ?? "nil")")
+                return
+            }
+        }
+        // No profile found — create one. Use lowercase so RLS auth.uid()::text check passes.
+        print("[NETR] No profile found for user \(userId), creating one...")
+        await ensureProfileExists(userId: userId.lowercased())
+    }
+
+    private func ensureProfileExists(userId: String) async {
+        guard let user = session?.user else { return }
+        let fullName: String
+        if case .string(let v) = user.userMetadata["full_name"] { fullName = v } else { fullName = "" }
+        let username: String
+        if case .string(let v) = user.userMetadata["username"] { username = v }
+        else { username = user.email?.components(separatedBy: "@").first ?? "player\(userId.prefix(4))" }
+
+        let params: [String: AnyJSON] = [
+            "id": .string(userId),
+            "full_name": .string(fullName),
+            "username": .string(username)
+        ]
         do {
-            let profile: UserProfile = try await client
+            try await client.from("profiles").upsert(params).execute()
+            print("[NETR] Auto-created profile for user \(userId)")
+            if let profile: UserProfile = try? await client
                 .from("profiles")
                 .select()
                 .eq("id", value: userId)
                 .single()
                 .execute()
-                .value
-            self.currentProfile = profile
-            // Sync single source of truth for avatar
-            if let avatarUrl = profile.avatarUrl {
-                self.currentUserAvatarUrl = avatarUrl
+                .value {
+                self.currentProfile = profile
+                print("[NETR] currentProfile set after auto-create: \(profile.id)")
+            } else {
+                print("[NETR] Auto-create upsert succeeded but reload failed for \(userId)")
             }
-            print("[NETR Avatar] Profile loaded, avatar_url: \(profile.avatarUrl ?? "nil")")
         } catch {
-            print("[NETR] Error loading profile: \(error)")
+            print("[NETR] Failed to auto-create profile: \(error)")
         }
     }
 
