@@ -381,12 +381,12 @@ let saAssessmentQuestions: [SAAssessmentQuestion] = [
         AssessmentChoice(label: "I get back on D — rebounding isn't my thing",      icon: "arrow.backward.circle.fill",  value: 2),
         AssessmentChoice(label: "I don't factor into rebounding at all",             icon: "xmark.circle.fill",           value: 1),
     ]),
-    SAAssessmentQuestion(category: .rebounding, question: "How often are you crashing the offensive glass?", choices: [
-        AssessmentChoice(label: "Every time — putbacks are part of my game",         icon: "flame.fill",                  value: 5),
-        AssessmentChoice(label: "I tip in loose balls when I'm near the basket",     icon: "hand.point.up.fill",          value: 4),
-        AssessmentChoice(label: "Sometimes — depends on the situation",              icon: "slider.horizontal.3",         value: 3),
-        AssessmentChoice(label: "I stay back — can't give up easy buckets",         icon: "shield.fill",                 value: 2),
-        AssessmentChoice(label: "Never — I don't crash the offensive glass",         icon: "xmark.circle.fill",           value: 1),
+    SAAssessmentQuestion(category: .rebounding, question: "How often are you boxing out and securing defensive boards?", choices: [
+        AssessmentChoice(label: "I lock down the glass and finish stops",            icon: "lock.shield.fill",            value: 5),
+        AssessmentChoice(label: "I box out and come down with rebounds",             icon: "checkmark.circle.fill",       value: 4),
+        AssessmentChoice(label: "Depends on positioning and matchup",                icon: "slider.horizontal.3",         value: 3),
+        AssessmentChoice(label: "I don't prioritize boxing out",                     icon: "arrow.backward.circle.fill",  value: 2),
+        AssessmentChoice(label: "I don't rebound on defense",                        icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // HANDLES
