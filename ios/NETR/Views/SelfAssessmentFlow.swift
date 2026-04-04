@@ -20,6 +20,16 @@ enum SAPosition: String, CaseIterable, Identifiable {
     case pg = "Point Guard", sg = "Shooting Guard", sf = "Small Forward"
     case pf = "Power Forward", c = "Center", notSure = "Not Sure Yet"
     var id: String { rawValue }
+
+    // Ordered roster positions (excludes notSure for adjacency checks)
+    static let ordered: [SAPosition] = [.pg, .sg, .sf, .pf, .c]
+
+    func isAdjacent(to other: SAPosition) -> Bool {
+        guard self != .notSure, other != .notSure else { return false }
+        guard let i1 = SAPosition.ordered.firstIndex(of: self),
+              let i2 = SAPosition.ordered.firstIndex(of: other) else { return false }
+        return abs(i1 - i2) == 1
+    }
     var short: String {
         switch self {
         case .pg: return "PG"; case .sg: return "SG"; case .sf: return "SF"
@@ -319,7 +329,7 @@ struct AssessmentChoice: Identifiable {
     let id    = UUID()
     let label: String
     let icon:  String
-    let value: Int   // 4 = elite → 1 = beginner
+    let value: Int   // 5 = elite → 1 = beginner
 }
 
 struct SAAssessmentQuestion: Identifiable {
@@ -333,100 +343,114 @@ let saAssessmentQuestions: [SAAssessmentQuestion] = [
 
     // SHOOTING
     SAAssessmentQuestion(category: .shooting, question: "You're open. What happens?", choices: [
-        AssessmentChoice(label: "It goes in — I'm a knockdown shooter",              icon: "checkmark.seal.fill",         value: 4),
-        AssessmentChoice(label: "I shoot with confidence, hits more than it misses", icon: "checkmark.circle",            value: 3),
-        AssessmentChoice(label: "I hesitate unless I'm completely wide open",        icon: "pause.circle.fill",           value: 2),
-        AssessmentChoice(label: "I'd rather pass than shoot",                        icon: "arrow.turn.up.right",         value: 1),
+        AssessmentChoice(label: "It goes in — I'm a knockdown shooter",              icon: "checkmark.seal.fill",         value: 5),
+        AssessmentChoice(label: "I shoot with confidence, hits more than it misses", icon: "checkmark.circle",            value: 4),
+        AssessmentChoice(label: "I hesitate unless I'm completely wide open",        icon: "pause.circle.fill",           value: 3),
+        AssessmentChoice(label: "I'd rather pass than shoot",                        icon: "arrow.turn.up.right",         value: 2),
+        AssessmentChoice(label: "I don't really shoot — it's not my game",           icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .shooting, question: "Can you make your own shot off the dribble?", choices: [
-        AssessmentChoice(label: "Pull-up, step-back — I don't need to be set",       icon: "bolt.fill",                   value: 4),
-        AssessmentChoice(label: "If I have enough space to get my footing",          icon: "figure.stand",                value: 3),
-        AssessmentChoice(label: "Only on a clear lane or a slow closeout",           icon: "arrow.right.to.line",         value: 2),
-        AssessmentChoice(label: "Not really — I need the ball delivered to me",      icon: "hand.raised.fill",            value: 1),
+        AssessmentChoice(label: "Pull-up, step-back — I don't need to be set",       icon: "bolt.fill",                   value: 5),
+        AssessmentChoice(label: "If I have enough space to get my footing",          icon: "figure.stand",                value: 4),
+        AssessmentChoice(label: "Only on a clear lane or a slow closeout",           icon: "arrow.right.to.line",         value: 3),
+        AssessmentChoice(label: "Not really — I need the ball delivered to me",      icon: "hand.raised.fill",            value: 2),
+        AssessmentChoice(label: "I can't create my own shot off the dribble",        icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // FINISHING
     SAAssessmentQuestion(category: .finishing, question: "Going to the rim with a hand in your face?", choices: [
-        AssessmentChoice(label: "I finish through it — contact doesn't bother me",  icon: "flame.fill",                  value: 4),
-        AssessmentChoice(label: "I get there but I pick my spots",                   icon: "target",                      value: 3),
-        AssessmentChoice(label: "I usually avoid contact and adjust",                icon: "arrow.left.and.right",        value: 2),
-        AssessmentChoice(label: "I kick it out before it gets to that",              icon: "arrow.turn.up.right",         value: 1),
+        AssessmentChoice(label: "I finish through it — contact doesn't bother me",  icon: "flame.fill",                  value: 5),
+        AssessmentChoice(label: "I get there but I pick my spots",                   icon: "target",                      value: 4),
+        AssessmentChoice(label: "I usually avoid contact and adjust",                icon: "arrow.left.and.right",        value: 3),
+        AssessmentChoice(label: "I kick it out before it gets to that",              icon: "arrow.turn.up.right",         value: 2),
+        AssessmentChoice(label: "I rarely attack the rim",                           icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .finishing, question: "How's your layup game?", choices: [
-        AssessmentChoice(label: "Both hands, floater, reverse — full package",       icon: "star.fill",                   value: 4),
-        AssessmentChoice(label: "Strong hand is money, weak hand is coming",         icon: "hand.thumbsup.fill",          value: 3),
-        AssessmentChoice(label: "Straight layups only — I keep it simple",           icon: "minus.circle.fill",           value: 2),
-        AssessmentChoice(label: "I get up there but don't always finish",            icon: "questionmark.circle.fill",    value: 1),
+        AssessmentChoice(label: "Both hands, floater, reverse — full package",       icon: "star.fill",                   value: 5),
+        AssessmentChoice(label: "Strong hand is money, weak hand is coming",         icon: "hand.thumbsup.fill",          value: 4),
+        AssessmentChoice(label: "Straight layups only — I keep it simple",           icon: "minus.circle.fill",           value: 3),
+        AssessmentChoice(label: "I get up there but don't always finish",            icon: "questionmark.circle.fill",    value: 2),
+        AssessmentChoice(label: "Finishing at the rim is a real weakness",           icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // REBOUNDING
     SAAssessmentQuestion(category: .rebounding, question: "Shot goes up — where are you?", choices: [
-        AssessmentChoice(label: "Boxing out first, going hard for every board",      icon: "rectangle.compress.vertical", value: 4),
-        AssessmentChoice(label: "I get my share — especially on my side",            icon: "checkmark.circle.fill",       value: 3),
-        AssessmentChoice(label: "I go for it but bigger bodies beat me",             icon: "figure.walk",                 value: 2),
-        AssessmentChoice(label: "I get back on D — rebounding isn't my thing",      icon: "arrow.backward.circle.fill",  value: 1),
+        AssessmentChoice(label: "Boxing out first, going hard for every board",      icon: "rectangle.compress.vertical", value: 5),
+        AssessmentChoice(label: "I get my share — especially on my side",            icon: "checkmark.circle.fill",       value: 4),
+        AssessmentChoice(label: "I go for it but bigger bodies beat me",             icon: "figure.walk",                 value: 3),
+        AssessmentChoice(label: "I get back on D — rebounding isn't my thing",      icon: "arrow.backward.circle.fill",  value: 2),
+        AssessmentChoice(label: "I don't factor into rebounding at all",             icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .rebounding, question: "How often are you crashing the offensive glass?", choices: [
-        AssessmentChoice(label: "Every time — putbacks are part of my game",         icon: "flame.fill",                  value: 4),
-        AssessmentChoice(label: "I tip in loose balls when I'm near the basket",     icon: "hand.point.up.fill",          value: 3),
-        AssessmentChoice(label: "Sometimes — depends on the situation",              icon: "slider.horizontal.3",         value: 2),
-        AssessmentChoice(label: "I stay back — can't give up easy buckets",         icon: "shield.fill",                 value: 1),
+        AssessmentChoice(label: "Every time — putbacks are part of my game",         icon: "flame.fill",                  value: 5),
+        AssessmentChoice(label: "I tip in loose balls when I'm near the basket",     icon: "hand.point.up.fill",          value: 4),
+        AssessmentChoice(label: "Sometimes — depends on the situation",              icon: "slider.horizontal.3",         value: 3),
+        AssessmentChoice(label: "I stay back — can't give up easy buckets",         icon: "shield.fill",                 value: 2),
+        AssessmentChoice(label: "Never — I don't crash the offensive glass",         icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // HANDLES
     SAAssessmentQuestion(category: .handles, question: "One-on-one, top of the key — what do you do?", choices: [
-        AssessmentChoice(label: "Attack — I make defenders look slow",               icon: "bolt.fill",                   value: 4),
-        AssessmentChoice(label: "I can get by with moves and patience",              icon: "figure.walk.motion",          value: 3),
-        AssessmentChoice(label: "I hold the ball but won't go at anyone",            icon: "hand.raised.fill",            value: 2),
-        AssessmentChoice(label: "I move it quick — I'm not a one-on-one guy",       icon: "arrow.turn.up.right",         value: 1),
+        AssessmentChoice(label: "Attack — I make defenders look slow",               icon: "bolt.fill",                   value: 5),
+        AssessmentChoice(label: "I can get by with moves and patience",              icon: "figure.walk.motion",          value: 4),
+        AssessmentChoice(label: "I hold the ball but won't go at anyone",            icon: "hand.raised.fill",            value: 3),
+        AssessmentChoice(label: "I move it quick — I'm not a one-on-one guy",       icon: "arrow.turn.up.right",         value: 2),
+        AssessmentChoice(label: "Dribble pressure makes me pick it up",              icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .handles, question: "Someone's pressing you full court — what happens?", choices: [
-        AssessmentChoice(label: "I stay calm, split the pressure, push pace",        icon: "wind",                        value: 4),
-        AssessmentChoice(label: "I find the outlet before it's a problem",           icon: "checkmark.circle.fill",       value: 3),
-        AssessmentChoice(label: "I panic a little — pick up my dribble too soon",   icon: "exclamationmark.circle.fill", value: 2),
-        AssessmentChoice(label: "I try to avoid that situation entirely",            icon: "xmark.circle.fill",           value: 1),
+        AssessmentChoice(label: "I stay calm, split the pressure, push pace",        icon: "wind",                        value: 5),
+        AssessmentChoice(label: "I find the outlet before it's a problem",           icon: "checkmark.circle.fill",       value: 4),
+        AssessmentChoice(label: "I panic a little — pick up my dribble too soon",   icon: "exclamationmark.circle.fill", value: 3),
+        AssessmentChoice(label: "I try to avoid that situation entirely",            icon: "arrow.backward.circle.fill",  value: 2),
+        AssessmentChoice(label: "I almost always turn it over under pressure",       icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // PASSING
     SAAssessmentQuestion(category: .passing, question: "Do you see the open man before he's open?", choices: [
-        AssessmentChoice(label: "Always — I read the D and deliver on time",         icon: "eye.fill",                    value: 4),
-        AssessmentChoice(label: "Most of the time — I make the right play",          icon: "checkmark.circle.fill",       value: 3),
-        AssessmentChoice(label: "Sometimes — I still miss windows I should hit",     icon: "clock.fill",                  value: 2),
-        AssessmentChoice(label: "I'm more focused on my own game",                   icon: "person.fill",                 value: 1),
+        AssessmentChoice(label: "Always — I read the D and deliver on time",         icon: "eye.fill",                    value: 5),
+        AssessmentChoice(label: "Most of the time — I make the right play",          icon: "checkmark.circle.fill",       value: 4),
+        AssessmentChoice(label: "Sometimes — I still miss windows I should hit",     icon: "clock.fill",                  value: 3),
+        AssessmentChoice(label: "I'm more focused on my own game",                   icon: "person.fill",                 value: 2),
+        AssessmentChoice(label: "I rarely see the open man in time",                 icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .passing, question: "Can you deliver the pass in traffic before the window closes?", choices: [
-        AssessmentChoice(label: "Yes — I thread it before the defense can react",    icon: "sparkles",                    value: 4),
-        AssessmentChoice(label: "If the window's clear enough, I'll make the pass",  icon: "checkmark.circle.fill",       value: 3),
-        AssessmentChoice(label: "I tend to take my own shot — I miss tight windows", icon: "person.fill",                 value: 2),
-        AssessmentChoice(label: "Passing in traffic isn't really my thing",          icon: "arrow.turn.up.right",         value: 1),
+        AssessmentChoice(label: "Yes — I thread it before the defense can react",    icon: "sparkles",                    value: 5),
+        AssessmentChoice(label: "If the window's clear enough, I'll make the pass",  icon: "checkmark.circle.fill",       value: 4),
+        AssessmentChoice(label: "I tend to take my own shot — I miss tight windows", icon: "person.fill",                 value: 3),
+        AssessmentChoice(label: "Passing in traffic isn't really my thing",          icon: "arrow.turn.up.right",         value: 2),
+        AssessmentChoice(label: "I avoid passing entirely in those situations",      icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // IQ
     SAAssessmentQuestion(category: .iq, question: "How well do you read the game?", choices: [
-        AssessmentChoice(label: "High — I see the floor and I'm one step ahead",    icon: "brain.head.profile",          value: 4),
-        AssessmentChoice(label: "Solid — good fundamentals, good decisions",         icon: "checkmark.seal.fill",         value: 3),
-        AssessmentChoice(label: "Getting there — I get caught off guard sometimes",  icon: "arrow.up.right.circle.fill",  value: 2),
-        AssessmentChoice(label: "Still learning — figuring it out as I go",          icon: "figure.walk",                 value: 1),
+        AssessmentChoice(label: "High — I see the floor and I'm one step ahead",    icon: "brain.head.profile",          value: 5),
+        AssessmentChoice(label: "Solid — good fundamentals, good decisions",         icon: "checkmark.seal.fill",         value: 4),
+        AssessmentChoice(label: "Getting there — I get caught off guard sometimes",  icon: "arrow.up.right.circle.fill",  value: 3),
+        AssessmentChoice(label: "Still learning — figuring it out as I go",          icon: "figure.walk",                 value: 2),
+        AssessmentChoice(label: "I react — the game usually moves too fast for me",  icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .iq, question: "When the game is close and it matters most?", choices: [
-        AssessmentChoice(label: "I want the ball — I make the right play under pressure", icon: "flame.fill",             value: 4),
-        AssessmentChoice(label: "I stay composed and stick to what I know",          icon: "lock.fill",                   value: 3),
-        AssessmentChoice(label: "I manage it — play simpler and stay controlled", icon: "exclamationmark.bubble.fill", value: 2),
-        AssessmentChoice(label: "I try to stay out of the way",                      icon: "arrow.backward.circle.fill", value: 1),
+        AssessmentChoice(label: "I want the ball — I make the right play under pressure", icon: "flame.fill",             value: 5),
+        AssessmentChoice(label: "I stay composed and stick to what I know",          icon: "lock.fill",                   value: 4),
+        AssessmentChoice(label: "I manage it — play simpler and stay controlled",    icon: "exclamationmark.bubble.fill", value: 3),
+        AssessmentChoice(label: "I try to stay out of the way",                      icon: "arrow.backward.circle.fill", value: 2),
+        AssessmentChoice(label: "I tend to freeze up in big moments",                icon: "xmark.circle.fill",           value: 1),
     ]),
 
     // DEFENSE
     SAAssessmentQuestion(category: .defense, question: "On the ball — how do you guard your man?", choices: [
-        AssessmentChoice(label: "I lock in, make them uncomfortable, force tough shots", icon: "shield.lefthalf.filled", value: 4),
-        AssessmentChoice(label: "I contest and stay in front — I make it hard",      icon: "hand.raised.fill",            value: 3),
-        AssessmentChoice(label: "I try but quick guards give me real trouble",       icon: "exclamationmark.circle.fill", value: 2),
-        AssessmentChoice(label: "I'm honest — I'm a lot better on offense",         icon: "arrow.turn.up.right",         value: 1),
+        AssessmentChoice(label: "I lock in, make them uncomfortable, force tough shots", icon: "shield.lefthalf.filled", value: 5),
+        AssessmentChoice(label: "I contest and stay in front — I make it hard",      icon: "hand.raised.fill",            value: 4),
+        AssessmentChoice(label: "I try but quick guards give me real trouble",       icon: "exclamationmark.circle.fill", value: 3),
+        AssessmentChoice(label: "I'm honest — I'm a lot better on offense",         icon: "arrow.turn.up.right",         value: 2),
+        AssessmentChoice(label: "Defense isn't something I really play",             icon: "xmark.circle.fill",           value: 1),
     ]),
     SAAssessmentQuestion(category: .defense, question: "When you're off the ball, where's your head at?", choices: [
-        AssessmentChoice(label: "Talking, helping, rotating — I guard the whole team", icon: "person.3.fill",            value: 4),
-        AssessmentChoice(label: "I keep track of my man and help when it's clear",   icon: "eye.fill",                    value: 3),
-        AssessmentChoice(label: "I guard my man but lose the ball sometimes",        icon: "minus.circle.fill",           value: 2),
-        AssessmentChoice(label: "Still figuring out where I'm supposed to be",      icon: "questionmark.circle.fill",    value: 1),
+        AssessmentChoice(label: "Talking, helping, rotating — I guard the whole team", icon: "person.3.fill",            value: 5),
+        AssessmentChoice(label: "I keep track of my man and help when it's clear",   icon: "eye.fill",                    value: 4),
+        AssessmentChoice(label: "I guard my man but lose the ball sometimes",        icon: "minus.circle.fill",           value: 3),
+        AssessmentChoice(label: "Still figuring out where I'm supposed to be",       icon: "questionmark.circle.fill",    value: 2),
+        AssessmentChoice(label: "I'm not paying attention to defense off the ball",  icon: "xmark.circle.fill",           value: 1),
     ]),
 ]
 
@@ -438,6 +462,7 @@ struct PlayerProfile {
     var gender:       Gender?
     var age:          Int?
     var position:     SAPosition?
+    var position2:    SAPosition?
     var highestLevel: PlayLevel?
     var frequency:    SAPlayFrequency?
 
@@ -542,9 +567,11 @@ class SelfAssessmentViewModel: ObservableObject {
             let vals = questions.filter { $0.category == cat }.compactMap { answers[$0.id] }
             guard !vals.isEmpty else { continue }
             let avg   = Double(vals.reduce(0, +)) / Double(vals.count)
-            let ratio = (avg - 1.0) / 3.0   // 0.0–1.0 answer quality
+            let ratio = (avg - 1.0) / 4.0   // 0.0–1.0 answer quality (5-point scale)
             catRatios[cat] = ratio
-            let w = cat.weight(for: position)
+            // Average weights across both positions if two were selected
+            let w1 = cat.weight(for: position)
+            let w = profile.position2.map { (w1 + cat.weight(for: $0)) / 2.0 } ?? w1
             ws += ratio * w; wt += w
         }
 
@@ -565,6 +592,116 @@ class SelfAssessmentViewModel: ObservableObject {
 }
 
 // ─────────────────────────────────────────────────────────────
+// MARK: — Disclaimer Screen
+// ─────────────────────────────────────────────────────────────
+
+struct AssessmentDisclaimerView: View {
+    var onBegin: () -> Void
+
+    private let accent  = Color(hex: "#39FF14")
+    private let card    = Color(hex: "#111116")
+    private let border  = Color(hex: "#1E1E26")
+    private let sub     = Color(hex: "#6A6A82")
+
+    var body: some View {
+        ZStack {
+            Color(hex: "#050507").ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Spacer()
+
+                // Icon
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.08))
+                        .frame(width: 100, height: 100)
+                    Circle()
+                        .stroke(accent.opacity(0.25), lineWidth: 1.5)
+                        .frame(width: 100, height: 100)
+                    Image(systemName: "lock.shield.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(accent)
+                }
+                .padding(.bottom, 28)
+
+                Text("ONE SHOT.\nMAKE IT COUNT.")
+                    .font(.custom("BarlowCondensed-Black", size: 40))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 12)
+
+                Text("Your NETR self-assessment is permanent.")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(accent)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 32)
+
+                // Rules
+                VStack(spacing: 14) {
+                    DisclaimerRow(icon: "1.circle.fill",
+                                  text: "You can only take this assessment once. Once submitted, your score is locked.")
+                    DisclaimerRow(icon: "eye.fill",
+                                  text: "Other players will see your rating. Be honest — it reflects how you actually play.")
+                    DisclaimerRow(icon: "arrow.uturn.backward.circle.fill",
+                                  text: "You can go back and change any answer before you submit.")
+                    DisclaimerRow(icon: "checkmark.shield.fill",
+                                  text: "Answer carefully. Overrating yourself hurts your credibility on the court.")
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 40)
+
+                Spacer()
+
+                // CTA
+                Button(action: onBegin) {
+                    HStack(spacing: 8) {
+                        Text("I UNDERSTAND — LET'S GO")
+                            .font(.system(size: 15, weight: .black))
+                            .kerning(0.5)
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .foregroundColor(Color(hex: "#050507"))
+                    .frame(maxWidth: .infinity).frame(height: 56)
+                    .background(accent)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: accent.opacity(0.4), radius: 16)
+                }
+                .buttonStyle(PressButtonStyle())
+                .padding(.horizontal, 24)
+                .padding(.bottom, 48)
+            }
+        }
+    }
+}
+
+private struct DisclaimerRow: View {
+    let icon: String
+    let text: String
+    private let accent = Color(hex: "#39FF14")
+    private let card   = Color(hex: "#111116")
+    private let border = Color(hex: "#1E1E26")
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(accent)
+                .frame(width: 28)
+            Text(text)
+                .font(.system(size: 14))
+                .foregroundColor(Color(hex: "#CCCCCC"))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
+        .padding(14)
+        .background(card)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(border, lineWidth: 1))
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
 // MARK: — Root Entry Point
 // ─────────────────────────────────────────────────────────────
 
@@ -572,11 +709,15 @@ struct SelfAssessmentFlowView: View {
     var initialAge: Int? = nil
     var onComplete: ((Double, PlayerProfile, [String: Double]) -> Void)? = nil
     @StateObject private var vm = SelfAssessmentViewModel()
+    @State private var showDisclaimer = true
 
     var body: some View {
         ZStack {
             Color(hex: "#050507").ignoresSafeArea()
-            if vm.showResult {
+            if showDisclaimer {
+                AssessmentDisclaimerView { withAnimation(.easeInOut(duration: 0.35)) { showDisclaimer = false } }
+                    .transition(.opacity)
+            } else if vm.showResult {
                 AssessmentResultView(
                     score: vm.finalScore,
                     categoryScores: vm.categoryScores,
@@ -604,6 +745,7 @@ struct SelfAssessmentFlowView: View {
                     ))
             }
         }
+        .animation(.easeInOut(duration: 0.35), value: showDisclaimer)
         .animation(.easeInOut(duration: 0.35), value: vm.showResult)
         .animation(.easeInOut(duration: 0.4), value: vm.showCalculating)
         .animation(.spring(response: 0.55, dampingFraction: 0.82), value: vm.onboardingComplete)
@@ -741,17 +883,45 @@ struct ChoiceRow: View {
 
 struct OnboardingFlowView: View {
     @ObservedObject var vm: SelfAssessmentViewModel
+    private let sub = Color(hex: "#6A6A82")
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                ForEach(0..<vm.totalOnboardingSteps, id: \.self) { i in
-                    Capsule()
-                        .fill(i <= vm.onboardingStep ? Color(hex: "#39FF14") : Color(hex: "#2A2A35"))
-                        .frame(width: i == vm.onboardingStep ? 24 : 8, height: 6)
-                        .animation(.spring(response: 0.3), value: vm.onboardingStep)
+            HStack(alignment: .center) {
+                // Back button — hidden on step 0
+                if vm.onboardingStep > 0 {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) { vm.onboardingStep -= 1 }
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(sub)
+                            .frame(width: 36, height: 36)
+                            .background(Color(hex: "#111116"))
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color(hex: "#1E1E26"), lineWidth: 1))
+                    }
+                } else {
+                    Spacer().frame(width: 36)
                 }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    ForEach(0..<vm.totalOnboardingSteps, id: \.self) { i in
+                        Capsule()
+                            .fill(i <= vm.onboardingStep ? Color(hex: "#39FF14") : Color(hex: "#2A2A35"))
+                            .frame(width: i == vm.onboardingStep ? 24 : 8, height: 6)
+                            .animation(.spring(response: 0.3), value: vm.onboardingStep)
+                    }
+                }
+
+                Spacer()
+                Spacer().frame(width: 36)
             }
+            .padding(.horizontal, 20)
             .padding(.top, 20).padding(.bottom, 24)
+
             Group {
                 switch vm.onboardingStep {
                 case 0: GenderStepView(vm: vm)
@@ -842,22 +1012,127 @@ struct AgeStepView: View {
 struct PositionStepView: View {
     @ObservedObject var vm: SelfAssessmentViewModel
     let accent = Color(hex: "#39FF14")
+
+    private func isSelected(_ pos: SAPosition) -> Bool {
+        vm.profile.position == pos || vm.profile.position2 == pos
+    }
+
+    private func isDisabled(_ pos: SAPosition) -> Bool {
+        // If two positions already selected, disable anything that isn't one of them
+        guard vm.profile.position != nil, vm.profile.position2 != nil else { return false }
+        return !isSelected(pos)
+    }
+
+    private func tap(_ pos: SAPosition) {
+        withAnimation(.spring(response: 0.25)) {
+            if vm.profile.position == pos {
+                // Deselect primary → promote secondary if exists
+                vm.profile.position = vm.profile.position2
+                vm.profile.position2 = nil
+            } else if vm.profile.position2 == pos {
+                // Deselect secondary
+                vm.profile.position2 = nil
+            } else if vm.profile.position == nil {
+                // Nothing selected yet
+                vm.profile.position = pos
+                vm.profile.position2 = nil
+            } else if vm.profile.position2 == nil {
+                // One selected — add second only if adjacent and not notSure
+                if pos != .notSure, let p1 = vm.profile.position, p1 != .notSure, p1.isAdjacent(to: pos) {
+                    vm.profile.position2 = pos
+                } else {
+                    // Not adjacent or notSure — replace
+                    vm.profile.position = pos
+                    vm.profile.position2 = nil
+                }
+            } else {
+                // Two selected — replace all
+                vm.profile.position = pos
+                vm.profile.position2 = nil
+            }
+        }
+    }
+
+    var selectionLabel: String {
+        guard let p1 = vm.profile.position else { return "" }
+        if let p2 = vm.profile.position2 {
+            return "\(p1.short) / \(p2.short) selected"
+        }
+        return "\(p1.short) selected"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             StepHeader(step: "Step 2 of 4", title: "What's your\nposition?",
                        subtitle: "Different categories are weighted based on your role on the court.")
+
+            // Hint text
+            HStack(spacing: 6) {
+                Image(systemName: "hand.tap")
+                    .font(.system(size: 12))
+                Text("You can pick 2 positions if you play both — they must be next to each other (e.g. PG+SG, SF+PF)")
+                    .font(.system(size: 12))
+            }
+            .foregroundColor(Color(hex: "#6A6A82"))
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 10) {
                     ForEach(SAPosition.allCases) { pos in
                         let label = pos == .notSure ? pos.rawValue : "\(pos.short) — \(pos.rawValue)"
-                        OptionCard(value: pos, label: label,
-                                   sublabel: pos.description, icon: pos.icon,
-                                   selected: vm.profile.position, color: accent) {
-                            withAnimation(.spring(response: 0.25)) { vm.profile.position = pos }
+                        let selected = isSelected(pos)
+                        let dimmed = isDisabled(pos)
+                        Button { tap(pos) } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(selected ? accent.opacity(0.2) : Color(hex: "#1A1A20"))
+                                        .frame(width: 42, height: 42)
+                                    Image(systemName: pos.icon)
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(selected ? accent : Color(hex: dimmed ? "#333340" : "#6A6A82"))
+                                }
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(label)
+                                        .font(.system(size: 15, weight: selected ? .semibold : .regular))
+                                        .foregroundColor(selected ? .white : Color(hex: dimmed ? "#444450" : "#CCCCCC"))
+                                    Text(pos.description)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(Color(hex: dimmed ? "#333340" : "#6A6A82"))
+                                }
+                                Spacer()
+                                ZStack {
+                                    Circle()
+                                        .stroke(selected ? accent : Color(hex: dimmed ? "#222228" : "#333340"), lineWidth: 2)
+                                        .frame(width: 22, height: 22)
+                                    if selected { Circle().fill(accent).frame(width: 12, height: 12) }
+                                }
+                            }
+                            .padding(14)
+                            .background(selected ? accent.opacity(0.07) : Color(hex: "#111116"))
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14)
+                                .stroke(selected ? accent.opacity(0.5) : Color(hex: dimmed ? "#181820" : "#1E1E26"),
+                                        lineWidth: selected ? 1.5 : 1))
+                            .shadow(color: selected ? accent.opacity(0.12) : .clear, radius: 8)
+                            .opacity(dimmed ? 0.4 : 1.0)
                         }
+                        .buttonStyle(.plain)
+                        .scaleEffect(selected ? 1.01 : 1.0)
+                        .animation(.spring(response: 0.25), value: selected)
                     }
                 }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
             }
+
+            if vm.profile.position != nil {
+                Text(selectionLabel)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(accent)
+                    .padding(.bottom, 4)
+            }
+
             ContinueButton(label: "Continue", enabled: vm.profile.position != nil, color: accent) {
                 withAnimation { vm.onboardingStep = 2 }
             }
@@ -915,6 +1190,10 @@ struct FrequencyStepView: View {
                 }
             }
         }
+        .onAppear {
+            // Pre-select previously saved value when returning from question flow
+            if pendingFrequency == nil { pendingFrequency = vm.profile.frequency }
+        }
     }
 }
 
@@ -945,14 +1224,22 @@ struct QuestionFlowView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     HStack {
-                        if vm.questionIndex > 0 {
-                            Button(action: vm.prevQuestion) {
-                                Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(sub).frame(width: 36, height: 36)
-                                    .background(Color(hex: "#111116")).clipShape(Circle())
-                                    .overlay(Circle().stroke(Color(hex: "#1E1E26"), lineWidth: 1))
+                        Button {
+                            if vm.questionIndex > 0 {
+                                vm.prevQuestion()
+                            } else {
+                                // Back to onboarding — return to frequency step
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    vm.profile.frequency = nil
+                                    vm.onboardingStep = 3
+                                }
                             }
-                        } else { Spacer().frame(width: 36) }
+                        } label: {
+                            Image(systemName: "chevron.left").font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(sub).frame(width: 36, height: 36)
+                                .background(Color(hex: "#111116")).clipShape(Circle())
+                                .overlay(Circle().stroke(Color(hex: "#1E1E26"), lineWidth: 1))
+                        }
                         Spacer()
                         Text("\(vm.questionIndex + 1) of \(vm.questions.count)")
                             .font(.system(size: 13, weight: .semibold)).foregroundColor(sub)
