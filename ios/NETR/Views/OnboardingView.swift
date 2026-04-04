@@ -395,7 +395,7 @@ struct OnboardingView: View {
             selfAssessmentCategoryScores = catScores
             selfAssessmentIsProClaim = (profile.highestLevel == .nba)
             SelfAssessmentStore.save(score: score, categoryScores: catScores)
-            performSignUp()
+            withAnimation { currentStep = 7 }
         }
     }
 
@@ -521,6 +521,11 @@ struct OnboardingView: View {
                 .padding(.bottom, 32)
             }
         }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation { showRatingReveal = true }
+            }
+        }
     }
 
     @ViewBuilder
@@ -549,14 +554,6 @@ struct OnboardingView: View {
     }
 
     private func performSignUp() {
-        let email = supabase.pendingEmail
-        let password = supabase.pendingPassword
-
-        guard !email.isEmpty, !password.isEmpty else {
-            signUpError = "Missing email or password. Please go back and enter your credentials."
-            return
-        }
-
         isSigningUp = true
         signUpError = nil
 
@@ -568,48 +565,67 @@ struct OnboardingView: View {
 
         Task {
             do {
-                do {
-                    try await supabase.signUpWithEmail(
-                        email: email,
-                        password: password,
+                // If user already has a session (e.g. Google sign-in), just save
+                // their profile — no email sign-up needed.
+                if let existingSession = supabase.session {
+                    let userId = existingSession.user.id.uuidString
+                    try await supabase.saveProfile(
+                        userId: userId,
                         fullName: name,
                         username: handle,
                         dateOfBirth: dob,
                         position: pos
                     )
-                } catch {
-                    let msg = error.localizedDescription.lowercased()
-                    if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
-                        try await supabase.signInWithEmail(email: email, password: password)
-                        guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
-                            throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
-                        }
-                        try await supabase.saveProfile(
-                            userId: userId,
+                } else {
+                    let email = supabase.pendingEmail
+                    let password = supabase.pendingPassword
+
+                    guard !email.isEmpty, !password.isEmpty else {
+                        signUpError = "Missing email or password. Please go back and enter your credentials."
+                        isSigningUp = false
+                        return
+                    }
+
+                    do {
+                        try await supabase.signUpWithEmail(
+                            email: email,
+                            password: password,
                             fullName: name,
                             username: handle,
                             dateOfBirth: dob,
                             position: pos
                         )
-                    } else {
-                        throw error
-                    }
-                }
-
-                // Sign-up may succeed without returning a session (e.g. email
-                // confirmation enabled). Try signing in to establish one, but
-                // don't fail the whole flow — the auth listener may still
-                // deliver the session asynchronously.
-                if supabase.session == nil {
-                    do {
-                        try await supabase.signInWithEmail(email: email, password: password)
                     } catch {
-                        // Explicit sign-in failed — wait for the auth state
-                        // listener to deliver the session (e.g. autoconfirm).
-                        // Poll up to 3 seconds instead of a single fixed sleep.
-                        for _ in 0..<6 {
-                            try? await Task.sleep(for: .milliseconds(500))
-                            if supabase.session != nil { break }
+                        let msg = error.localizedDescription.lowercased()
+                        if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
+                            try await supabase.signInWithEmail(email: email, password: password)
+                            guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
+                                throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
+                            }
+                            try await supabase.saveProfile(
+                                userId: userId,
+                                fullName: name,
+                                username: handle,
+                                dateOfBirth: dob,
+                                position: pos
+                            )
+                        } else {
+                            throw error
+                        }
+                    }
+
+                    // Sign-up may succeed without returning a session (e.g. email
+                    // confirmation enabled). Try signing in to establish one, but
+                    // don't fail the whole flow — the auth listener may still
+                    // deliver the session asynchronously.
+                    if supabase.session == nil {
+                        do {
+                            try await supabase.signInWithEmail(email: email, password: password)
+                        } catch {
+                            for _ in 0..<6 {
+                                try? await Task.sleep(for: .milliseconds(500))
+                                if supabase.session != nil { break }
+                            }
                         }
                     }
                 }
