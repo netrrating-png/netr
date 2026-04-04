@@ -592,116 +592,6 @@ class SelfAssessmentViewModel: ObservableObject {
 }
 
 // ─────────────────────────────────────────────────────────────
-// MARK: — Disclaimer Screen
-// ─────────────────────────────────────────────────────────────
-
-struct AssessmentDisclaimerView: View {
-    var onBegin: () -> Void
-
-    private let accent  = Color(hex: "#39FF14")
-    private let card    = Color(hex: "#111116")
-    private let border  = Color(hex: "#1E1E26")
-    private let sub     = Color(hex: "#6A6A82")
-
-    var body: some View {
-        ZStack {
-            Color(hex: "#050507").ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                Spacer()
-
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(accent.opacity(0.08))
-                        .frame(width: 100, height: 100)
-                    Circle()
-                        .stroke(accent.opacity(0.25), lineWidth: 1.5)
-                        .frame(width: 100, height: 100)
-                    Image(systemName: "lock.shield.fill")
-                        .font(.system(size: 40))
-                        .foregroundColor(accent)
-                }
-                .padding(.bottom, 28)
-
-                Text("ONE SHOT.\nMAKE IT COUNT.")
-                    .font(.custom("BarlowCondensed-Black", size: 40))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, 12)
-
-                Text("Your NETR self-assessment is permanent.")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(accent)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, 32)
-
-                // Rules
-                VStack(spacing: 14) {
-                    DisclaimerRow(icon: "1.circle.fill",
-                                  text: "You can only take this assessment once. Once submitted, your score is locked.")
-                    DisclaimerRow(icon: "eye.fill",
-                                  text: "Other players will see your rating. Be honest — it reflects how you actually play.")
-                    DisclaimerRow(icon: "arrow.uturn.backward.circle.fill",
-                                  text: "You can go back and change any answer before you submit.")
-                    DisclaimerRow(icon: "checkmark.shield.fill",
-                                  text: "Answer carefully. Overrating yourself hurts your credibility on the court.")
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
-
-                Spacer()
-
-                // CTA
-                Button(action: onBegin) {
-                    HStack(spacing: 8) {
-                        Text("I UNDERSTAND — LET'S GO")
-                            .font(.system(size: 15, weight: .black))
-                            .kerning(0.5)
-                        Image(systemName: "arrow.right")
-                            .font(.system(size: 13, weight: .bold))
-                    }
-                    .foregroundColor(Color(hex: "#050507"))
-                    .frame(maxWidth: .infinity).frame(height: 56)
-                    .background(accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: accent.opacity(0.4), radius: 16)
-                }
-                .buttonStyle(PressButtonStyle())
-                .padding(.horizontal, 24)
-                .padding(.bottom, 48)
-            }
-        }
-    }
-}
-
-private struct DisclaimerRow: View {
-    let icon: String
-    let text: String
-    private let accent = Color(hex: "#39FF14")
-    private let card   = Color(hex: "#111116")
-    private let border = Color(hex: "#1E1E26")
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(accent)
-                .frame(width: 28)
-            Text(text)
-                .font(.system(size: 14))
-                .foregroundColor(Color(hex: "#CCCCCC"))
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer()
-        }
-        .padding(14)
-        .background(card)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(border, lineWidth: 1))
-    }
-}
-
-// ─────────────────────────────────────────────────────────────
 // MARK: — Root Entry Point
 // ─────────────────────────────────────────────────────────────
 
@@ -709,15 +599,11 @@ struct SelfAssessmentFlowView: View {
     var initialAge: Int? = nil
     var onComplete: ((Double, PlayerProfile, [String: Double]) -> Void)? = nil
     @StateObject private var vm = SelfAssessmentViewModel()
-    @State private var showDisclaimer = true
 
     var body: some View {
         ZStack {
             Color(hex: "#050507").ignoresSafeArea()
-            if showDisclaimer {
-                AssessmentDisclaimerView { withAnimation(.easeInOut(duration: 0.35)) { showDisclaimer = false } }
-                    .transition(.opacity)
-            } else if vm.showResult {
+            if vm.showResult {
                 AssessmentResultView(
                     score: vm.finalScore,
                     categoryScores: vm.categoryScores,
@@ -745,7 +631,6 @@ struct SelfAssessmentFlowView: View {
                     ))
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: showDisclaimer)
         .animation(.easeInOut(duration: 0.35), value: vm.showResult)
         .animation(.easeInOut(duration: 0.4), value: vm.showCalculating)
         .animation(.spring(response: 0.55, dampingFraction: 0.82), value: vm.onboardingComplete)
@@ -1183,6 +1068,18 @@ struct FrequencyStepView: View {
                     }
                 }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
             }
+            // One-time note
+            HStack(spacing: 6) {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 12))
+                Text("This is a one-time self-assessment. Answer honestly — your initial score is set here.")
+                    .font(.system(size: 12))
+            }
+            .foregroundColor(Color(hex: "#6A6A82"))
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 12)
+
             ContinueButton(label: "Start Assessment", enabled: pendingFrequency != nil, color: accent) {
                 guard let freq = pendingFrequency else { return }
                 withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
