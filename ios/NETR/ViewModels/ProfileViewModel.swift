@@ -406,7 +406,11 @@ class ProfileViewModel {
     }
 
     func updateFullProfile(fullName: String, username: String, bio: String?, city: String?, position: String?, showAge: Bool = false, dateOfBirth: Date? = nil) async throws {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else {
+            print("[NETR Profile] Save failed: no user session")
+            return
+        }
+        print("[NETR Profile] Saving — bio: \(bio ?? "nil"), position: \(position ?? "nil"), city: \(city ?? "nil"), showAge: \(showAge)")
 
         nonisolated struct FullProfileUpdate: Encodable, Sendable {
             let fullName: String
@@ -452,8 +456,10 @@ class ProfileViewModel {
             .eq("id", value: userId)
             .execute()
 
+        print("[NETR Profile] Save succeeded for user: \(userId)")
         await SupabaseManager.shared.loadProfile(userId: userId)
         await loadProfile()
+        print("[NETR Profile] Reloaded — bio: \(bio ?? "nil"), position: \(userProfile?.position ?? "nil")")
     }
 
     func uploadBanner(_ image: UIImage) async -> String? {

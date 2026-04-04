@@ -23,7 +23,7 @@ class CrewViewModel {
     private var realtimeTask: Task<Void, Never>?
 
     var currentUserId: String? {
-        SupabaseManager.shared.session?.user.id.uuidString
+        SupabaseManager.shared.session?.user.id.uuidString.lowercased()
     }
 
     var sortedMembers: [CrewMemberProfile] {
@@ -72,6 +72,7 @@ class CrewViewModel {
             }
         } catch {
             errorMessage = error.localizedDescription
+            print("[NETR Crews] Load my crews error: \(error)")
         }
         isLoading = false
     }

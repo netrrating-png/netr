@@ -88,7 +88,12 @@ struct CourtsView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
         }
-        .sheet(isPresented: $showCreateGame) {
+        .sheet(isPresented: $showCreateGame, onDismiss: {
+            Task {
+                await viewModel.loadLiveCourts()
+                await viewModel.loadScheduledCourts()
+            }
+        }) {
             CreateGameView(viewModel: viewModel)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)

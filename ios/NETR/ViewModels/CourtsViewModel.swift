@@ -305,8 +305,9 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                 .execute()
                 .value
             liveCourtIds = Set(games.map { $0.courtId })
+            print("[NETR Games] Live filter returned \(games.count) games, cutoff: \(cutoff)")
         } catch {
-            print("[NETR] Live courts load error: \(error)")
+            print("[NETR Games] Live courts load error: \(error)")
         }
     }
 
@@ -324,8 +325,9 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                 .execute()
                 .value
             scheduledCourtIds = Set(games.compactMap { $0.courtId.isEmpty ? nil : $0.courtId })
+            print("[NETR Games] Scheduled filter returned \(games.count) games")
         } catch {
-            print("Scheduled courts load error: \(error)")
+            print("[NETR Games] Scheduled courts load error: \(error)")
         }
     }
 

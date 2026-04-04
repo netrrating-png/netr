@@ -69,6 +69,7 @@ class GameViewModel {
         try await addPlayerToGame(gameId: created.id)
 
         game = created
+        print("[NETR Games] Created game — id: \(created.id), status: \(created.status), court: \(courtId ?? "none"), format: \(format)")
         await subscribeToLobby(gameId: created.id)
         await loadPlayers(gameId: created.id)
         return created
