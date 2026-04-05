@@ -294,38 +294,45 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func loadLiveCourts() async {
-        let cutoff = ISO8601DateFormatter().string(from: Date().addingTimeInterval(-4 * 3600))
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime]
+        let cutoff = fmt.string(from: Date().addingTimeInterval(-4 * 3600))
         do {
-            struct GameCourtId: Decodable { let courtId: String; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
-            let games: [GameCourtId] = try await client
+            let response = try await client
                 .from("games")
-                .select("court_id")
+                .select("court_id, status, created_at")
                 .in("status", values: ["active", "waiting"])
                 .gte("created_at", value: cutoff)
                 .execute()
-                .value
-            liveCourtIds = Set(games.map { $0.courtId })
+            struct GameCourtId: Decodable { let courtId: String?; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
+            let raw = String(data: response.data, encoding: .utf8) ?? "nil"
+            print("[NETR] Live courts raw response: \(raw)")
+            let games = try JSONDecoder().decode([GameCourtId].self, from: response.data)
+            liveCourtIds = Set(games.compactMap { $0.courtId })
+            print("[NETR] Live court IDs: \(liveCourtIds)")
         } catch {
             print("[NETR] Live courts load error: \(error)")
         }
     }
 
     func loadScheduledCourts() async {
-        let now = ISO8601DateFormatter().string(from: Date())
-        let future = ISO8601DateFormatter().string(from: Date().addingTimeInterval(48 * 3600))
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime]
+        let now = fmt.string(from: Date())
+        let future = fmt.string(from: Date().addingTimeInterval(48 * 3600))
         do {
-            struct GameCourtId: Decodable { let courtId: String; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
-            let games: [GameCourtId] = try await client
+            let response = try await client
                 .from("games")
-                .select("court_id")
-                .in("status", values: ["scheduled", "waiting"])
+                .select("court_id, status, scheduled_at")
+                .eq("status", value: "scheduled")
                 .gte("scheduled_at", value: now)
                 .lte("scheduled_at", value: future)
                 .execute()
-                .value
-            scheduledCourtIds = Set(games.compactMap { $0.courtId.isEmpty ? nil : $0.courtId })
+            struct GameCourtId: Decodable { let courtId: String?; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
+            let games = try JSONDecoder().decode([GameCourtId].self, from: response.data)
+            scheduledCourtIds = Set(games.compactMap { $0.courtId })
         } catch {
-            print("Scheduled courts load error: \(error)")
+            print("[NETR] Scheduled courts load error: \(error)")
         }
     }
 

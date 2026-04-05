@@ -85,11 +85,11 @@ struct WelcomeView: View {
                                     if supabase.currentProfile != nil { break }
                                     try? await Task.sleep(for: .milliseconds(500))
                                 }
-                                if supabase.currentProfile == nil {
-                                    // New Google user — no profile yet, go through setup
+                                if supabase.currentProfile == nil || supabase.currentProfile?.netrScore == nil {
+                                    // New Google user or profile with no score — go through setup
                                     onGoogleSignedInAsNewUser?()
                                 } else {
-                                    // Returning Google user — profile exists, go straight in
+                                    // Returning Google user with completed profile — go straight in
                                     onGoogleSignedInAsExistingUser?()
                                 }
                             } catch is CancellationError {

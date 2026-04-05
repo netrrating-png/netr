@@ -16,6 +16,7 @@ struct OnboardingView: View {
     @State private var selfAssessmentScore: Double? = nil
     @State private var selfAssessmentCategoryScores: [String: Double] = [:]
     @State private var selfAssessmentIsProClaim: Bool = false
+    @State private var selfAssessmentPosition: String = ""
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -136,6 +137,10 @@ struct OnboardingView: View {
                 VStack(spacing: 16) {
                     NETRTextField(placeholder: "Full Name", text: $fullName, icon: "person.fill")
                     NETRTextField(placeholder: "@username", text: $username, icon: "at")
+                        .onChange(of: username) { _, newValue in
+                            let sanitized = newValue.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
+                            if sanitized != newValue { username = sanitized }
+                        }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("DATE OF BIRTH")
@@ -396,8 +401,21 @@ struct OnboardingView: View {
             selfAssessmentScore = score
             selfAssessmentCategoryScores = catScores
             selfAssessmentIsProClaim = (profile.highestLevel == .nba)
+            // Build position string: "PG", "SG", "PG/SG", etc.
+            if let p1 = profile.position {
+                if let p2 = profile.position2 {
+                    selfAssessmentPosition = "\(p1.short)/\(p2.short)"
+                } else if p1 != .notSure {
+                    selfAssessmentPosition = p1.short
+                }
+            }
             SelfAssessmentStore.save(score: score, categoryScores: catScores)
-            withAnimation { currentStep = 7 }
+            // Save profile + score and go straight into the app
+            if isGoogleUser {
+                performGoogleProfileSave()
+            } else {
+                performSignUp()
+            }
         }
     }
 
@@ -575,7 +593,7 @@ struct OnboardingView: View {
         let name = fullName
         let handle = username
         let dob = dateOfBirth
-        let pos = "?"
+        let pos = selfAssessmentPosition
         let score = selfAssessmentScore
 
         Task {
@@ -583,7 +601,7 @@ struct OnboardingView: View {
                 // If user already has a session (e.g. Google sign-in), just save
                 // their profile — no email sign-up needed.
                 if let existingSession = supabase.session {
-                    let userId = existingSession.user.id.uuidString
+                    let userId = existingSession.user.id.uuidString.lowercased()
                     try await supabase.saveProfile(
                         userId: userId,
                         fullName: name,
@@ -614,7 +632,7 @@ struct OnboardingView: View {
                         let msg = error.localizedDescription.lowercased()
                         if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
                             try await supabase.signInWithEmail(email: email, password: password)
-                            guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
+                            guard let userId = supabase.session?.user.id.uuidString.lowercased(), !userId.isEmpty else {
                                 throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
                             }
                             try await supabase.saveProfile(
@@ -678,7 +696,7 @@ struct OnboardingView: View {
                     fullName: fullName,
                     username: username,
                     dateOfBirth: dateOfBirth,
-                    position: "?"
+                    position: selfAssessmentPosition
                 )
                 if let score = selfAssessmentScore {
                     try await supabase.saveSelfAssessmentScore(

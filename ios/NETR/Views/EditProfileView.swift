@@ -14,6 +14,7 @@ struct EditProfileView: View {
     @State private var bio: String = ""
     @State private var city: String = ""
     @State private var selectedPosition: Position = .unknown
+    @State private var selectedPosition2: Position? = nil
     @State private var showAge: Bool = false
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
     @State private var hasDOB: Bool = false
@@ -226,6 +227,10 @@ struct EditProfileView: View {
         VStack(spacing: 16) {
             editField(label: "Full Name", text: $fullName)
             editField(label: "Username", text: $username)
+                .onChange(of: username) { _, newValue in
+                    let sanitized = newValue.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
+                    if sanitized != newValue { username = sanitized }
+                }
 
             VStack(alignment: .leading, spacing: 6) {
                 Text("Bio")
@@ -284,36 +289,49 @@ struct EditProfileView: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("Position")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(NETRTheme.subtext)
+                HStack {
+                    Text("Position")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(NETRTheme.subtext)
+                    Spacer()
+                    Text(positionDisplayLabel)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NETRTheme.neonGreen)
+                }
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Position.allCases.filter { $0 != .unknown }, id: \.rawValue) { pos in
+                            let isSelected = selectedPosition == pos || selectedPosition2 == pos
+                            let isDisabled = positionDisabled(pos)
                             Button {
-                                selectedPosition = pos
+                                handlePositionTap(pos)
                             } label: {
                                 VStack(spacing: 4) {
                                     LucideIcon(pos.icon, size: 14)
                                     Text(pos.rawValue)
                                         .font(.system(size: 12, weight: .bold))
                                 }
-                                .foregroundStyle(selectedPosition == pos ? NETRTheme.background : NETRTheme.text)
+                                .foregroundStyle(isSelected ? NETRTheme.background : isDisabled ? NETRTheme.muted : NETRTheme.text)
                                 .frame(width: 52, height: 52)
                                 .background(
-                                    selectedPosition == pos ? NETRTheme.neonGreen : NETRTheme.card,
+                                    isSelected ? NETRTheme.neonGreen : NETRTheme.card,
                                     in: .rect(cornerRadius: 12)
                                 )
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(selectedPosition == pos ? Color.clear : NETRTheme.border, lineWidth: 1)
+                                        .stroke(isSelected ? Color.clear : NETRTheme.border, lineWidth: 1)
                                 )
                             }
                             .buttonStyle(.plain)
+                            .disabled(isDisabled)
                         }
                     }
                 }
+
+                Text("Pick 1 or 2 adjacent positions (e.g. PG+SG, SF+PF)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(NETRTheme.muted)
             }
 
             // Date of Birth picker
@@ -469,6 +487,66 @@ struct EditProfileView: View {
         }
     }
 
+    // MARK: - Position Helpers
+
+    private static let positionOrder: [Position] = [.pg, .sg, .sf, .pf, .c]
+
+    private func areAdjacent(_ a: Position, _ b: Position) -> Bool {
+        guard let i1 = Self.positionOrder.firstIndex(of: a),
+              let i2 = Self.positionOrder.firstIndex(of: b) else { return false }
+        return abs(i1 - i2) == 1
+    }
+
+    private func positionDisabled(_ pos: Position) -> Bool {
+        // If two are already selected, disable everything else
+        guard selectedPosition != .unknown, selectedPosition2 != nil else { return false }
+        return selectedPosition != pos && selectedPosition2 != pos
+    }
+
+    private func handlePositionTap(_ pos: Position) {
+        if selectedPosition == pos {
+            // Deselect primary — promote secondary if exists
+            if let p2 = selectedPosition2 {
+                selectedPosition = p2
+                selectedPosition2 = nil
+            } else {
+                selectedPosition = .unknown
+            }
+        } else if selectedPosition2 == pos {
+            // Deselect secondary
+            selectedPosition2 = nil
+        } else if selectedPosition == .unknown {
+            // Nothing selected yet
+            selectedPosition = pos
+        } else if selectedPosition2 == nil && areAdjacent(selectedPosition, pos) {
+            // Add second adjacent position
+            selectedPosition2 = pos
+        } else if selectedPosition2 == nil {
+            // Not adjacent — replace primary
+            selectedPosition = pos
+            selectedPosition2 = nil
+        }
+    }
+
+    private var positionDisplayLabel: String {
+        if selectedPosition == .unknown { return "" }
+        if let p2 = selectedPosition2 {
+            // Show in roster order
+            let ordered = Self.positionOrder.filter { $0 == selectedPosition || $0 == p2 }
+            return ordered.map(\.rawValue).joined(separator: "/")
+        }
+        return selectedPosition.rawValue
+    }
+
+    private var positionSaveValue: String? {
+        if selectedPosition == .unknown { return nil }
+        if let p2 = selectedPosition2 {
+            let ordered = Self.positionOrder.filter { $0 == selectedPosition || $0 == p2 }
+            return ordered.map(\.rawValue).joined(separator: "/")
+        }
+        return selectedPosition.rawValue
+    }
+
     // MARK: - Actions
 
     private func populateFields() {
@@ -476,7 +554,17 @@ struct EditProfileView: View {
         username = player.username.hasPrefix("@") ? String(player.username.dropFirst()) : player.username
         bio = viewModel.bio ?? ""
         city = player.city
-        selectedPosition = player.position
+        // Parse position — may be "PG", "PG/SG", etc.
+        let posStr = SupabaseManager.shared.currentProfile?.position ?? player.position.rawValue
+        let parts = posStr.split(separator: "/").map(String.init)
+        if let first = parts.first, let p1 = Position(rawValue: first) {
+            selectedPosition = p1
+            if parts.count >= 2, let p2 = Position(rawValue: parts[1]) {
+                selectedPosition2 = p2
+            }
+        } else {
+            selectedPosition = player.position
+        }
         showAge = SupabaseManager.shared.currentProfile?.showAge ?? false
         if let dobStr = SupabaseManager.shared.currentProfile?.dateOfBirth {
             let formatter = DateFormatter()
@@ -511,7 +599,7 @@ struct EditProfileView: View {
                     username: username,
                     bio: bio,
                     city: city.isEmpty ? nil : city,
-                    position: selectedPosition == .unknown ? nil : selectedPosition.rawValue,
+                    position: positionSaveValue,
                     showAge: showAge,
                     dateOfBirth: hasDOB ? dateOfBirth : nil
                 )

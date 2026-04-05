@@ -24,7 +24,7 @@ struct ArchetypeEngine {
         "playmaking": ["The Architect", "Court Vision", "Third Eye"],
         "defense":    ["Enforcer", "The Stopper", "Fortress"],
         "rebounding": ["Board Man", "Glass King", "The Magnet"],
-        "iq":         ["Coach", "The Professor", "Wise Guy"],
+        "iq":         ["Coach", "The Cerebral", "Wise Guy"],
     ]
 
     // MARK: - Dual Category Archetypes (top 2 skills)
@@ -45,7 +45,7 @@ struct ArchetypeEngine {
         "handles_playmaking":     ["Point Gawd", "The Floor General", "Magic"],
         "defense_handles":        ["The Glove", "The Pickpocket", "Quick Hands"],
         "handles_rebounding":     ["Ball Hawk", "Full Throttle", "Brodie"],
-        "handles_iq":             ["Zeke", "The Processor", "Dribble Wizard"],
+        "handles_iq":             ["Zeke", "The Professor", "Dribble Wizard"],
         "defense_playmaking":     ["Read and React", "The Glue", "Spark Generator"],
         "playmaking_rebounding":  ["Joker", "Crash and Dish", "Glass General"],
         "iq_playmaking":          ["The Kidd", "The Orchestrator", "Mastermind"],
@@ -162,6 +162,7 @@ struct ArchetypeEngine {
                 .replacingOccurrences(of: "basketball_iq", with: "iq")
                 .replacingOccurrences(of: "basketballiq", with: "iq")
                 .replacingOccurrences(of: "passing", with: "playmaking")
+                .replacingOccurrences(of: "scoring", with: "shooting")
                 .replacingOccurrences(of: "cat_", with: "")
             result[normalized] = value
         }
