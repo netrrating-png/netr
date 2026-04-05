@@ -296,7 +296,7 @@ struct PublicPlayerProfileView: View {
                     .foregroundStyle(NETRTheme.muted)
                 // Position + optional age badge
                 HStack(spacing: 4) {
-                    Text(user.position.rawValue)
+                    Text(user.positionLabel)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(NETRRating.color(for: user.rating))
                     let showAge = viewModel.userProfile?.showAge ?? false

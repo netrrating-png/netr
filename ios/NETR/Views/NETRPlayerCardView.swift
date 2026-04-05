@@ -211,7 +211,7 @@ struct NETRPlayerCardView: View {
                     }
                 }
                 // Position pill at bottom of avatar
-                Text(user.position.rawValue)
+                Text(user.positionLabel)
                     .font(.system(size: 10, weight: .black).width(.compressed))
                     .tracking(1.5)
                     .foregroundStyle(hasRating ? .black : .white.opacity(0.6))

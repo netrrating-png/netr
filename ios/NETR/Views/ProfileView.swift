@@ -490,7 +490,7 @@ struct ProfileView: View {
                     .foregroundStyle(NETRTheme.subtext)
                 Text("·")
                     .foregroundStyle(NETRTheme.muted)
-                Text(user.position.rawValue)
+                Text(user.positionLabel)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(ratingColor(for: user))
                 let showAge = SupabaseManager.shared.currentProfile?.showAge ?? false
