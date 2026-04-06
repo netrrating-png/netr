@@ -64,9 +64,6 @@ struct FollowPlayerRowView: View {
                 // NETR score ring
                 scoreRing
 
-                // Tier badge chip
-                tierBadge
-
                 // Follow / Following button
                 if showFollowButton {
                     followButton
@@ -131,6 +128,8 @@ struct FollowPlayerRowView: View {
             Text(isFollowing ? "Following" : "Follow")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(isFollowing ? NETRTheme.text : NETRTheme.background)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(isFollowing ? Color(red: 0.1, green: 0.1, blue: 0.1) : NETRTheme.neonGreen)

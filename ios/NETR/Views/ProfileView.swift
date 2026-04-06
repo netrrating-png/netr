@@ -600,7 +600,7 @@ struct ProfileView: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: 8) {
                 NETRBadge(score: user.rating, size: .medium)
                     .onTapGesture { showRatingScale = true }
                 NETRTierPill(score: user.rating)
