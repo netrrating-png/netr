@@ -41,7 +41,7 @@ class ProfileViewModel {
         }
 
         profileUserId = targetId
-        isCurrentUser = (targetId == SupabaseManager.shared.session?.user.id.uuidString)
+        isCurrentUser = (targetId.lowercased() == SupabaseManager.shared.session?.user.id.uuidString.lowercased())
 
         do {
             let profile: UserProfile = try await client
