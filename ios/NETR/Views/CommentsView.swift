@@ -229,7 +229,8 @@ struct CommentsView: View {
                 )
                 Divider().background(NETRTheme.border)
 
-                let replies = comments.filter { $0.parentCommentId == comment.id }
+                // Replies shown chronologically (oldest first) for natural conversation flow
+                let replies = Array(comments.filter { $0.parentCommentId == comment.id }.reversed())
                 ForEach(replies) { reply in
                     HStack(spacing: 0) {
                         Rectangle()
