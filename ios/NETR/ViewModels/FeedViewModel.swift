@@ -135,6 +135,7 @@ class FeedViewModel {
         }
         if !loadMore {
             isLoading = true
+            error = nil
         }
 
         if !followingLoaded {
@@ -604,18 +605,20 @@ class FeedViewModel {
             await withTaskGroup(of: Void.self) { group in
                 group.addTask {
                     for await _ in postChanges {
-                        if self.activeTab == .live {
+                        // Show "new posts" pill instead of refetching (which resets scroll)
+                        await MainActor.run {
                             self.pendingNewPosts += 1
-                        } else {
-                            await self.fetchFeed(tab: self.activeTab)
                         }
                     }
                 }
                 group.addTask {
                     for await change in commentChanges {
-                        if let postId = change.record["post_id"]?.stringValue,
-                           let idx = self.posts.firstIndex(where: { $0.id == postId }) {
-                            self.posts[idx].commentCount += 1
+                        if let postId = change.record["post_id"]?.stringValue {
+                            await MainActor.run {
+                                if let idx = self.posts.firstIndex(where: { $0.id == postId }) {
+                                    self.posts[idx].commentCount += 1
+                                }
+                            }
                         }
                     }
                 }

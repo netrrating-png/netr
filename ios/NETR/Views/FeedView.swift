@@ -338,6 +338,30 @@ struct FeedView: View {
     private var feedContent: some View {
         if viewModel.activeTab == .discover {
             discoverContent
+        } else if let feedError = viewModel.error, viewModel.posts.isEmpty {
+            VStack(spacing: 16) {
+                Spacer()
+                LucideIcon("wifi-off", size: 36)
+                    .foregroundStyle(NETRTheme.muted)
+                Text("Couldn't load feed")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(NETRTheme.text)
+                Text(feedError)
+                    .font(.system(size: 13))
+                    .foregroundStyle(NETRTheme.subtext)
+                Button {
+                    Task { await viewModel.fetchFeed(tab: viewModel.activeTab) }
+                } label: {
+                    Text("Try Again")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(NETRTheme.background)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(NETRTheme.neonGreen, in: .capsule)
+                }
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
         } else if !viewModel.hasLoadedOnce && viewModel.isLoading {
             VStack(spacing: 16) {
                 Spacer()
@@ -377,6 +401,16 @@ struct FeedView: View {
                                     ProgressView()
                                         .tint(NETRTheme.neonGreen)
                                         .padding(.vertical, 20)
+                                } else if !viewModel.hasMore && viewModel.hasLoadedOnce && !viewModel.posts.isEmpty {
+                                    VStack(spacing: 6) {
+                                        LucideIcon("check-circle", size: 16)
+                                            .foregroundStyle(NETRTheme.muted)
+                                        Text("You're all caught up")
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(NETRTheme.subtext)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 24)
                                 }
                             }
                         }
