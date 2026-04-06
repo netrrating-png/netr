@@ -176,6 +176,11 @@ struct PublicPlayerProfileView: View {
 
             nameSection(user: user)
                 .padding(.horizontal, 20)
+                .padding(.bottom, 4)
+
+            // Inline rating badge — compact, right below name
+            inlineRating(user: user)
+                .padding(.horizontal, 20)
                 .padding(.bottom, 8)
 
             if let bio = viewModel.bio, !bio.isEmpty {
@@ -192,22 +197,17 @@ struct PublicPlayerProfileView: View {
 
             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
 
-            ratingSection(user: user)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 24)
+            // Recent posts — moved above skills
+            if !viewModel.userPosts.isEmpty {
+                recentPostsSection
+                    .padding(.bottom, 24)
 
-            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
+                Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
+            }
 
             radarSection(user: user)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
-
-            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
-
-            if !viewModel.userPosts.isEmpty {
-                recentPostsSection
-                    .padding(.bottom, 40)
-            }
 
             Spacer(minLength: 100)
         }
@@ -403,32 +403,29 @@ struct PublicPlayerProfileView: View {
         }
     }
 
-    // MARK: - Rating
+    // MARK: - Inline Rating (compact, below name)
 
-    private func ratingSection(user: Player) -> some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("NETR RATING")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(NETRTheme.subtext)
-                    .tracking(1.5)
-                NETRTierPill(score: user.rating)
-                if user.isVerified {
-                    Text("\(user.reviews) peer ratings")
-                        .font(.system(size: 11))
-                        .foregroundStyle(NETRRating.color(for: user.rating).opacity(0.7))
-                } else {
-                    Text(user.rating == nil ? "Not yet rated" : "Self-assessed")
-                        .font(.system(size: 11))
-                        .foregroundStyle(NETRTheme.subtext)
-                }
-            }
-            Spacer()
-
-            NETRBadge(score: user.rating, size: .xl)
+    private func inlineRating(user: Player) -> some View {
+        let color = NETRRating.color(for: user.rating)
+        return HStack(spacing: 8) {
+            NETRBadge(score: user.rating, size: .small)
                 .scaleEffect(ratingAnimated ? 1.0 : 0.8)
                 .opacity(ratingAnimated ? 1.0 : 0)
                 .animation(.spring(response: 0.55, dampingFraction: 0.7), value: ratingAnimated)
+
+            NETRTierPill(score: user.rating)
+
+            if user.isVerified {
+                Text("\(user.reviews) ratings")
+                    .font(.system(size: 11))
+                    .foregroundStyle(color.opacity(0.7))
+            } else {
+                Text(user.rating == nil ? "Not yet rated" : "Self-assessed")
+                    .font(.system(size: 11))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            Spacer()
         }
     }
 
