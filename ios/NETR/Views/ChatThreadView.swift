@@ -1,4 +1,5 @@
 import SwiftUI
+import Supabase
 import PostgREST
 
 struct ChatThreadView: View {
@@ -7,6 +8,7 @@ struct ChatThreadView: View {
     var dmViewModel: DMViewModel?
     @State private var viewModel: ChatViewModel
     @State private var showCourtPicker: Bool = false
+    @State private var showOtherProfile: Bool = false
     @State private var mentionProfileUserId: String?
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
@@ -46,6 +48,9 @@ struct ChatThreadView: View {
             Task { await viewModel.unsubscribe() }
             dmViewModel?.notificationManager.activeConversationUserId = nil
         }
+        .fullScreenCover(isPresented: $showOtherProfile) {
+            PublicPlayerProfileView(userId: otherUserId)
+        }
         .fullScreenCover(item: $mentionProfileUserId) { userId in
             PublicPlayerProfileView(userId: userId)
         }
@@ -76,28 +81,32 @@ struct ChatThreadView: View {
                     .foregroundStyle(NETRTheme.text)
             }
 
-            chatAvatar(name: otherUser?.displayName ?? "?", url: otherUser?.avatarUrl, size: 34)
+            Button { showOtherProfile = true } label: {
+                HStack(spacing: 10) {
+                    chatAvatar(name: otherUser?.displayName ?? "?", url: otherUser?.avatarUrl, size: 34)
 
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 6) {
-                    Text(otherUser?.displayName ?? "Player")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(NETRTheme.text)
-                        .lineLimit(1)
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 6) {
+                            Text(otherUser?.displayName ?? "Player")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(NETRTheme.text)
+                                .lineLimit(1)
 
-                    if let score = otherUser?.netrScore {
-                        Text(String(format: "%.1f", score))
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundStyle(NETRRating.color(for: score))
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
-                            .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 3))
+                            if let score = otherUser?.netrScore {
+                                Text(String(format: "%.1f", score))
+                                    .font(.system(size: 10, weight: .black))
+                                    .foregroundStyle(NETRRating.color(for: score))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(NETRRating.color(for: score).opacity(0.12), in: .rect(cornerRadius: 3))
+                            }
+                        }
+                        if let handle = otherUser?.handle, !handle.isEmpty {
+                            Text(handle)
+                                .font(.caption)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
                     }
-                }
-                if let handle = otherUser?.handle, !handle.isEmpty {
-                    Text(handle)
-                        .font(.caption)
-                        .foregroundStyle(NETRTheme.subtext)
                 }
             }
 

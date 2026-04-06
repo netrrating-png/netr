@@ -41,7 +41,7 @@ class SupabaseManager {
         for await (event, session) in client.auth.authStateChanges {
             self.session = session
             if [.initialSession, .signedIn].contains(event), let session {
-                await loadProfile(userId: session.user.id.uuidString)
+                await loadProfile(userId: session.user.id.uuidString.lowercased())
             } else if event == .signedOut {
                 self.currentProfile = nil
             }
@@ -72,9 +72,9 @@ class SupabaseManager {
         let userId: String
         if let s = response.session {
             self.session = s
-            userId = s.user.id.uuidString
+            userId = s.user.id.uuidString.lowercased()
         } else {
-            userId = response.user.id.uuidString
+            userId = response.user.id.uuidString.lowercased()
         }
 
         try await saveProfile(
@@ -92,7 +92,7 @@ class SupabaseManager {
         defer { isLoading = false }
         let session = try await client.auth.signIn(email: email, password: password)
         self.session = session
-        await loadProfile(userId: session.user.id.uuidString)
+        await loadProfile(userId: session.user.id.uuidString.lowercased())
     }
 
     func signInWithApple(idToken: String, nonce: String, fullName: String? = nil) async throws {
@@ -109,7 +109,7 @@ class SupabaseManager {
         )
         self.session = session
         print("[NETR Auth] Apple session established: \(session.user.id)")
-        await loadProfile(userId: session.user.id.uuidString)
+        await loadProfile(userId: session.user.id.uuidString.lowercased())
 
         // Apple only sends the user's name on the very first sign-in.
         // Save it to the profiles table if we got it and the profile doesn't have one yet.
@@ -119,9 +119,9 @@ class SupabaseManager {
                 try await client
                     .from("profiles")
                     .update(["full_name": AnyJSON.string(name)])
-                    .eq("id", value: session.user.id.uuidString)
+                    .eq("id", value: session.user.id.uuidString.lowercased())
                     .execute()
-                await loadProfile(userId: session.user.id.uuidString)
+                await loadProfile(userId: session.user.id.uuidString.lowercased())
             } catch {
                 print("[NETR Auth] Failed to save Apple name: \(error)")
             }
@@ -167,6 +167,10 @@ class SupabaseManager {
         session = nil
         currentProfile = nil
         currentUserAvatarUrl = nil
+        // Reset onboarding so a fresh sign-in starts from scratch
+        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+        UserDefaults.standard.set(false, forKey: "hasCompletedPhotoPrompt")
+        UserDefaults.standard.set(0, forKey: "photoPromptSkipCount")
     }
 
     func saveProfile(
@@ -180,8 +184,10 @@ class SupabaseManager {
             "id": .string(userId),
             "full_name": .string(fullName),
             "username": .string(username),
-            "position": .string(position)
         ]
+        if !position.isEmpty && position != "?" {
+            params["position"] = .string(position)
+        }
         if let dob = dateOfBirth {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
@@ -194,22 +200,76 @@ class SupabaseManager {
     }
 
     func loadProfile(userId: String) async {
+        // Try both the given format and lowercase — Supabase returns UUIDs lowercase
+        // but Swift's uuidString is uppercase. Handle both TEXT and UUID column types.
+        let lower = userId.lowercased()
+        let candidates = userId == lower ? [userId] : [userId, lower]
+        for candidate in candidates {
+            if let profile = try? await client
+                .from("profiles")
+                .select()
+                .eq("id", value: candidate)
+                .single()
+                .execute()
+                .value as UserProfile {
+                self.currentProfile = profile
+                if let avatarUrl = profile.avatarUrl {
+                    self.currentUserAvatarUrl = avatarUrl
+                }
+                print("[NETR] Profile loaded (id: \(profile.id)), avatar_url: \(profile.avatarUrl ?? "nil")")
+
+                // Recalculate archetype if category scores exist (fixes stale single→dual mismatches)
+                var catScores: [String: Double] = [:]
+                if let v = profile.catShooting    { catScores["shooting"] = v }
+                if let v = profile.catFinishing   { catScores["finishing"] = v }
+                if let v = profile.catDribbling   { catScores["handles"] = v }
+                if let v = profile.catPassing     { catScores["playmaking"] = v }
+                if let v = profile.catDefense     { catScores["defense"] = v }
+                if let v = profile.catRebounding  { catScores["rebounding"] = v }
+                if let v = profile.catBasketballIq { catScores["iq"] = v }
+                print("[NETR] Profile catScores for archetype: \(catScores) (archetypeKey=\(profile.archetypeKey ?? "nil"))")
+                if !catScores.isEmpty {
+                    await computeAndSaveArchetype(userId: profile.id, categoryScores: catScores)
+                }
+
+                return
+            }
+        }
+        // No profile found — create one. Use lowercase so RLS auth.uid()::text check passes.
+        print("[NETR] No profile found for user \(userId), creating one...")
+        await ensureProfileExists(userId: userId.lowercased())
+    }
+
+    private func ensureProfileExists(userId: String) async {
+        guard let user = session?.user else { return }
+        let fullName: String
+        if case .string(let v) = user.userMetadata["full_name"] { fullName = v } else { fullName = "" }
+        let username: String
+        if case .string(let v) = user.userMetadata["username"] { username = v }
+        else { username = user.email?.components(separatedBy: "@").first ?? "player\(userId.prefix(4))" }
+
+        let params: [String: AnyJSON] = [
+            "id": .string(userId),
+            "full_name": .string(fullName),
+            "username": .string(username)
+        ]
         do {
-            let profile: UserProfile = try await client
+            try await client.from("profiles").upsert(params).execute()
+            print("[NETR] Auto-created profile for user \(userId)")
+            if let profile: UserProfile = try? await client
                 .from("profiles")
                 .select()
                 .eq("id", value: userId)
                 .single()
                 .execute()
-                .value
-            self.currentProfile = profile
-            // Sync single source of truth for avatar
-            if let avatarUrl = profile.avatarUrl {
-                self.currentUserAvatarUrl = avatarUrl
+                .value {
+                self.currentProfile = profile
+                print("[NETR] currentProfile set after auto-create: \(profile.id)")
+            } else {
+                print("[NETR] Auto-create upsert succeeded but reload failed for \(userId)")
             }
-            print("[NETR Avatar] Profile loaded, avatar_url: \(profile.avatarUrl ?? "nil")")
         } catch {
-            print("[NETR] Error loading profile: \(error)")
+            print("[NETR] Failed to auto-create profile: \(error)")
         }
     }
 
@@ -222,7 +282,7 @@ class SupabaseManager {
         rebounding: Double,
         basketballIQ: Double
     ) async throws {
-        guard let userId = session?.user.id.uuidString else { return }
+        guard let userId = session?.user.id.uuidString.lowercased() else { return }
         try await client
             .from("profiles")
             .update([
@@ -239,7 +299,7 @@ class SupabaseManager {
     }
 
     func saveSelfAssessmentScore(score: Double, categoryScores: [String: Double]? = nil) async throws {
-        guard let userId = session?.user.id.uuidString else {
+        guard let userId = session?.user.id.uuidString.lowercased() else {
             print("[NETR] saveSelfAssessmentScore: no session, saving locally only")
             SelfAssessmentStore.save(score: score, categoryScores: categoryScores)
             return
@@ -261,12 +321,14 @@ class SupabaseManager {
             if let v = cats["iq"] { params["cat_basketball_iq"] = .double(v) }
         }
 
+        print("[NETR] saveSelfAssessmentScore: userId=\(userId), params=\(params)")
         do {
             try await client
                 .from("profiles")
                 .update(params)
                 .eq("id", value: userId)
                 .execute()
+            print("[NETR] saveSelfAssessmentScore: remote save succeeded")
         } catch {
             print("[NETR] saveSelfAssessmentScore remote save failed: \(error)")
         }
@@ -280,16 +342,19 @@ class SupabaseManager {
     }
 
     /// Compute archetype from category scores and persist to profiles table.
-    /// Only reassigns if no archetype exists yet or the top skill changed.
+    /// Reassigns whenever the computed key differs from the stored key.
     func computeAndSaveArchetype(userId: String, categoryScores: [String: Double]) async {
         let currentKey = currentProfile?.archetypeKey
+        print("[NETR] computeArchetype input: \(categoryScores)")
 
         // Compute what the archetype WOULD be
         let computed = ArchetypeEngine.computeArchetype(categoryScores: categoryScores)
-        guard let computed else { return }
+        guard let computed else { print("[NETR] computeArchetype returned nil"); return }
+        print("[NETR] computeArchetype result: name=\(computed.name) key=\(computed.key) isSingle=\(computed.isSingle) currentKey=\(currentKey ?? "nil")")
 
         // If archetype already exists and the key hasn't changed, don't reassign
         if let existing = currentKey, !existing.isEmpty, existing == computed.key {
+            print("[NETR] archetype key unchanged (\(existing)), skipping")
             return
         }
 
@@ -305,6 +370,9 @@ class SupabaseManager {
                 ])
                 .eq("id", value: userId)
                 .execute()
+            // Update in-memory profile immediately so the UI reflects the change
+            currentProfile?.archetypeName = assigned.name
+            currentProfile?.archetypeKey = assigned.key
             print("[NETR] Archetype assigned: \(assigned.name) (\(assigned.key))")
         } catch {
             print("[NETR] Failed to save archetype: \(error)")
@@ -313,7 +381,7 @@ class SupabaseManager {
 
     /// Upload avatar to Supabase Storage bucket and update profile + shared state.
     func uploadAvatar(_ image: UIImage) async throws {
-        guard let userId = session?.user.id.uuidString else {
+        guard let userId = session?.user.id.uuidString.lowercased() else {
             print("[NETR Avatar] ERROR: No session/userId available")
             return
         }
@@ -376,7 +444,7 @@ class SupabaseManager {
     }
 
     func flagProVerificationPending() async throws {
-        guard let userId = session?.user.id.uuidString else { return }
+        guard let userId = session?.user.id.uuidString.lowercased() else { return }
         do {
             try await client
                 .from("profiles")

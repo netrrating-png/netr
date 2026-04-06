@@ -11,6 +11,7 @@ struct CourtFilterSheet: View {
     @State private var draftDistance: Double? = nil
     @State private var draftSurfaces: Set<SurfaceType> = []
     @State private var draftCourtType: Bool? = nil  // nil=any, true=full, false=half
+    @State private var showLocationAlert: Bool = false
 
     private let distanceOptions: [(label: String, value: Double?)] = [
         ("Any distance", nil),
@@ -54,6 +55,17 @@ struct CourtFilterSheet: View {
                     // ── Distance ─────────────────────────────────────────
                     filterSection(title: "DISTANCE", icon: "map-pin") {
                         VStack(spacing: 8) {
+                            if viewModel.userLocation == nil {
+                                HStack(spacing: 6) {
+                                    LucideIcon("map-pin-off", size: 12)
+                                    Text("Enable location to filter by distance")
+                                        .font(.caption)
+                                }
+                                .foregroundStyle(NETRTheme.subtext)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
+                                .padding(.bottom, 2)
+                            }
                             ForEach(distanceOptions, id: \.label) { option in
                                 let selected = draftDistance == option.value
                                 Button {
@@ -158,6 +170,16 @@ struct CourtFilterSheet: View {
             draftSurfaces = viewModel.filterSurfaces
             draftCourtType = viewModel.filterCourtType
         }
+        .alert("Location Required", isPresented: $showLocationAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Distance filtering requires your location. Enable it in Settings → NETR → Location → While Using the App.")
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
@@ -220,6 +242,11 @@ struct CourtFilterSheet: View {
     }
 
     private func applyFilters() {
+        // Block distance filter if we don't have the user's location
+        if draftDistance != nil && viewModel.userLocation == nil {
+            showLocationAlert = true
+            return
+        }
         viewModel.filterMaxDistance = draftDistance
         viewModel.filterSurfaces = draftSurfaces
         viewModel.filterCourtType = draftCourtType

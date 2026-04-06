@@ -7,10 +7,11 @@ struct RootView: View {
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @AppStorage("hasCompletedPhotoPrompt") private var hasCompletedPhotoPrompt: Bool = false
     @AppStorage("photoPromptSkipCount") private var photoPromptSkipCount: Int = 0
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
     var body: some View {
         Group {
-            if !supabase.isSignedIn {
+            if !supabase.isSignedIn || !hasCompletedOnboarding {
                 OnboardingView()
                     .preferredColorScheme(.dark)
             } else if biometrics.isBiometricsAvailable && biometricsEnabled && !biometrics.isUnlocked {

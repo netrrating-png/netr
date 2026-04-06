@@ -211,6 +211,15 @@ nonisolated struct FollowingIdRow: Decodable, Sendable {
     nonisolated enum CodingKeys: String, CodingKey { case followingId = "following_id" }
 }
 
+nonisolated struct MutualFollowRow: Decodable, Sendable {
+    let followerId: String
+    let followingId: String
+    nonisolated enum CodingKeys: String, CodingKey {
+        case followerId = "follower_id"
+        case followingId = "following_id"
+    }
+}
+
 nonisolated struct BookmarkRow: Decodable, Sendable {
     let postId: String
     nonisolated enum CodingKeys: String, CodingKey { case postId = "post_id" }

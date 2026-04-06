@@ -71,7 +71,8 @@ class FeedViewModel {
 
     func loadFollowingIds() async {
         defer { followingLoaded = true }
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
+        guard let userId = SupabaseManager.shared.currentProfile?.id
+                       ?? SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         let rows: [FollowingIdRow]? = try? await client
             .from("follows")
             .select("following_id")
@@ -655,14 +656,57 @@ class FeedViewModel {
     // MARK: - Suggested Players
 
     func fetchSuggestedPlayers() async -> [UserSearchResult] {
-        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
+        guard let currentUserId = SupabaseManager.shared.currentProfile?.id
+                              ?? SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return [] }
 
-        // Fetch all users — don't filter by netr_score (most testers won't have one yet)
-        // Order: scored users first (by score DESC), then unscored by newest
+        // followingIds includes self — get just the people we follow (excluding self)
+        let peopleIFollow = followingIds.filter { $0 != currentUserId }
+
+        // If the user follows at least 2 people, use mutual-follows logic:
+        // find users that 2+ of the people you follow also follow
+        if peopleIFollow.count >= 2 {
+            // Fetch all follows where follower is someone we follow
+            let rows: [MutualFollowRow]? = try? await client
+                .from("follows")
+                .select("follower_id, following_id")
+                .in("follower_id", values: Array(peopleIFollow))
+                .execute()
+                .value
+
+            // Count how many of our followees also follow each candidate
+            var mutualCount: [String: Int] = [:]
+            for row in rows ?? [] {
+                let candidate = row.followingId
+                // Skip ourselves and people we already follow
+                guard candidate != currentUserId, !followingIds.contains(candidate) else { continue }
+                mutualCount[candidate, default: 0] += 1
+            }
+
+            // Keep candidates followed by 2+ people we follow, sorted by count desc
+            let candidates = mutualCount
+                .filter { $0.value >= 2 }
+                .sorted { $0.value > $1.value }
+                .prefix(20)
+                .map { $0.key }
+
+            if !candidates.isEmpty {
+                let profiles: [UserSearchResult]? = try? await client
+                    .from("profiles")
+                    .select("id, username, full_name, avatar_url, netr_score")
+                    .in("id", values: candidates)
+                    .execute()
+                    .value
+                // Return in mutual-count order
+                let profileMap = Dictionary(uniqueKeysWithValues: (profiles ?? []).map { ($0.id, $0) })
+                return candidates.compactMap { profileMap[$0] }
+            }
+        }
+
+        // Fallback: user follows nobody yet (or no mutual results) — return top-rated players
         let results: [UserSearchResult]? = try? await client
             .from("profiles")
             .select("id, username, full_name, avatar_url, netr_score")
-            .neq("id", value: currentUserId ?? "")
+            .neq("id", value: currentUserId)
             .order("netr_score", ascending: false, nullsFirst: false)
             .order("created_at", ascending: false)
             .limit(30)

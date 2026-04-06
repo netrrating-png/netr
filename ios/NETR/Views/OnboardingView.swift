@@ -16,6 +16,7 @@ struct OnboardingView: View {
     @State private var selfAssessmentScore: Double? = nil
     @State private var selfAssessmentCategoryScores: [String: Double] = [:]
     @State private var selfAssessmentIsProClaim: Bool = false
+    @State private var selfAssessmentPosition: String = ""
     @State private var isProspect: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var selectedPhotoItem: PhotosPickerItem?
@@ -24,8 +25,10 @@ struct OnboardingView: View {
     @State private var showRatingReveal: Bool = false
     @State private var signUpError: String?
     @State private var isSigningUp: Bool = false
+    @State private var isGoogleUser: Bool = false
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
-    private let totalSteps = 7
+    private let totalSteps = 8
 
     var body: some View {
         ZStack {
@@ -134,6 +137,10 @@ struct OnboardingView: View {
                 VStack(spacing: 16) {
                     NETRTextField(placeholder: "Full Name", text: $fullName, icon: "person.fill")
                     NETRTextField(placeholder: "@username", text: $username, icon: "at")
+                        .onChange(of: username) { _, newValue in
+                            let sanitized = newValue.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
+                            if sanitized != newValue { username = sanitized }
+                        }
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("DATE OF BIRTH")
@@ -186,7 +193,7 @@ struct OnboardingView: View {
                 Spacer(minLength: 40)
 
                 Button {
-                    withAnimation { currentStep = 3 }
+                    withAnimation { currentStep = 3 }  // → photo prompt
                 } label: {
                     Text("CONTINUE")
                         .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -342,7 +349,7 @@ struct OnboardingView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    withAnimation { currentStep = 4 }
+                    withAnimation { currentStep = 5 }
                 } label: {
                     Text("START SELF ASSESSMENT")
                         .font(.system(.headline, design: .default, weight: .black).width(.compressed))
@@ -377,10 +384,10 @@ struct OnboardingView: View {
     private var disclaimerStep: some View {
         SelfAssessmentDisclaimerView(
             onContinue: {
-                withAnimation { currentStep = 5 }
+                withAnimation { currentStep = 6 }
             },
             onBack: {
-                withAnimation { currentStep = 3 }
+                withAnimation { currentStep = 4 }
             }
         )
     }
@@ -394,12 +401,20 @@ struct OnboardingView: View {
             selfAssessmentScore = score
             selfAssessmentCategoryScores = catScores
             selfAssessmentIsProClaim = (profile.highestLevel == .nba)
-            SelfAssessmentStore.save(score: score, categoryScores: catScores)
-            withAnimation { currentStep = 6 }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                withAnimation(.spring(duration: 0.8, bounce: 0.3)) {
-                    showRatingReveal = true
+            // Build position string: "PG", "SG", "PG/SG", etc.
+            if let p1 = profile.position {
+                if let p2 = profile.position2 {
+                    selfAssessmentPosition = "\(p1.short)/\(p2.short)"
+                } else if p1 != .notSure {
+                    selfAssessmentPosition = p1.short
                 }
+            }
+            SelfAssessmentStore.save(score: score, categoryScores: catScores)
+            // Save profile + score and go straight into the app
+            if isGoogleUser {
+                performGoogleProfileSave()
+            } else {
+                performSignUp()
             }
         }
     }
@@ -501,7 +516,11 @@ struct OnboardingView: View {
                 Spacer()
 
                 Button {
-                    performSignUp()
+                    if isGoogleUser {
+                        performGoogleProfileSave()
+                    } else {
+                        performSignUp()
+                    }
                 } label: {
                     HStack(spacing: 8) {
                         if isSigningUp {
@@ -526,22 +545,41 @@ struct OnboardingView: View {
                 .padding(.bottom, 32)
             }
         }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation { showRatingReveal = true }
+            }
+        }
     }
 
     @ViewBuilder
     private func onboardingStep(for step: Int) -> some View {
         switch step {
         case 0:
-            WelcomeView { withAnimation { currentStep = 1 } }
+            WelcomeView(
+                onContinue: { withAnimation { currentStep = 1 } },
+                onGoogleSignedInAsNewUser: {
+                    isGoogleUser = true
+                    withAnimation { currentStep = 2 } // skip location, go to name/username
+                },
+                onGoogleSignedInAsExistingUser: {
+                    hasCompletedOnboarding = true
+                }
+            )
         case 1:
             locationStep
         case 2:
             accountStep
         case 3:
-            ratingExplainedStep
+            // Photo prompt — right after username/profile setup
+            ProfilePhotoPromptView {
+                withAnimation { currentStep = 4 }
+            }
         case 4:
-            disclaimerStep
+            ratingExplainedStep
         case 5:
+            disclaimerStep
+        case 6:
             selfAssessmentStep
         default:
             ratingRevealStep
@@ -549,67 +587,78 @@ struct OnboardingView: View {
     }
 
     private func performSignUp() {
-        let email = supabase.pendingEmail
-        let password = supabase.pendingPassword
-
-        guard !email.isEmpty, !password.isEmpty else {
-            signUpError = "Missing email or password. Please go back and enter your credentials."
-            return
-        }
-
         isSigningUp = true
         signUpError = nil
 
         let name = fullName
         let handle = username
         let dob = dateOfBirth
-        let pos = "?"
+        let pos = selfAssessmentPosition
         let score = selfAssessmentScore
 
         Task {
             do {
-                do {
-                    try await supabase.signUpWithEmail(
-                        email: email,
-                        password: password,
+                // If user already has a session (e.g. Google sign-in), just save
+                // their profile — no email sign-up needed.
+                if let existingSession = supabase.session {
+                    let userId = existingSession.user.id.uuidString.lowercased()
+                    try await supabase.saveProfile(
+                        userId: userId,
                         fullName: name,
                         username: handle,
                         dateOfBirth: dob,
                         position: pos
                     )
-                } catch {
-                    let msg = error.localizedDescription.lowercased()
-                    if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
-                        try await supabase.signInWithEmail(email: email, password: password)
-                        guard let userId = supabase.session?.user.id.uuidString, !userId.isEmpty else {
-                            throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
-                        }
-                        try await supabase.saveProfile(
-                            userId: userId,
+                } else {
+                    let email = supabase.pendingEmail
+                    let password = supabase.pendingPassword
+
+                    guard !email.isEmpty, !password.isEmpty else {
+                        signUpError = "Missing email or password. Please go back and enter your credentials."
+                        isSigningUp = false
+                        return
+                    }
+
+                    do {
+                        try await supabase.signUpWithEmail(
+                            email: email,
+                            password: password,
                             fullName: name,
                             username: handle,
                             dateOfBirth: dob,
                             position: pos
                         )
-                    } else {
-                        throw error
-                    }
-                }
-
-                // Sign-up may succeed without returning a session (e.g. email
-                // confirmation enabled). Try signing in to establish one, but
-                // don't fail the whole flow — the auth listener may still
-                // deliver the session asynchronously.
-                if supabase.session == nil {
-                    do {
-                        try await supabase.signInWithEmail(email: email, password: password)
                     } catch {
-                        // Explicit sign-in failed — wait for the auth state
-                        // listener to deliver the session (e.g. autoconfirm).
-                        // Poll up to 3 seconds instead of a single fixed sleep.
-                        for _ in 0..<6 {
-                            try? await Task.sleep(for: .milliseconds(500))
-                            if supabase.session != nil { break }
+                        let msg = error.localizedDescription.lowercased()
+                        if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
+                            try await supabase.signInWithEmail(email: email, password: password)
+                            guard let userId = supabase.session?.user.id.uuidString.lowercased(), !userId.isEmpty else {
+                                throw NSError(domain: "NETR", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get user session after sign in."])
+                            }
+                            try await supabase.saveProfile(
+                                userId: userId,
+                                fullName: name,
+                                username: handle,
+                                dateOfBirth: dob,
+                                position: pos
+                            )
+                        } else {
+                            throw error
+                        }
+                    }
+
+                    // Sign-up may succeed without returning a session (e.g. email
+                    // confirmation enabled). Try signing in to establish one, but
+                    // don't fail the whole flow — the auth listener may still
+                    // deliver the session asynchronously.
+                    if supabase.session == nil {
+                        do {
+                            try await supabase.signInWithEmail(email: email, password: password)
+                        } catch {
+                            for _ in 0..<6 {
+                                try? await Task.sleep(for: .milliseconds(500))
+                                if supabase.session != nil { break }
+                            }
                         }
                     }
                 }
@@ -625,6 +674,41 @@ struct OnboardingView: View {
                 }
 
                 biometrics.isUnlocked = true
+                hasCompletedOnboarding = true
+            } catch {
+                signUpError = error.localizedDescription
+            }
+            isSigningUp = false
+        }
+    }
+
+    private func performGoogleProfileSave() {
+        guard let userId = supabase.session?.user.id.uuidString.lowercased() else {
+            signUpError = "Session not found. Please try signing in again."
+            return
+        }
+        isSigningUp = true
+        signUpError = nil
+        Task {
+            do {
+                try await supabase.saveProfile(
+                    userId: userId,
+                    fullName: fullName,
+                    username: username,
+                    dateOfBirth: dateOfBirth,
+                    position: selfAssessmentPosition
+                )
+                if let score = selfAssessmentScore {
+                    try await supabase.saveSelfAssessmentScore(
+                        score: score,
+                        categoryScores: selfAssessmentCategoryScores.isEmpty ? nil : selfAssessmentCategoryScores
+                    )
+                    if selfAssessmentIsProClaim {
+                        try? await supabase.flagProVerificationPending()
+                    }
+                }
+                biometrics.isUnlocked = true
+                hasCompletedOnboarding = true
             } catch {
                 signUpError = error.localizedDescription
             }

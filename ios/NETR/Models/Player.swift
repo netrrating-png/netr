@@ -81,6 +81,8 @@ struct Player: Identifiable, Equatable {
     var tier: PlayerTier
     var city: String
     var position: Position
+    /// Raw position string that supports combos like "PG/SG". Use this for display.
+    var positionLabel: String = "?"
     var trend: TrendDirection
     var games: Int
     var isProspect: Bool

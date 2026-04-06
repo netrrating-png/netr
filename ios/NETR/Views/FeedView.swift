@@ -247,11 +247,11 @@ struct FeedView: View {
             }
 
             // Follow button (only for non-self users)
-            if user.id != SupabaseManager.shared.session?.user.id.uuidString {
+            if user.id != SupabaseManager.shared.currentProfile?.id {
                 let isFollowing = viewModel.followingIds.contains(user.id)
                 Button {
                     Task {
-                        guard let currentId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+                        guard let currentId = SupabaseManager.shared.currentProfile?.id else { return }
                         do {
                             if isFollowing {
                                 try await SupabaseManager.shared.client
@@ -536,8 +536,8 @@ struct FeedView: View {
     private var forYouEmptyState: some View {
         VStack(spacing: 24) {
             VStack(spacing: 12) {
-                Text("🏀")
-                    .font(.system(size: 48))
+                LucideIcon("users", size: 48)
+                    .foregroundStyle(NETRTheme.neonGreen)
 
                 Text("Your feed is empty.\nLet's fix that.")
                     .font(.system(size: 22, weight: .bold))
@@ -628,7 +628,13 @@ struct FeedView: View {
 
             Button {
                 Task {
-                    guard let currentId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+                    let sessionId = SupabaseManager.shared.session?.user.id.uuidString
+                    let profileId = SupabaseManager.shared.currentProfile?.id
+                    print("[NETR] Follow debug — session.user.id: \(sessionId ?? "nil"), currentProfile.id: \(profileId ?? "nil"), target: \(player.id)")
+                    guard let currentId = profileId else {
+                        print("[NETR] Follow blocked — currentProfile is nil")
+                        return
+                    }
                     do {
                         if isFollowing {
                             try await SupabaseManager.shared.client

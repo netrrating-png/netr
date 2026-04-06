@@ -255,7 +255,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showRatingScale) { NETRRatingScaleView() }
         .sheet(isPresented: $showInvite) { InviteView() }
-        .sheet(isPresented: $showEditProfile) {
+        .sheet(isPresented: $showEditProfile, onDismiss: {
+            Task { await viewModel.loadProfile(userId: profileUserId) }
+        }) {
             if let user = viewModel.player {
                 EditProfileView(viewModel: viewModel, player: user)
                     .presentationDetents([.large])
@@ -486,7 +488,7 @@ struct ProfileView: View {
                     .foregroundStyle(NETRTheme.subtext)
                 Text("·")
                     .foregroundStyle(NETRTheme.muted)
-                Text(user.position.rawValue)
+                Text(user.positionLabel)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(ratingColor(for: user))
                 let showAge = SupabaseManager.shared.currentProfile?.showAge ?? false

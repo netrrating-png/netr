@@ -210,7 +210,7 @@ struct SettingsView: View {
                         .font(.subheadline)
                         .foregroundStyle(NETRTheme.subtext)
                     HStack(spacing: 6) {
-                        Text(user.position.rawValue)
+                        Text(user.positionLabel)
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(NETRTheme.neonGreen)
                             .padding(.horizontal, 6)

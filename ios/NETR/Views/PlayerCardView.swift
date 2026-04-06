@@ -130,7 +130,7 @@ struct PlayerCardView: View {
 
             Spacer()
 
-            Text(player.position.rawValue)
+            Text(player.positionLabel)
                 .font(.system(size: 11, weight: .bold))
                 .foregroundStyle(player.isVerified ? NETRTheme.gold : NETRTheme.neonGreen)
                 .padding(.horizontal, 10)

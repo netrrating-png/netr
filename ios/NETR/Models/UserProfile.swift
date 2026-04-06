@@ -88,10 +88,12 @@ extension UserProfile {
             ? nil
             : skills.reduce(0, +) / Double(skills.count))
 
+        let posRaw = position?.uppercased() ?? "?"
         let posEnum: Position = {
-            guard let p = position?.uppercased() else { return .unknown }
-            return Position(rawValue: p) ?? .unknown
+            // Try exact match first (PG, SG, etc.) — combos like PG/SG won't match, that's fine
+            return Position(rawValue: posRaw) ?? .unknown
         }()
+        let posLabel = posRaw == "?" ? "?" : posRaw
 
         let tier: PlayerTier = {
             if isProspect == true { return .prospect }
@@ -121,6 +123,7 @@ extension UserProfile {
             tier: tier,
             city: city ?? "New York, NY",
             position: posEnum,
+            positionLabel: posLabel,
             trend: trend,
             games: totalGames ?? 0,
             isProspect: isProspect ?? false,
