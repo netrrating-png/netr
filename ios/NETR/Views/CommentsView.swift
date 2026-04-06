@@ -25,6 +25,11 @@ struct CommentsView: View {
     @State private var selectedProfileUserId: String?
     @State private var mentionLookupTask: Task<Void, Never>?
 
+    // Delete + error
+    @State private var commentToDelete: PostComment?
+    @State private var showDeleteConfirm: Bool = false
+    @State private var commentError: String?
+
     @Environment(\.dismiss) private var dismiss
 
     private let client = SupabaseManager.shared.client
@@ -93,6 +98,34 @@ struct CommentsView: View {
             .fullScreenCover(item: $selectedProfileUserId) { userId in
                 PublicPlayerProfileView(userId: userId)
             }
+            .alert("Delete comment?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    if let comment = commentToDelete {
+                        Task { await deleteComment(comment) }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This can't be undone.")
+            }
+            .overlay(alignment: .top) {
+                if let error = commentError {
+                    Text(error)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(NETRTheme.red.opacity(0.9), in: .capsule)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .onAppear {
+                            Task {
+                                try? await Task.sleep(for: .seconds(3))
+                                withAnimation { commentError = nil }
+                            }
+                        }
+                }
+            }
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: commentError)
         }
     }
 
@@ -186,8 +219,13 @@ struct CommentsView: View {
                     isLiked: likedCommentIds.contains(comment.id),
                     onLike: { Task { await toggleCommentLike(comment) } },
                     onReply: { startReply(to: comment) },
+                    isOwnComment: comment.authorId == SupabaseManager.shared.session?.user.id.uuidString,
                     onProfileTap: { userId in selectedProfileUserId = userId },
-                    onMentionTap: { username in lookupAndNavigate(username: username) }
+                    onMentionTap: { username in lookupAndNavigate(username: username) },
+                    onDelete: {
+                        commentToDelete = comment
+                        showDeleteConfirm = true
+                    }
                 )
                 Divider().background(NETRTheme.border)
 
@@ -204,8 +242,13 @@ struct CommentsView: View {
                             onLike: { Task { await toggleCommentLike(reply) } },
                             onReply: { startReply(to: reply) },
                             isReply: true,
+                            isOwnComment: reply.authorId == SupabaseManager.shared.session?.user.id.uuidString,
                             onProfileTap: { userId in selectedProfileUserId = userId },
-                            onMentionTap: { username in lookupAndNavigate(username: username) }
+                            onMentionTap: { username in lookupAndNavigate(username: username) },
+                            onDelete: {
+                                commentToDelete = reply
+                                showDeleteConfirm = true
+                            }
                         )
                     }
                     Divider().background(NETRTheme.border)
@@ -399,7 +442,7 @@ struct CommentsView: View {
                 .from("comments")
                 .select(commentSelectQuery)
                 .eq("post_id", value: post.id)
-                .order("created_at", ascending: true)
+                .order("created_at", ascending: false)
                 .execute()
                 .value
 
@@ -453,9 +496,36 @@ struct CommentsView: View {
             replyingTo = nil
             isSubmitting = false
             onCommentAdded?()
+            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         } catch {
             isSubmitting = false
+            commentError = "Failed to post comment"
             print("[NETR] Submit comment error: \(error)")
+        }
+    }
+
+    private func deleteComment(_ comment: PostComment) async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+              comment.authorId == userId else { return }
+
+        guard let idx = comments.firstIndex(where: { $0.id == comment.id }) else { return }
+        let removed = comments.remove(at: idx)
+        // Also remove any replies to this comment
+        let removedReplies = comments.filter { $0.parentCommentId == comment.id }
+        comments.removeAll { $0.parentCommentId == comment.id }
+
+        do {
+            try await client
+                .from("comments")
+                .delete()
+                .eq("id", value: comment.id)
+                .execute()
+        } catch {
+            // Revert on failure
+            comments.insert(removed, at: min(idx, comments.count))
+            comments.append(contentsOf: removedReplies)
+            commentError = "Failed to delete comment"
+            print("[NETR] Delete comment error: \(error)")
         }
     }
 
@@ -571,8 +641,10 @@ struct CommentRow: View {
     let onLike: () -> Void
     let onReply: () -> Void
     var isReply: Bool = false
+    var isOwnComment: Bool = false
     var onProfileTap: ((String) -> Void)? = nil
     var onMentionTap: ((String) -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     @State private var likeScale: CGFloat = 1.0
 
@@ -658,6 +730,15 @@ struct CommentRow: View {
                         .foregroundStyle(NETRTheme.subtext)
                     }
                     .buttonStyle(.plain)
+
+                    if isOwnComment, let onDelete {
+                        Spacer()
+                        Button(action: onDelete) {
+                            LucideIcon("trash-2", size: 11)
+                                .foregroundStyle(NETRTheme.red.opacity(0.7))
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.top, 2)
             }

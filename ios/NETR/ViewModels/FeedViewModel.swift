@@ -58,6 +58,8 @@ class FeedViewModel {
     private var mentionSearchTask: Task<Void, Never>?
     private let pageSize = 20
     private var discoverLocationHelper: DiscoverLocationHelper?
+    private var likeInFlight: Set<String> = []
+    private var blockedUserIds: Set<String> = []
 
     private let selectQuery = """
         id, author_id, content, like_count, comment_count, repost_count,
@@ -68,6 +70,7 @@ class FeedViewModel {
     // MARK: - Follow IDs
 
     func loadFollowingIds() async {
+        defer { followingLoaded = true }
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         let rows: [FollowingIdRow]? = try? await client
             .from("follows")
@@ -78,7 +81,9 @@ class FeedViewModel {
         followingIds = Set(rows?.map { $0.followingId } ?? [])
         // Always include self so own posts appear in For You
         followingIds.insert(userId)
-        followingLoaded = true
+
+        // Load blocked users so we can filter them from feed
+        await loadBlockedUsers()
     }
 
     // MARK: - Load User Interaction State
@@ -178,6 +183,11 @@ class FeedViewModel {
             }
 
             applyInteractionState(&fetched)
+
+            // Filter out posts from blocked users
+            if !blockedUserIds.isEmpty {
+                fetched.removeAll { blockedUserIds.contains($0.authorId) }
+            }
 
             if loadMore {
                 posts.append(contentsOf: fetched)
@@ -361,9 +371,15 @@ class FeedViewModel {
 
     func toggleLike(post: SupabaseFeedPost) async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
+        // Prevent concurrent like requests on the same post
+        guard !likeInFlight.contains(post.id) else { return }
+        likeInFlight.insert(post.id)
+        defer { likeInFlight.remove(post.id) }
+
         guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
 
         let wasLiked = posts[i].isLiked
+        let originalLikeCount = posts[i].likeCount
         posts[i].isLiked = !wasLiked
         posts[i].likeCount += wasLiked ? -1 : 1
 
@@ -388,10 +404,10 @@ class FeedViewModel {
                     .execute()
             }
         } catch {
-            // Revert
+            // Revert using saved original values (not stale parameter)
             if let j = posts.firstIndex(where: { $0.id == post.id }) {
                 posts[j].isLiked = wasLiked
-                posts[j].likeCount = post.likeCount
+                posts[j].likeCount = originalLikeCount
             }
             if wasLiked { likedPostIds.insert(post.id) } else { likedPostIds.remove(post.id) }
             showToast("Failed to update like")
@@ -518,13 +534,55 @@ class FeedViewModel {
         }
     }
 
-    func blockUser(userId: String) async {
-        posts.removeAll { $0.authorId == userId }
+    func blockUser(userId targetUserId: String) async {
+        posts.removeAll { $0.authorId == targetUserId }
+        blockedUserIds.insert(targetUserId)
+
+        guard let currentId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
+
+        nonisolated struct BlockPayload: Encodable, Sendable {
+            let blockerId: String
+            let blockedId: String
+            nonisolated enum CodingKeys: String, CodingKey {
+                case blockerId = "blocker_id"
+                case blockedId = "blocked_id"
+            }
+        }
+
+        do {
+            try await client
+                .from("blocks")
+                .upsert(BlockPayload(blockerId: currentId, blockedId: targetUserId))
+                .execute()
+        } catch {
+            print("[NETR] Block user error: \(error)")
+        }
+    }
+
+    private func loadBlockedUsers() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
+
+        nonisolated struct BlockRow: Decodable, Sendable {
+            let blockedId: String
+            nonisolated enum CodingKeys: String, CodingKey { case blockedId = "blocked_id" }
+        }
+
+        if let rows: [BlockRow] = try? await client
+            .from("blocks")
+            .select("blocked_id")
+            .eq("blocker_id", value: userId)
+            .execute()
+            .value {
+            blockedUserIds = Set(rows.map { $0.blockedId })
+        }
     }
 
     // MARK: - Realtime
 
     func subscribeToFeed() async {
+        // Clean up any existing subscription first
+        await unsubscribe()
+
         realtimeChannel = client.realtimeV2.channel("feed-live")
         guard let channel = realtimeChannel else { return }
 
