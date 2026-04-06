@@ -95,9 +95,9 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         }
 
         switch selectedFilter {
-        case "Live Now":   results = results.filter { liveCourtIds.contains($0.id) }
+        case "Live Now":   results = results.filter { liveCourtIds.contains($0.id.lowercased()) }
         case "Favorites":  results = results.filter { favoriteCourtIds.contains($0.id) }
-        case "Scheduled":  results = results.filter { scheduledCourtIds.contains($0.id) }
+        case "Scheduled":  results = results.filter { scheduledCourtIds.contains($0.id.lowercased()) }
         case "Verified":   results = results.filter { $0.verified }
         default: break
         }
@@ -306,8 +306,8 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                 .execute()
             struct GameCourtId: Decodable { let courtId: String?; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
             let games = try JSONDecoder().decode([GameCourtId].self, from: response.data)
-            liveCourtIds = Set(games.compactMap { $0.courtId })
-            print("[NETR Games] Live filter returned \(games.count) games, cutoff: \(cutoff)")
+            liveCourtIds = Set(games.compactMap { $0.courtId?.lowercased() })
+            print("[NETR Games] Live filter returned \(games.count) games, court IDs: \(liveCourtIds), cutoff: \(cutoff)")
         } catch {
             print("[NETR Games] Live courts load error: \(error)")
         }
@@ -328,8 +328,8 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
                 .execute()
             struct GameCourtId: Decodable { let courtId: String?; enum CodingKeys: String, CodingKey { case courtId = "court_id" } }
             let games = try JSONDecoder().decode([GameCourtId].self, from: response.data)
-            scheduledCourtIds = Set(games.compactMap { $0.courtId })
-            print("[NETR Games] Scheduled filter returned \(games.count) games")
+            scheduledCourtIds = Set(games.compactMap { $0.courtId?.lowercased() })
+            print("[NETR Games] Scheduled filter returned \(games.count) games, court IDs: \(scheduledCourtIds)")
         } catch {
             print("[NETR Games] Scheduled courts load error: \(error)")
         }

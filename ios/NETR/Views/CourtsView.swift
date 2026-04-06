@@ -295,6 +295,12 @@ struct CourtsView: View {
                             } else {
                                 viewModel.isExploring = true
                                 viewModel.selectedFilter = filter.label
+                                // Refresh live/scheduled data when selecting those filters
+                                if filter.label == "Live Now" {
+                                    Task { await viewModel.loadLiveCourts() }
+                                } else if filter.label == "Scheduled" {
+                                    Task { await viewModel.loadScheduledCourts() }
+                                }
                             }
                         }
                     } label: {
