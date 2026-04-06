@@ -47,6 +47,7 @@ struct SettingsView: View {
                     )
                     myGamesButton
                     ratingInsightsButton
+                    playerStatsSection
                     securitySection
                     accountSection
                     notificationsSection
@@ -196,27 +197,30 @@ struct SettingsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
+                    let player = profileViewModel.player ?? user
                     HStack(spacing: 5) {
-                        Text(user.name)
+                        Text(player.name)
                             .font(.headline.weight(.bold))
                             .foregroundStyle(NETRTheme.text)
-                        if user.isVerified {
+                        if player.isVerified {
                             LucideIcon("badge-check", size: 12)
                                 .foregroundStyle(NETRTheme.neonGreen)
                         }
                         ratingInlineBadge
                     }
-                    Text(user.username)
+                    Text(player.username)
                         .font(.subheadline)
                         .foregroundStyle(NETRTheme.subtext)
                     HStack(spacing: 6) {
-                        Text(user.positionLabel)
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(NETRTheme.neonGreen)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
-                        Text(user.city)
+                        if player.positionLabel != "?" {
+                            Text(player.positionLabel)
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(NETRTheme.neonGreen)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+                        }
+                        Text(player.city)
                             .font(.caption)
                             .foregroundStyle(NETRTheme.subtext)
                     }
@@ -307,6 +311,46 @@ struct SettingsView: View {
         }
         .buttonStyle(PressButtonStyle())
         .padding(.horizontal, 16)
+    }
+
+    private var playerStatsSection: some View {
+        let player = profileViewModel.player ?? user
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("STATS")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.5)
+                .padding(.horizontal, 16)
+
+            HStack(spacing: 0) {
+                statItem(value: "\(player.games)", label: "GAMES")
+                Divider().frame(height: 36).background(NETRTheme.muted)
+                statItem(value: "\(player.reviews)", label: "REVIEWS")
+                Divider().frame(height: 36).background(NETRTheme.muted)
+                statItem(
+                    value: player.isVerified ? "✓" : "—",
+                    label: "VERIFIED",
+                    valueColor: player.isVerified ? NETRTheme.neonGreen : NETRTheme.muted
+                )
+            }
+            .padding(.vertical, 14)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
+    private func statItem(value: String, label: String, valueColor: Color = NETRTheme.text) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(.title3, design: .default, weight: .black).width(.compressed))
+                .foregroundStyle(valueColor)
+            Text(label)
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.3)
+        }
+        .frame(maxWidth: .infinity)
     }
 
     private var securitySection: some View {

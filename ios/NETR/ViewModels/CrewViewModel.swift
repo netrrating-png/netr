@@ -42,11 +42,15 @@ class CrewViewModel {
         isLoading = true
         errorMessage = nil
 
+        // Query both lowercase and original-case UUID to handle legacy rows
+        let originalId = SupabaseManager.shared.session?.user.id.uuidString ?? userId
+        let possibleIds = Array(Set([userId, originalId, originalId.uppercased()]))
+
         do {
             let memberRows: [CrewMember] = try await client
                 .from("crew_members")
                 .select("id, crew_id, user_id, joined_at, is_primary, last_read_at")
-                .eq("user_id", value: userId)
+                .in("user_id", values: possibleIds)
                 .execute()
                 .value
 

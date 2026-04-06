@@ -71,23 +71,25 @@ struct ProfileView: View {
 
                             socialCountsRow(user: user)
                                 .padding(.horizontal, 20)
-                                .padding(.bottom, 24)
+                                .padding(.bottom, 8)
 
-                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
-
-                            ratingHeroSection(user: user)
+                            ratingProgressBar(user: user)
                                 .padding(.horizontal, 20)
-                                .padding(.bottom, 28)
+                                .padding(.bottom, 8)
+
+                            selfAssessmentButton(user: user)
+
+                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 16)
+
+                            if !viewModel.userPosts.isEmpty {
+                                recentPostsSection
+                                    .padding(.bottom, 16)
+                                Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 16)
+                            }
 
                             radarSection(user: user)
                                 .padding(.horizontal, 20)
                                 .padding(.bottom, 28)
-
-                            Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
-
-                            statsStrip(user: user)
-                                .padding(.horizontal, 20)
-                                .padding(.bottom, 24)
 
                             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
 
@@ -201,6 +203,7 @@ struct ProfileView: View {
         }
         .task(id: "profile") {
             await viewModel.loadProfile(userId: profileUserId)
+            await viewModel.loadUserPosts()
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -598,12 +601,9 @@ struct ProfileView: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(user.games)")
-                    .font(.system(.title3, design: .default, weight: .black).width(.compressed))
-                    .foregroundStyle(NETRTheme.text)
-                Text("Games")
-                    .font(.system(size: 11))
-                    .foregroundStyle(NETRTheme.subtext)
+                NETRBadge(score: user.rating, size: .medium)
+                    .onTapGesture { showRatingScale = true }
+                NETRTierPill(score: user.rating)
             }
         }
         .padding(.top, 14)
@@ -617,16 +617,99 @@ struct ProfileView: View {
                     .foregroundStyle(NETRTheme.text)
                 Text(label)
                     .font(.system(size: 12))
-                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
-                    .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(NETRTheme.neonGreen.opacity(0.3))
-                            .frame(height: 1)
-                            .offset(y: 2)
-                    }
+                    .foregroundStyle(NETRTheme.subtext)
             }
         }
-        .buttonStyle(ScalePressStyle())
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Self Assessment Button
+
+    @ViewBuilder
+    private func selfAssessmentButton(user: Player) -> some View {
+        if viewModel.isCurrentUser && user.rating == nil {
+            Button {
+                showSelfAssessment = true
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "star.circle.fill")
+                        .font(.system(size: 16))
+                    Text("TAKE SELF ASSESSMENT")
+                        .font(.system(.subheadline, design: .default, weight: .bold).width(.compressed))
+                        .tracking(1)
+                }
+                .foregroundStyle(NETRTheme.background)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
+            }
+            .buttonStyle(PressButtonStyle())
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+        }
+    }
+
+    // MARK: - Rating Progress Bar
+
+    @ViewBuilder
+    private func ratingProgressBar(user: Player) -> some View {
+        let isPeerRated = user.isVerified
+        if !isPeerRated {
+            let color = ratingColor(for: user)
+            let peerProgress = min(1.0, Double(user.reviews) / 5.0)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("\(user.reviews) of 5 ratings needed to unlock peer score")
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                    Spacer()
+                }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(NETRTheme.muted).frame(height: 4)
+                        Capsule()
+                            .fill(LinearGradient(
+                                gradient: Gradient(colors: [color.opacity(0.6), color]),
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                            .frame(width: ratingAnimated ? geo.size.width * peerProgress : 0, height: 4)
+                            .animation(.easeOut(duration: 0.8).delay(0.2), value: ratingAnimated)
+                    }
+                }
+                .frame(height: 4)
+            }
+            .padding(14)
+            .background(NETRTheme.surface)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+            .clipShape(.rect(cornerRadius: 12))
+        }
+    }
+
+    // MARK: - Recent Posts
+
+    private var recentPostsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("RECENT POSTS")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.5)
+                .padding(.horizontal, 20)
+
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.userPosts.prefix(5)) { post in
+                    PostCardView(
+                        post: post,
+                        isOwnPost: viewModel.isCurrentUser,
+                        onLike: {},
+                        onComment: {},
+                        onDelete: {},
+                        onBlock: {},
+                        onMentionTap: { _ in }
+                    )
+                    Divider().background(NETRTheme.border)
+                }
+            }
+        }
     }
 
     // MARK: - Rating Hero
@@ -969,30 +1052,29 @@ struct ProfileView: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(top.milestoneType.badgeColor.opacity(0.2), lineWidth: 1))
                 .clipShape(.rect(cornerRadius: 12))
 
-                // Remaining milestones as compact chips
+                // Remaining milestones as vertical list
                 if sorted.count > 1 {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(sorted.dropFirst()) { milestone in
-                                HStack(spacing: 6) {
-                                    Image(systemName: milestone.milestoneType.sfSymbol)
-                                        .font(.system(size: 11, weight: .medium))
-                                        .foregroundStyle(milestone.milestoneType.badgeColor)
-                                    Text(milestone.milestoneType.displayName)
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(NETRTheme.text)
-                                    if let sub = milestone.subtitle {
-                                        Text("· \(sub)")
-                                            .font(.system(size: 11))
-                                            .foregroundStyle(NETRTheme.subtext)
-                                    }
+                    VStack(spacing: 8) {
+                        ForEach(sorted.dropFirst()) { milestone in
+                            HStack(spacing: 6) {
+                                Image(systemName: milestone.milestoneType.sfSymbol)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(milestone.milestoneType.badgeColor)
+                                Text(milestone.milestoneType.displayName)
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(NETRTheme.text)
+                                if let sub = milestone.subtitle {
+                                    Text("· \(sub)")
+                                        .font(.system(size: 11))
+                                        .foregroundStyle(NETRTheme.subtext)
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 7)
-                                .background(NETRTheme.card)
-                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
-                                .clipShape(.rect(cornerRadius: 8))
+                                Spacer()
                             }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(NETRTheme.card)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
+                            .clipShape(.rect(cornerRadius: 8))
                         }
                     }
                 }
@@ -1138,7 +1220,6 @@ struct ProfileView: View {
     }
 }
 
-// MARK: - Follow List (moved to FollowListView.swift + FollowPlayerRowView.swift)
 
 // MARK: - Bio Edit Sheet
 
