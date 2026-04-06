@@ -729,8 +729,3 @@ struct FeedView: View {
     }
 }
 
-// MARK: - Make String Identifiable for fullScreenCover
-
-extension String: @retroactive Identifiable {
-    public var id: String { self }
-}

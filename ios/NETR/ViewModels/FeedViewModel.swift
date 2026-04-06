@@ -68,7 +68,7 @@ class FeedViewModel {
     // MARK: - Follow IDs
 
     func loadFollowingIds() async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         let rows: [FollowingIdRow]? = try? await client
             .from("follows")
             .select("following_id")
@@ -84,7 +84,7 @@ class FeedViewModel {
     // MARK: - Load User Interaction State
 
     private func loadInteractionState() async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
 
         let likedRows: [FeedLikeRow]? = try? await client
             .from("likes")
@@ -325,7 +325,7 @@ class FeedViewModel {
     // MARK: - Create Post
 
     func createPost(content: String, courtId: String? = nil, courtName: String? = nil) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         isPosting = true
 
         let payload = CreateFeedPostPayload(
@@ -360,7 +360,7 @@ class FeedViewModel {
     // MARK: - Like
 
     func toggleLike(post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
 
         let wasLiked = posts[i].isLiked
@@ -402,7 +402,7 @@ class FeedViewModel {
     // MARK: - Bookmark
 
     func toggleBookmark(post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
 
         let wasBookmarked = posts[i].isBookmarked
@@ -441,7 +441,7 @@ class FeedViewModel {
     // MARK: - Repost
 
     func repost(post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
 
         posts[i].isReposted = true
@@ -471,7 +471,7 @@ class FeedViewModel {
     }
 
     func undoRepost(post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         guard let i = posts.firstIndex(where: { $0.id == post.id }) else { return }
 
         posts[i].isReposted = false
@@ -501,7 +501,7 @@ class FeedViewModel {
     // MARK: - Delete
 
     func deletePost(_ post: SupabaseFeedPost) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString,
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased(),
               userId == post.authorId else { return }
 
         do {
@@ -575,7 +575,7 @@ class FeedViewModel {
     }
 
     func isOwnPost(_ post: SupabaseFeedPost) -> Bool {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return false }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return false }
         return post.authorId == userId
     }
 
@@ -594,7 +594,7 @@ class FeedViewModel {
     // MARK: - Suggested Players
 
     func fetchSuggestedPlayers() async -> [UserSearchResult] {
-        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
 
         // Fetch all users — don't filter by netr_score (most testers won't have one yet)
         // Order: scored users first (by score DESC), then unscored by newest
@@ -647,7 +647,7 @@ class FeedViewModel {
 
     func fetchNearbyUsers(at loc: CLLocationCoordinate2D) async {
         isLoadingNearby = true
-        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString
+        let currentUserId = SupabaseManager.shared.session?.user.id.uuidString.lowercased()
 
         // Update current user's location in profiles so they show up for others
         if let uid = currentUserId {

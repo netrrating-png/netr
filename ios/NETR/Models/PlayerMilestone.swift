@@ -80,7 +80,7 @@ nonisolated struct PlayerMilestone: Identifiable, Codable, Sendable {
     var milestoneType: MilestoneType
     var teamName: String?
     var season: String?
-    let createdAt: Date
+    let createdAt: String
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id

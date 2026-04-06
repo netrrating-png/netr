@@ -59,7 +59,7 @@ struct PublicPlayerProfileView: View {
             .padding(.leading, 16)
             .padding(.top, 8)
         }
-        .task {
+        .task(id: userId) {
             await viewModel.loadProfile(userId: userId)
             await viewModel.loadUserPosts()
         }

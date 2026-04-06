@@ -294,9 +294,6 @@ struct CreateGameView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .highPriorityGesture(TapGesture().onEnded {
-                    Task { await viewModel.toggleFavorite(courtId: court.id) }
-                })
 
                 LucideIcon("chevron-right", size: 12)
                     .foregroundStyle(NETRTheme.muted)

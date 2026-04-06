@@ -14,7 +14,7 @@ class RateTabViewModel {
     private let supabase = SupabaseManager.shared
 
     func load() async {
-        isLoading = false
+        isLoading = true
         errorMessage = nil
 
         guard let userId = supabase.session?.user.id.uuidString else {

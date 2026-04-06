@@ -332,7 +332,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func loadFavorites() async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
         do {
             let favs: [CourtFavorite] = try await client
                 .from("court_favorites")
@@ -348,7 +348,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func toggleFavorite(courtId: String) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
 
         if favoriteCourtIds.contains(courtId) {
             favoriteCourtIds.remove(courtId)
@@ -391,7 +391,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     }
 
     func setHomeCourt(courtId: String) async {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return }
 
         let previousHome = homeCourtId
         let wasAlreadyFavorite = favoriteCourtIds.contains(courtId)
@@ -450,7 +450,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         name: String, address: String, neighborhood: String, city: String,
         surface: SurfaceType, lights: Bool, indoor: Bool, fullCourt: Bool
     ) async -> Bool {
-        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return false }
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else { return false }
 
         var lat = 40.7128
         var lng = -74.0060

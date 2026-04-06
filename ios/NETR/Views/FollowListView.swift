@@ -23,7 +23,7 @@ struct FollowListView: View {
     private let pageSize = 30
     private let client = SupabaseManager.shared.client
     private var currentUserId: String? {
-        SupabaseManager.shared.session?.user.id.uuidString
+        SupabaseManager.shared.session?.user.id.uuidString.lowercased()
     }
 
     var body: some View {

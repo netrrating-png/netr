@@ -151,13 +151,15 @@ class SupabaseManager {
         }
 
         // Exchange the Google ID token for a Supabase session.
-        try await client.auth.signInWithIdToken(
+        let session = try await client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .google,
                 idToken: idToken,
                 accessToken: result.user.accessToken.tokenString
             )
         )
+        self.session = session
+        await loadProfile(userId: session.user.id.uuidString)
     }
 
     func signOut() async throws {
