@@ -33,66 +33,6 @@
 		105FC57A2E9EAD3100EA8BCF /* NETR.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NETR.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		105FC5892E9EAD3200EA8BCF /* NETRTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = NETRTests.xctest; path = NETR.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		105FC5932E9EAD3200EA8BCF /* NETRUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = NETRUITests.xctest; path = NETR.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		ADB4D3932F64A815001D0E5F /* Court.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Court.swift; sourceTree = "<group>"; };
-		ADB4D3942F64A815001D0E5F /* FeedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedModels.swift; sourceTree = "<group>"; };
-		ADB4D3952F64A815001D0E5F /* FeedPost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedPost.swift; sourceTree = "<group>"; };
-		ADB4D3962F64A815001D0E5F /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
-		ADB4D3972F64A815001D0E5F /* GameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSession.swift; sourceTree = "<group>"; };
-		ADB4D3982F64A815001D0E5F /* NETRRatingScale.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRRatingScale.swift; sourceTree = "<group>"; };
-		ADB4D3992F64A815001D0E5F /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
-		ADB4D39A2F64A815001D0E5F /* RateTabModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateTabModels.swift; sourceTree = "<group>"; };
-		ADB4D39B2F64A815001D0E5F /* RatingModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingModels.swift; sourceTree = "<group>"; };
-		ADB4D39C2F64A815001D0E5F /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
-		ADB4D39E2F64A815001D0E5F /* netr_vid.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = netr_vid.mp4; sourceTree = "<group>"; };
-		ADB4D3A02F64A815001D0E5F /* BiometricAuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthManager.swift; sourceTree = "<group>"; };
-		ADB4D3A12F64A815001D0E5F /* MockDataStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockDataStore.swift; sourceTree = "<group>"; };
-		ADB4D3A22F64A815001D0E5F /* SelfAssessmentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentEngine.swift; sourceTree = "<group>"; };
-		ADB4D3A32F64A815001D0E5F /* SelfAssessmentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentStore.swift; sourceTree = "<group>"; };
-		ADB4D3A42F64A815001D0E5F /* SupabaseManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseManager.swift; sourceTree = "<group>"; };
-		ADB4D3A52F64A815001D0E5F /* WeatherService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherService.swift; sourceTree = "<group>"; };
-		ADB4D3A72F64A815001D0E5F /* AppearanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceManager.swift; sourceTree = "<group>"; };
-		ADB4D3A82F64A815001D0E5F /* NETRTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRTheme.swift; sourceTree = "<group>"; };
-		ADB4D3AA2F64A815001D0E5F /* CourtsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtsViewModel.swift; sourceTree = "<group>"; };
-		ADB4D3AB2F64A815001D0E5F /* FeedViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedViewModel.swift; sourceTree = "<group>"; };
-		ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
-		ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
-		ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateTabViewModel.swift; sourceTree = "<group>"; };
-		ADB4D3AF2F64A815001D0E5F /* RateViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateViewModel.swift; sourceTree = "<group>"; };
-		ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddCourtView.swift; sourceTree = "<group>"; };
-		ADB4D3B22F64A815001D0E5F /* CommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommentsView.swift; sourceTree = "<group>"; };
-		ADB4D3B32F64A815001D0E5F /* ComposePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposePostView.swift; sourceTree = "<group>"; };
-		ADB4D3B42F64A815001D0E5F /* CourtCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtCardView.swift; sourceTree = "<group>"; };
-		ADB4D3B52F64A815001D0E5F /* CourtDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtDetailView.swift; sourceTree = "<group>"; };
-		ADB4D3B62F64A815001D0E5F /* CourtsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourtsView.swift; sourceTree = "<group>"; };
-		ADB4D3B72F64A815001D0E5F /* CreateGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreateGameView.swift; sourceTree = "<group>"; };
-		ADB4D3B82F64A815001D0E5F /* EmailSignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmailSignUpView.swift; sourceTree = "<group>"; };
-		ADB4D3B92F64A815001D0E5F /* FeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedView.swift; sourceTree = "<group>"; };
-		ADB4D3BA2F64A815001D0E5F /* JoinGameView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JoinGameView.swift; sourceTree = "<group>"; };
-		ADB4D3BB2F64A815001D0E5F /* LockScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenView.swift; sourceTree = "<group>"; };
-		ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoopingVideoView.swift; sourceTree = "<group>"; };
-		ADB4D3BD2F64A815001D0E5F /* LucideIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LucideIcon.swift; sourceTree = "<group>"; };
-		ADB4D3BE2F64A815001D0E5F /* NETRComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRComponents.swift; sourceTree = "<group>"; };
-		ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
-		ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayerCardView.swift; sourceTree = "<group>"; };
-		ADB4D3C12F64A815001D0E5F /* PostCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCardView.swift; sourceTree = "<group>"; };
-		ADB4D3C22F64A815001D0E5F /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
-		ADB4D3C32F64A815001D0E5F /* RateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RateView.swift; sourceTree = "<group>"; };
-		ADB4D3C42F64A815001D0E5F /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentDisclaimerView.swift; sourceTree = "<group>"; };
-		ADB4D3C62F64A815001D0E5F /* SelfAssessmentSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentSheetView.swift; sourceTree = "<group>"; };
-		ADB4D3C72F64A815001D0E5F /* SelfAssessmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentView.swift; sourceTree = "<group>"; };
-		ADB4D3C82F64A815001D0E5F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		ADB4D3C92F64A815001D0E5F /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
-		ADB4D3CA2F64A815001D0E5F /* SkillRadarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillRadarView.swift; sourceTree = "<group>"; };
-		ADB4D3CB2F64A815001D0E5F /* VibeAndRepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeAndRepView.swift; sourceTree = "<group>"; };
-		ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VibeDecalView.swift; sourceTree = "<group>"; };
-		ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
-		ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		ADB4D3D12F64A815001D0E5F /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		ADB4D3D22F64A815001D0E5F /* NETRApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NETRApp.swift; sourceTree = "<group>"; };
-		ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfAssessmentFlow.swift; sourceTree = "<group>"; };
-		CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublicPlayerProfileView.swift; sourceTree = "<group>"; };
-		CL00D41B2F77B001001FEED1 /* InviteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InviteView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -157,7 +97,6 @@
 		105FC5712E9EAD3100EA8BCF = {
 			isa = PBXGroup;
 			children = (
-				ADB4D3D32F64A815001D0E5F /* NETR */,
 				105FC57C2E9EAD3100EA8BCF /* NETR */,
 				105FC58C2E9EAD3200EA8BCF /* NETRTests */,
 				105FC5962E9EAD3200EA8BCF /* NETRUITests */,
@@ -173,121 +112,6 @@
 				105FC5932E9EAD3200EA8BCF /* NETRUITests.xctest */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		ADB4D39D2F64A815001D0E5F /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D3932F64A815001D0E5F /* Court.swift */,
-				ADB4D3942F64A815001D0E5F /* FeedModels.swift */,
-				ADB4D3952F64A815001D0E5F /* FeedPost.swift */,
-				ADB4D3962F64A815001D0E5F /* GameModels.swift */,
-				ADB4D3972F64A815001D0E5F /* GameSession.swift */,
-				ADB4D3982F64A815001D0E5F /* NETRRatingScale.swift */,
-				ADB4D3992F64A815001D0E5F /* Player.swift */,
-				ADB4D39A2F64A815001D0E5F /* RateTabModels.swift */,
-				ADB4D39B2F64A815001D0E5F /* RatingModels.swift */,
-				ADB4D39C2F64A815001D0E5F /* UserProfile.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		ADB4D39F2F64A815001D0E5F /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D39E2F64A815001D0E5F /* netr_vid.mp4 */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
-		ADB4D3A62F64A815001D0E5F /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D3A02F64A815001D0E5F /* BiometricAuthManager.swift */,
-				ADB4D3A12F64A815001D0E5F /* MockDataStore.swift */,
-				ADB4D3A22F64A815001D0E5F /* SelfAssessmentEngine.swift */,
-				ADB4D3A32F64A815001D0E5F /* SelfAssessmentStore.swift */,
-				ADB4D3A42F64A815001D0E5F /* SupabaseManager.swift */,
-				ADB4D3A52F64A815001D0E5F /* WeatherService.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		ADB4D3A92F64A815001D0E5F /* Utilities */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D3A72F64A815001D0E5F /* AppearanceManager.swift */,
-				ADB4D3A82F64A815001D0E5F /* NETRTheme.swift */,
-			);
-			path = Utilities;
-			sourceTree = "<group>";
-		};
-		ADB4D3B02F64A815001D0E5F /* ViewModels */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D3AA2F64A815001D0E5F /* CourtsViewModel.swift */,
-				ADB4D3AB2F64A815001D0E5F /* FeedViewModel.swift */,
-				ADB4D3AC2F64A815001D0E5F /* GameViewModel.swift */,
-				ADB4D3AD2F64A815001D0E5F /* ProfileViewModel.swift */,
-				ADB4D3AE2F64A815001D0E5F /* RateTabViewModel.swift */,
-				ADB4D3AF2F64A815001D0E5F /* RateViewModel.swift */,
-			);
-			path = ViewModels;
-			sourceTree = "<group>";
-		};
-		ADB4D3CE2F64A815001D0E5F /* Views */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D4102F64ADFD001D0E5F /* SelfAssessmentFlow.swift */,
-				ADB4D3B12F64A815001D0E5F /* AddCourtView.swift */,
-				ADB4D3B22F64A815001D0E5F /* CommentsView.swift */,
-				ADB4D3B32F64A815001D0E5F /* ComposePostView.swift */,
-				ADB4D3B42F64A815001D0E5F /* CourtCardView.swift */,
-				ADB4D3B52F64A815001D0E5F /* CourtDetailView.swift */,
-				ADB4D3B62F64A815001D0E5F /* CourtsView.swift */,
-				ADB4D3B72F64A815001D0E5F /* CreateGameView.swift */,
-				ADB4D3B82F64A815001D0E5F /* EmailSignUpView.swift */,
-				ADB4D3B92F64A815001D0E5F /* FeedView.swift */,
-				ADB4D3BA2F64A815001D0E5F /* JoinGameView.swift */,
-				ADB4D3BB2F64A815001D0E5F /* LockScreenView.swift */,
-				ADB4D3BC2F64A815001D0E5F /* LoopingVideoView.swift */,
-				ADB4D3BD2F64A815001D0E5F /* LucideIcon.swift */,
-				ADB4D3BE2F64A815001D0E5F /* NETRComponents.swift */,
-				ADB4D3BF2F64A815001D0E5F /* OnboardingView.swift */,
-				ADB4D3C02F64A815001D0E5F /* PlayerCardView.swift */,
-				ADB4D3C12F64A815001D0E5F /* PostCardView.swift */,
-				ADB4D3C22F64A815001D0E5F /* ProfileView.swift */,
-				CL00D4192F77B001001FEED1 /* PublicPlayerProfileView.swift */,
-				CL00D41B2F77B001001FEED1 /* InviteView.swift */,
-				ADB4D3C32F64A815001D0E5F /* RateView.swift */,
-				ADB4D3C42F64A815001D0E5F /* RootView.swift */,
-				ADB4D3C52F64A815001D0E5F /* SelfAssessmentDisclaimerView.swift */,
-				ADB4D3C62F64A815001D0E5F /* SelfAssessmentSheetView.swift */,
-				ADB4D3C72F64A815001D0E5F /* SelfAssessmentView.swift */,
-				ADB4D3C82F64A815001D0E5F /* SettingsView.swift */,
-				ADB4D3C92F64A815001D0E5F /* SignInView.swift */,
-				ADB4D3CA2F64A815001D0E5F /* SkillRadarView.swift */,
-				ADB4D3CB2F64A815001D0E5F /* VibeAndRepView.swift */,
-				ADB4D3CC2F64A815001D0E5F /* VibeDecalView.swift */,
-				ADB4D3CD2F64A815001D0E5F /* WelcomeView.swift */,
-			);
-			path = Views;
-			sourceTree = "<group>";
-		};
-		ADB4D3D32F64A815001D0E5F /* NETR */ = {
-			isa = PBXGroup;
-			children = (
-				ADB4D39D2F64A815001D0E5F /* Models */,
-				ADB4D39F2F64A815001D0E5F /* Resources */,
-				ADB4D3A62F64A815001D0E5F /* Services */,
-				ADB4D3A92F64A815001D0E5F /* Utilities */,
-				ADB4D3B02F64A815001D0E5F /* ViewModels */,
-				ADB4D3CE2F64A815001D0E5F /* Views */,
-				ADB4D3CF2F64A815001D0E5F /* Assets.xcassets */,
-				ADB4D3D12F64A815001D0E5F /* ContentView.swift */,
-				ADB4D3D22F64A815001D0E5F /* NETRApp.swift */,
-			);
-			path = NETR;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
