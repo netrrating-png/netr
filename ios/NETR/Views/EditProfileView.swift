@@ -284,6 +284,7 @@ struct EditProfileView: View {
                         lineWidth: 1
                     ))
                     .clipShape(.rect(cornerRadius: 12))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

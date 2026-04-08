@@ -1131,16 +1131,8 @@ struct ProfileView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
                 Spacer()
-                HStack(spacing: 4) {
-                    LucideIcon("users", size: 10)
-                    Text(crewViewModel.myCrews.isEmpty ? "Join" : "Manage")
-                        .font(.system(size: 11, weight: .bold))
-                }
-                .foregroundStyle(NETRTheme.neonGreen)
-                .padding(.horizontal, 9)
-                .padding(.vertical, 5)
-                .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
-                .overlay(Capsule().stroke(NETRTheme.neonGreen.opacity(0.25), lineWidth: 1))
+                LucideIcon("chevron-right", size: 14)
+                    .foregroundStyle(NETRTheme.muted)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)

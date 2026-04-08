@@ -13,6 +13,7 @@ struct SettingsView: View {
     @Environment(BiometricAuthManager.self) private var biometrics
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @AppStorage("profilePrivate") private var profilePrivate: Bool = false
+    @AppStorage("locationEnabled") private var locationEnabled: Bool = true
     @State private var showMyGames: Bool = false
     @State private var showNotificationPreferences: Bool = false
     @State private var showEditProfile: Bool = false
@@ -499,6 +500,33 @@ struct SettingsView: View {
                                 }
                             }
                         }
+                }
+                .padding(14)
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    LucideIcon("map-pin")
+                        .foregroundStyle(NETRTheme.neonGreen)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Location")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(locationEnabled ? "Visible on Discover & nearby players" : "Location sharing is off")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $locationEnabled)
+                        .tint(NETRTheme.neonGreen)
+                        .labelsHidden()
                 }
                 .padding(14)
             }

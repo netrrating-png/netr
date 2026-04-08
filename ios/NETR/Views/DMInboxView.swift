@@ -134,6 +134,7 @@ struct DMInboxView: View {
                         ConversationRow(conversation: convo)
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Rectangle())
                     Divider().background(NETRTheme.border).padding(.leading, 72)
                 }
             }

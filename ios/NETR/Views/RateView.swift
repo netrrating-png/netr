@@ -493,6 +493,18 @@ struct SkillRatingScreen: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(NETRTheme.neonGreen.opacity(0.05))
 
+            HStack {
+                Text("← You're better")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.6))
+                Spacer()
+                Text("They're better →")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.6))
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+
             ScrollView {
                 VStack(spacing: 9) {
                     ForEach(skillCategories) { cat in
@@ -700,11 +712,11 @@ struct SkillSliderRow: View {
                             }
                     )
                 }
-                .frame(height: 20)
+                .frame(height: 32)
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 13)
+        .padding(.vertical, 16)
         .background(value != nil ? thumbColor.opacity(0.04) : NETRTheme.card, in: .rect(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 14)
@@ -781,7 +793,7 @@ struct VibeRatingScreen: View {
                     }
                     .padding(.horizontal, 20)
 
-                    Color.clear.frame(height: 100)
+                    Color.clear.frame(height: 60)
                 }
             }
             .scrollIndicators(.hidden)

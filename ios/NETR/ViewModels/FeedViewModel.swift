@@ -741,13 +741,28 @@ class FeedViewModel {
             return
         }
         isLoadingNearby = true
-        discoverLocationHelper = DiscoverLocationHelper { [weak self] location in
-            Task { @MainActor [weak self] in
-                self?.userLocation = location
-                await self?.fetchNearbyUsers(at: location)
+        discoverLocationHelper = DiscoverLocationHelper(
+            onLocation: { [weak self] location in
+                Task { @MainActor [weak self] in
+                    self?.userLocation = location
+                    await self?.fetchNearbyUsers(at: location)
+                }
+            },
+            onError: { [weak self] in
+                Task { @MainActor [weak self] in
+                    self?.isLoadingNearby = false
+                }
+            }
+        )
+        discoverLocationHelper?.requestLocation()
+
+        // Timeout fallback — stop spinner after 10 seconds if location never arrives
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(10))
+            if isLoadingNearby && userLocation == nil {
+                isLoadingNearby = false
             }
         }
-        discoverLocationHelper?.requestLocation()
     }
 
     func fetchNearbyUsers(at loc: CLLocationCoordinate2D) async {
@@ -809,9 +824,11 @@ class FeedViewModel {
 private final class DiscoverLocationHelper: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private let onLocation: (CLLocationCoordinate2D) -> Void
+    private let onError: () -> Void
 
-    init(onLocation: @escaping (CLLocationCoordinate2D) -> Void) {
+    init(onLocation: @escaping (CLLocationCoordinate2D) -> Void, onError: @escaping () -> Void) {
         self.onLocation = onLocation
+        self.onError = onError
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
@@ -830,5 +847,6 @@ private final class DiscoverLocationHelper: NSObject, CLLocationManagerDelegate 
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("[NETR Discover] Location error: \(error.localizedDescription)")
+        onError()
     }
 }

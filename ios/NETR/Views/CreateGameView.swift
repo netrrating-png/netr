@@ -696,7 +696,7 @@ struct GameLobbyView: View {
                 .padding(.horizontal, 16)
 
                 if let code = viewModel.game?.joinCode, !code.isEmpty {
-                    QRCodeView(content: code, size: 120)
+                    QRCodeView(content: "netr://join/\(code)", size: 120)
                 }
 
                 HStack(spacing: 16) {

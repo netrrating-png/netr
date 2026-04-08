@@ -84,7 +84,7 @@ struct RatingInsightsEngine {
                 detail: "Your skills are closely balanced. \(top.0) edges ahead as your strongest area.",
                 priority: 5)
         }
-        return RatingInsight(icon: "bar-chart-2", iconColor: NETRTheme.blue,
+        return RatingInsight(icon: "trophy", iconColor: NETRTheme.gold,
             headline: "\(top.0) is your strength",
             detail: "\(bottom.0) has the most room to grow. Balanced players earn higher scores over time.",
             priority: 5)
