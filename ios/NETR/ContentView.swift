@@ -424,21 +424,21 @@ struct ContentView: View {
         .padding(.horizontal, 12)
         .background(
             ZStack {
-                // Pure black base
-                RoundedRectangle(cornerRadius: 30)
-                    .fill(Color.black)
-
-                // Ultra thin material dark blur
+                // Dark frosted glass (Apple Music style)
                 RoundedRectangle(cornerRadius: 30)
                     .fill(.ultraThinMaterial)
                     .environment(\.colorScheme, .dark)
 
-                // Dark tint over blur
+                // Light dark tint — lets blur show through
                 RoundedRectangle(cornerRadius: 30)
-                    .fill(Color.black.opacity(0.55))
+                    .fill(Color.black.opacity(0.3))
+
+                // Subtle glass edge
+                RoundedRectangle(cornerRadius: 30)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
             }
         )
-        .shadow(color: Color.black.opacity(0.50), radius: 16, y: 4)
+        .shadow(color: Color.black.opacity(0.3), radius: 12, y: 4)
         .padding(.horizontal, 20)
         .padding(.bottom, 14)
     }
