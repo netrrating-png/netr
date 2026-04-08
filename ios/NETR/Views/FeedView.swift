@@ -390,7 +390,12 @@ struct FeedView: View {
                         } else {
                             LazyVStack(spacing: 0) {
                                 ForEach(viewModel.posts) { post in
-                                    postCard(for: post)
+                                    SwipeToDeleteWrapper(
+                                        enabled: viewModel.isOwnPost(post),
+                                        onDelete: { Task { await viewModel.deletePost(post) } }
+                                    ) {
+                                        postCard(for: post)
+                                    }
                                     Divider().background(NETRTheme.border)
                                         .onAppear {
                                             Task { await viewModel.loadMoreIfNeeded(currentPost: post) }
@@ -766,6 +771,80 @@ struct FeedView: View {
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .animation(.spring(response: 0.3), value: viewModel.toastMessage)
             .onTapGesture { viewModel.toastMessage = nil }
+    }
+}
+
+// MARK: - Swipe to Delete (Apple-style)
+
+struct SwipeToDeleteWrapper<Content: View>: View {
+    let enabled: Bool
+    let onDelete: () -> Void
+    @ViewBuilder let content: () -> Content
+
+    @State private var offset: CGFloat = 0
+    @State private var showDelete = false
+
+    private let deleteWidth: CGFloat = 80
+
+    var body: some View {
+        if enabled {
+            ZStack(alignment: .trailing) {
+                // Delete button behind
+                if showDelete || offset < 0 {
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                offset = 0
+                                showDelete = false
+                            }
+                            onDelete()
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(systemName: "trash.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                Text("Delete")
+                                    .font(.system(size: 11, weight: .semibold))
+                            }
+                            .foregroundStyle(.white)
+                            .frame(width: deleteWidth)
+                            .frame(maxHeight: .infinity)
+                            .background(Color.red)
+                        }
+                    }
+                }
+
+                // Post content
+                content()
+                    .offset(x: offset)
+                    .gesture(
+                        DragGesture(minimumDistance: 20)
+                            .onChanged { value in
+                                let translation = value.translation.width
+                                // Only allow left swipe
+                                if translation < 0 {
+                                    offset = max(translation, -deleteWidth - 20)
+                                } else if showDelete {
+                                    offset = min(translation - deleteWidth, 0)
+                                }
+                            }
+                            .onEnded { value in
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    if offset < -deleteWidth / 2 {
+                                        offset = -deleteWidth
+                                        showDelete = true
+                                    } else {
+                                        offset = 0
+                                        showDelete = false
+                                    }
+                                }
+                            }
+                    )
+            }
+            .clipped()
+        } else {
+            content()
+        }
     }
 }
 
