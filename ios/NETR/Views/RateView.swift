@@ -505,22 +505,19 @@ struct SkillRatingScreen: View {
             .padding(.horizontal, 20)
             .padding(.top, 6)
 
-            ScrollView {
-                VStack(spacing: 9) {
-                    ForEach(skillCategories) { cat in
-                        SkillSliderRow(
-                            category: cat,
-                            value: rateVM.skillValue(for: cat.id, playerIndex: 0)
-                        ) { val in
-                            rateVM.setSkillRating(playerIndex: 0, key: cat.id, value: val)
-                        }
+            VStack(spacing: 5) {
+                ForEach(skillCategories) { cat in
+                    SkillSliderRow(
+                        category: cat,
+                        value: rateVM.skillValue(for: cat.id, playerIndex: 0)
+                    ) { val in
+                        rateVM.setSkillRating(playerIndex: 0, key: cat.id, value: val)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
             }
-            .scrollIndicators(.hidden)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
 
             // Submit button
             VStack(spacing: 0) {
@@ -591,31 +588,31 @@ struct SkillSliderRow: View {
             ZStack {
                 Circle()
                     .fill(value != nil ? thumbColor.opacity(0.15) : NETRTheme.muted.opacity(0.08))
-                    .frame(width: 30, height: 30)
-                LucideIcon(category.icon, size: 13)
+                    .frame(width: 26, height: 26)
+                LucideIcon(category.icon, size: 11)
                     .foregroundStyle(value != nil ? thumbColor : NETRTheme.subtext)
             }
             .scaleEffect(isDragging ? 1.15 : 1.0)
             .animation(.spring(response: 0.2), value: isDragging)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
 
                 // Label row
                 HStack {
                     Text(category.label.uppercased())
-                        .font(.system(size: 11, weight: .black)).tracking(0.8)
+                        .font(.system(size: 10, weight: .black)).tracking(0.8)
                         .foregroundStyle(value != nil ? thumbColor : NETRTheme.text)
                     Spacer()
                     if let v = value {
                         Text(labels[v])
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(thumbColor)
-                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .padding(.horizontal, 6).padding(.vertical, 2)
                             .background(thumbColor.opacity(0.12), in: Capsule())
                             .transition(.scale(scale: 0.85).combined(with: .opacity))
                     } else {
                         Text("← Slide →")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(NETRTheme.muted)
                     }
                 }
@@ -677,7 +674,7 @@ struct SkillSliderRow: View {
 
                         // Thumb
                         if let v = value {
-                            let thumbW: CGFloat = isDragging ? 20 : 16
+                            let thumbW: CGFloat = isDragging ? 18 : 14
                             Circle()
                                 .fill(thumbColor)
                                 .frame(width: thumbW, height: thumbW)
@@ -690,7 +687,7 @@ struct SkillSliderRow: View {
                                 .animation(.spring(response: 0.25), value: v)
                         }
                     }
-                    .contentShape(Rectangle().size(CGSize(width: w, height: 44)).offset(CGPoint(x: 0, y: -18)))
+                    .contentShape(Rectangle().size(CGSize(width: w, height: 40)).offset(CGPoint(x: 0, y: -14)))
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { drag in
@@ -712,11 +709,11 @@ struct SkillSliderRow: View {
                             }
                     )
                 }
-                .frame(height: 32)
+                .frame(height: 26)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
         .background(value != nil ? thumbColor.opacity(0.04) : NETRTheme.card, in: .rect(cornerRadius: 12))
         .overlay(
             RoundedRectangle(cornerRadius: 14)

@@ -258,6 +258,7 @@ struct ConversationRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .contentShape(Rectangle())
     }
 
     private func dmAvatar(name: String, url: String?, size: CGFloat) -> some View {

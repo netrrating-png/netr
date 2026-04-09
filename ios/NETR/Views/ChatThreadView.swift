@@ -344,11 +344,26 @@ struct MessageBubble: View {
                         mentionColor: isCurrentUser ? Color(white: 0.15) : NETRTheme.neonGreen,
                         onMentionTap: onMentionTap
                     )
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 11)
                     .background(
                         isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
                         in: BubbleShape(isCurrentUser: isCurrentUser)
+                    )
+                    .overlay(
+                        BubbleShape(isCurrentUser: isCurrentUser)
+                            .stroke(
+                                isCurrentUser
+                                    ? Color.white.opacity(0.15)
+                                    : NETRTheme.border.opacity(0.6),
+                                lineWidth: 0.5
+                            )
+                    )
+                    .shadow(
+                        color: isCurrentUser
+                            ? NETRTheme.neonGreen.opacity(0.2)
+                            : Color.black.opacity(0.35),
+                        radius: 4, x: 0, y: 2
                     )
                 }
 
@@ -389,14 +404,29 @@ struct BubbleShape: Shape {
     let isCurrentUser: Bool
 
     func path(in rect: CGRect) -> Path {
-        let radius: CGFloat = 16
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: isCurrentUser
-                ? [.topLeft, .topRight, .bottomLeft]
-                : [.topLeft, .topRight, .bottomRight],
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
+        let bigR: CGFloat = 20
+        let smallR: CGFloat = 6
+        // All corners are fully rounded except the tail corner
+        let tl = isCurrentUser ? bigR : bigR
+        let tr = isCurrentUser ? bigR : bigR
+        let bl = isCurrentUser ? bigR : smallR
+        let br = isCurrentUser ? smallR : bigR
+
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + tl, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX - tr, y: rect.minY))
+        path.addArc(tangent1End: CGPoint(x: rect.maxX, y: rect.minY),
+                     tangent2End: CGPoint(x: rect.maxX, y: rect.minY + tr), radius: tr)
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - br))
+        path.addArc(tangent1End: CGPoint(x: rect.maxX, y: rect.maxY),
+                     tangent2End: CGPoint(x: rect.maxX - br, y: rect.maxY), radius: br)
+        path.addLine(to: CGPoint(x: rect.minX + bl, y: rect.maxY))
+        path.addArc(tangent1End: CGPoint(x: rect.minX, y: rect.maxY),
+                     tangent2End: CGPoint(x: rect.minX, y: rect.maxY - bl), radius: bl)
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + tl))
+        path.addArc(tangent1End: CGPoint(x: rect.minX, y: rect.minY),
+                     tangent2End: CGPoint(x: rect.minX + tl, y: rect.minY), radius: tl)
+        path.closeSubpath()
+        return path
     }
 }
