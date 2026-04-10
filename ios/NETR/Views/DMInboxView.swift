@@ -6,6 +6,7 @@ struct DMInboxView: View {
     @State private var showChat: Bool = false
     @State private var crewViewModel = CrewViewModel()
     @State private var selectedCrew: MyCrew? = nil
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 0) {
@@ -59,7 +60,17 @@ struct DMInboxView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 12) {
+            Button {
+                dismiss()
+            } label: {
+                LucideIcon("arrow-left", size: 18)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 34, height: 34)
+                    .background(NETRTheme.card, in: Circle())
+                    .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+            }
+
             Text("MESSAGES")
                 .font(NETRTheme.headingFont(size: .title2))
                 .foregroundStyle(NETRTheme.text)

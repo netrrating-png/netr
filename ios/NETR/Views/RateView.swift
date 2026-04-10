@@ -6,7 +6,10 @@ struct RateView: View {
     @State private var tabVM = RateTabViewModel()
     @State private var selectedPlayer: RateablePlayer?
     @State private var section: RateSection = .ratePlayers
-    @Bindable var dmViewModel: DMViewModel
+    /// Optional: only supplied when `RateView` is used as a tab root. When
+    /// presented as a modal sheet from inside another flow (e.g. the
+    /// post-game rating sheet in `CreateGameView`) we skip the DM header.
+    var dmViewModel: DMViewModel? = nil
 
     enum RateSection { case ratePlayers, ratedBy }
 
@@ -20,7 +23,9 @@ struct RateView: View {
                         .font(NETRTheme.headingFont(size: .title2))
                         .foregroundStyle(NETRTheme.text)
                     Spacer()
-                    DMHeaderButton(dmViewModel: dmViewModel)
+                    if let dmViewModel {
+                        DMHeaderButton(dmViewModel: dmViewModel)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)

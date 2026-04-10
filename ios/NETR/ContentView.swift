@@ -36,7 +36,7 @@ struct ContentView: View {
         case courts = "Courts"
         case rate = "Rate"
         case feed = "Feed"
-        case dailyGame = "Daily"
+        case dailyGame = "Daily Game"
         case profile = "Profile"
 
         var icon: String {
@@ -398,6 +398,8 @@ struct ContentView: View {
 
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .foregroundStyle(
                                 isSelected
                                     ? NETRTheme.neonGreen
