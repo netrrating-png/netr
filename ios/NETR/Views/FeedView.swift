@@ -11,6 +11,7 @@ struct FeedView: View {
     @State private var quotePost: SupabaseFeedPost?
     @State private var suggestedPlayers: [UserSearchResult] = []
     @Binding var scrollToTopTrigger: Bool
+    @Bindable var dmViewModel: DMViewModel
     @FocusState private var searchFocused: Bool
 
     var body: some View {
@@ -102,7 +103,7 @@ struct FeedView: View {
     // MARK: - Header
 
     private var feedHeader: some View {
-        HStack {
+        HStack(spacing: 12) {
             Text("FEED")
                 .font(NETRTheme.headingFont(size: .title2))
                 .foregroundStyle(NETRTheme.text)
@@ -110,9 +111,13 @@ struct FeedView: View {
             Button {
                 showNotifications = true
             } label: {
-                LucideIcon("bell")
-                    .foregroundStyle(NETRTheme.subtext)
+                LucideIcon("bell", size: 18)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 36, height: 36)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
             }
+            DMHeaderButton(dmViewModel: dmViewModel)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

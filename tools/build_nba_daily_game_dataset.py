@@ -84,9 +84,10 @@ TIER_SIZES = {
 }
 TOTAL_POOL = sum(TIER_SIZES.values())  # 550
 
-REQUEST_SLEEP_SECONDS = 0.6   # Courtesy throttle between stats.nba.com calls
-MAX_RETRIES = 3
-RETRY_BACKOFF_BASE = 2.0      # 2s, 4s, 8s
+REQUEST_SLEEP_SECONDS = 1.5   # Courtesy throttle between stats.nba.com calls
+MAX_RETRIES = 4
+RETRY_BACKOFF_BASE = 3.0      # 3s, 9s, 27s, 81s
+REQUEST_TIMEOUT = 60          # seconds per HTTP call
 
 OUTPUT_PATH = Path(".tmp") / "nba_daily_players.json"
 
@@ -122,7 +123,12 @@ class CandidatePlayer:
 
 
 def _call_with_retry(fn, *args, **kwargs):
-    """Call an nba_api endpoint with exponential backoff on failure."""
+    """Call an nba_api endpoint with exponential backoff on failure.
+
+    Always passes `timeout=REQUEST_TIMEOUT` to the endpoint so we aren't
+    stuck on nba_api's default 30s for the initial slow calls.
+    """
+    kwargs.setdefault("timeout", REQUEST_TIMEOUT)
     last_err = None
     for attempt in range(MAX_RETRIES):
         try:

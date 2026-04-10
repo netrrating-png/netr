@@ -6,6 +6,7 @@ struct RateView: View {
     @State private var tabVM = RateTabViewModel()
     @State private var selectedPlayer: RateablePlayer?
     @State private var section: RateSection = .ratePlayers
+    @Bindable var dmViewModel: DMViewModel
 
     enum RateSection { case ratePlayers, ratedBy }
 
@@ -14,6 +15,16 @@ struct RateView: View {
             NETRTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
+                HStack {
+                    Text("RATE")
+                        .font(NETRTheme.headingFont(size: .title2))
+                        .foregroundStyle(NETRTheme.text)
+                    Spacer()
+                    DMHeaderButton(dmViewModel: dmViewModel)
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+
                 sectionPicker
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
