@@ -84,12 +84,23 @@ TIER_SIZES = {
 }
 TOTAL_POOL = sum(TIER_SIZES.values())  # 550
 
-REQUEST_SLEEP_SECONDS = 1.5   # Courtesy throttle between stats.nba.com calls
-MAX_RETRIES = 4
-RETRY_BACKOFF_BASE = 3.0      # 3s, 9s, 27s, 81s
+REQUEST_SLEEP_SECONDS = 4.0   # Courtesy throttle between stats.nba.com calls
+MAX_RETRIES = 3
+RETRY_BACKOFF_BASE = 3.0      # 3s, 9s, 27s
 REQUEST_TIMEOUT = 60          # seconds per HTTP call
 
+# Adaptive cooldown: if we see this many consecutive failures, assume the IP
+# is soft-blocked and sleep for COOLDOWN_SECONDS before trying again. Resets
+# to zero on the next successful call.
+COOLDOWN_THRESHOLD = 2
+COOLDOWN_SECONDS = 300  # 5 minutes — stats.nba.com blocks are stubborn
+
+# Save partial progress every N players so a mid-run crash/block doesn't
+# destroy everything we've collected.
+CHECKPOINT_EVERY = 50
+
 OUTPUT_PATH = Path(".tmp") / "nba_daily_players.json"
+CHECKPOINT_PATH = Path(".tmp") / "nba_daily_players.checkpoint.json"
 
 
 # -----------------------------------------------------------------------------
@@ -122,18 +133,38 @@ class CandidatePlayer:
 # -----------------------------------------------------------------------------
 
 
+# Global counter of consecutive failures across calls. Reset on success.
+_consecutive_failures = 0
+
+
 def _call_with_retry(fn, *args, **kwargs):
     """Call an nba_api endpoint with exponential backoff on failure.
 
     Always passes `timeout=REQUEST_TIMEOUT` to the endpoint so we aren't
     stuck on nba_api's default 30s for the initial slow calls.
+
+    After COOLDOWN_THRESHOLD consecutive failures, sleep COOLDOWN_SECONDS
+    before the next attempt (the stats.nba.com IP block typically clears
+    within 60-120s).
     """
+    global _consecutive_failures
     kwargs.setdefault("timeout", REQUEST_TIMEOUT)
+
+    if _consecutive_failures >= COOLDOWN_THRESHOLD:
+        print(
+            f"    cooldown: {_consecutive_failures} consecutive failures, "
+            f"sleeping {COOLDOWN_SECONDS}s before next call",
+            file=sys.stderr,
+        )
+        time.sleep(COOLDOWN_SECONDS)
+        _consecutive_failures = 0
+
     last_err = None
     for attempt in range(MAX_RETRIES):
         try:
             result = fn(*args, **kwargs)
             time.sleep(REQUEST_SLEEP_SECONDS)
+            _consecutive_failures = 0
             return result
         except Exception as err:  # noqa: BLE001 - nba_api raises many types
             last_err = err
@@ -144,7 +175,40 @@ def _call_with_retry(fn, *args, **kwargs):
                 file=sys.stderr,
             )
             time.sleep(backoff)
+    _consecutive_failures += 1
     raise last_err  # type: ignore[misc]
+
+
+# -----------------------------------------------------------------------------
+# Checkpointing — partial-progress persistence
+# -----------------------------------------------------------------------------
+
+
+def save_checkpoint(survivors: list[CandidatePlayer], path: Path = CHECKPOINT_PATH) -> None:
+    """Serialize the career-stats-enriched survivors so we can resume later."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = [asdict(p) for p in survivors]
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload))
+    tmp.replace(path)
+
+
+def load_checkpoint(path: Path = CHECKPOINT_PATH) -> list[CandidatePlayer]:
+    """Load previously-enriched survivors. Returns empty list if none."""
+    if not path.exists():
+        return []
+    try:
+        rows = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError) as err:
+        print(f"  warning: could not read checkpoint: {err}", file=sys.stderr)
+        return []
+    restored: list[CandidatePlayer] = []
+    for row in rows:
+        try:
+            restored.append(CandidatePlayer(**row))
+        except TypeError as err:
+            print(f"  warning: skipping malformed checkpoint row: {err}", file=sys.stderr)
+    return restored
 
 
 # -----------------------------------------------------------------------------
@@ -191,13 +255,27 @@ def enrich_with_career_stats(
     candidates: list[CandidatePlayer],
     team_id_to_name: dict[int, str],
 ) -> list[CandidatePlayer]:
-    """Step 2: For each candidate, pull career totals + team list. Filter on games played."""
+    """Step 2: For each candidate, pull career totals + team list. Filter on games played.
+
+    Supports resume-from-checkpoint: if `.tmp/nba_daily_players.checkpoint.json`
+    exists from a prior run, those players are restored and their IDs are
+    skipped on this pass. Checkpoint is re-saved every CHECKPOINT_EVERY new
+    enrichments so a mid-run crash doesn't destroy progress.
+    """
     print(f"\nFetching career stats for {len(candidates)} players (this is the slow step)...")
 
-    survivors: list[CandidatePlayer] = []
+    survivors: list[CandidatePlayer] = list(load_checkpoint())
+    processed_ids: set[int] = {p.id for p in survivors}
+    if survivors:
+        print(f"  Resumed from checkpoint: {len(survivors)} players already enriched")
+
+    new_this_run = 0
     for i, player in enumerate(candidates, 1):
         if i % 25 == 0 or i == len(candidates):
-            print(f"  [{i}/{len(candidates)}] {player.name}")
+            print(f"  [{i}/{len(candidates)}] {player.name}", flush=True)
+
+        if player.id in processed_ids:
+            continue
 
         try:
             resp = _call_with_retry(playercareerstats.PlayerCareerStats, player_id=player.id)
@@ -240,7 +318,15 @@ def enrich_with_career_stats(
         player.teams = teams_ordered
         player.draft_team = first_team  # approximation: first team they played for
         survivors.append(player)
+        processed_ids.add(player.id)
+        new_this_run += 1
 
+        if new_this_run % CHECKPOINT_EVERY == 0:
+            save_checkpoint(survivors)
+            print(f"    checkpoint: {len(survivors)} total, +{new_this_run} this run", flush=True)
+
+    # Final checkpoint write so the completed run is persisted
+    save_checkpoint(survivors)
     print(f"  After games-played filter (>= {MIN_CAREER_GAMES}): {len(survivors)}")
     return survivors
 
@@ -363,7 +449,37 @@ def main() -> int:
         default=OUTPUT_PATH,
         help=f"Output JSON path (default: {OUTPUT_PATH})",
     )
+    parser.add_argument(
+        "--from-checkpoint",
+        action="store_true",
+        help=(
+            "Finalize from .tmp/nba_daily_players.checkpoint.json without hitting "
+            "stats.nba.com. Use this when the API is rate-limited and you want to "
+            "ship a partial dataset. Implies --skip-enrich."
+        ),
+    )
     args = parser.parse_args()
+
+    # --from-checkpoint path: skip all network calls, load checkpoint, rank, write.
+    if args.from_checkpoint:
+        enriched = load_checkpoint()
+        if not enriched:
+            print("ERROR: no checkpoint found at", CHECKPOINT_PATH, file=sys.stderr)
+            return 1
+        print(f"Loaded {len(enriched)} players from checkpoint")
+        if len(enriched) < TOTAL_POOL:
+            print(
+                f"\nWARNING: only {len(enriched)} survivors, less than target pool "
+                f"({TOTAL_POOL}). Writing everything we have."
+            )
+            pool = [
+                ("superstar" if p.career_minutes > 25000 else ("solid" if p.career_minutes > 10000 else "deep_cut"), p)
+                for p in sorted(enriched, key=lambda x: x.career_minutes, reverse=True)
+            ]
+        else:
+            pool = pick_pool(enriched)
+        write_output(pool, args.output)
+        return 0
 
     # Build team_id -> full name map once
     team_id_to_name = {t["id"]: t["full_name"] for t in static_teams.get_teams()}
