@@ -3,6 +3,7 @@ import MapKit
 
 struct CourtsView: View {
     @Bindable var viewModel: CourtsViewModel
+    @Bindable var dmViewModel: DMViewModel
     @State private var selectedCourt: Court?
     @State private var showAddCourt: Bool = false
     @State private var showCreateGame: Bool = false
@@ -109,7 +110,7 @@ struct CourtsView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
+            HStack(spacing: 10) {
                 HStack(spacing: 4) {
                     LucideIcon("map-pin")
                         .foregroundStyle(NETRTheme.neonGreen)
@@ -131,6 +132,8 @@ struct CourtsView: View {
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+
+                DMHeaderButton(dmViewModel: dmViewModel)
             }
 
             Text(viewModel.isDefaultView

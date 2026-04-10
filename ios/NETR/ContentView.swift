@@ -36,7 +36,7 @@ struct ContentView: View {
         case courts = "Courts"
         case rate = "Rate"
         case feed = "Feed"
-        case dm = "DMs"
+        case dailyGame = "Daily Game"
         case profile = "Profile"
 
         var icon: String {
@@ -44,7 +44,7 @@ struct ContentView: View {
             case .feed: return "messages-square"
             case .courts: return "target"
             case .rate: return "star"
-            case .dm: return "mail"
+            case .dailyGame: return "calendar"
             case .profile: return "user"
             }
         }
@@ -74,8 +74,8 @@ struct ContentView: View {
                     tabContent(for: .rate)
                         .zIndex(selectedTab == .rate ? 1 : 0)
 
-                    tabContent(for: .dm)
-                        .zIndex(selectedTab == .dm ? 1 : 0)
+                    tabContent(for: .dailyGame)
+                        .zIndex(selectedTab == .dailyGame ? 1 : 0)
 
                     tabContent(for: .profile)
                         .zIndex(selectedTab == .profile ? 1 : 0)
@@ -89,7 +89,7 @@ struct ContentView: View {
             manager: dmViewModel.notificationManager,
             onOpenConversation: { userId in
                 dmBannerTargetUserId = userId
-                selectedTab = .dm
+                // DM tab no longer exists - open chat directly as full-screen cover
                 dmBannerShowChat = true
             }
         ))
@@ -112,11 +112,8 @@ struct ContentView: View {
                 dismissedAssessmentBanner = true
             })
         }
-        .onChange(of: selectedTab) { _, newTab in
-            // Clear unread badge when user opens DM inbox
-            if newTab == .dm {
-                Task { await dmViewModel.loadConversations() }
-            }
+        .onChange(of: selectedTab) { _, _ in
+            // DM unread count stays fresh via the header button's own .task
         }
         .onChange(of: supabase.currentProfile?.fullName) { _, _ in
             if let profile = supabase.currentProfile {
@@ -167,24 +164,27 @@ struct ContentView: View {
         Group {
             switch tab {
             case .feed:
-                FeedView(scrollToTopTrigger: $feedScrollToTop)
+                FeedView(scrollToTopTrigger: $feedScrollToTop, dmViewModel: dmViewModel)
             case .courts:
-                CourtsView(viewModel: courtsViewModel)
+                CourtsView(viewModel: courtsViewModel, dmViewModel: dmViewModel)
             case .rate:
-                RateView()
-            case .dm:
-                DMInboxView(viewModel: dmViewModel)
+                RateView(dmViewModel: dmViewModel)
+            case .dailyGame:
+                DailyGameView(dmViewModel: dmViewModel)
             case .profile:
                 ZStack(alignment: .topTrailing) {
                     ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment, showPhotoBanner: $showPhotoBanner)
-                    Button {
-                        showSettings = true
-                    } label: {
-                        LucideIcon("settings", size: 18)
-                            .foregroundStyle(NETRTheme.text)
-                            .frame(width: 36, height: 36)
-                            .background(.ultraThinMaterial, in: Circle())
-                            .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                    HStack(spacing: 10) {
+                        DMHeaderButton(dmViewModel: dmViewModel)
+                        Button {
+                            showSettings = true
+                        } label: {
+                            LucideIcon("settings", size: 18)
+                                .foregroundStyle(NETRTheme.text)
+                                .frame(width: 36, height: 36)
+                                .background(.ultraThinMaterial, in: Circle())
+                                .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                        }
                     }
                     .padding(.top, 52)
                     .padding(.trailing, 16)
@@ -385,16 +385,6 @@ struct ContentView: View {
                                     .scaleEffect(isSelected ? 1.15 : 1.0)
                                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
 
-                                // Unread badge for DMs tab
-                                if tab == .dm && dmViewModel.totalUnread > 0 {
-                                    Text(dmViewModel.totalUnread > 9 ? "9+" : "\(dmViewModel.totalUnread)")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(Color.black)
-                                        .frame(minWidth: 18, minHeight: 18)
-                                        .background(NETRTheme.neonGreen, in: Circle())
-                                        .offset(x: 12, y: -10)
-                                }
-
                                 // Photo reminder badge for Profile tab (first 3 sessions after skip)
                                 if tab == .profile && photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
                                     Circle()
@@ -408,6 +398,8 @@ struct ContentView: View {
 
                         Text(tab.rawValue)
                             .font(.system(size: 10, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                             .foregroundStyle(
                                 isSelected
                                     ? NETRTheme.neonGreen
