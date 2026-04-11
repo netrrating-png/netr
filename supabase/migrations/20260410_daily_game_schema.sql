@@ -87,9 +87,9 @@ CREATE TABLE IF NOT EXISTS nba_game_results (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     puzzle_date     DATE NOT NULL,
-    guess_count     INT NOT NULL CHECK (guess_count BETWEEN 1 AND 6),
+    guess_count     INT NOT NULL CHECK (guess_count BETWEEN 1 AND 4),
     won             BOOLEAN NOT NULL,
-    CHECK ((won = true AND guess_count BETWEEN 1 AND 6) OR (won = false AND guess_count = 6)),
+    CHECK ((won = true AND guess_count BETWEEN 1 AND 4) OR (won = false AND guess_count = 4)),
     completed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (user_id, puzzle_date)
 );

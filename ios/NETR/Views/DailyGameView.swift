@@ -936,7 +936,7 @@ struct DailyGameView: View {
                     .tracking(1.2)
                     .foregroundStyle(NETRTheme.subtext)
 
-                ForEach(1...DailyGameViewModel.maxGuesses, id: \.self) { n in
+                ForEach(1...4, id: \.self) { n in
                     distributionRow(guessCount: n)
                 }
             }

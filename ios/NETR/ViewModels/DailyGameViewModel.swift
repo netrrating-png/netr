@@ -23,7 +23,7 @@ final class DailyGameViewModel {
 
     // MARK: - Constants
 
-    static let maxGuesses = 6
+    static let maxGuesses = 4
     private static let statsKey = "NETR.dailyGame.stats.v1"
     private static func progressKey(for date: String) -> String {
         "NETR.dailyGame.progress.\(date)"
