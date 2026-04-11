@@ -800,41 +800,56 @@ struct DailyGameView: View {
     }
 
     private var answerReveal: some View {
-        VStack(spacing: 12) {
-            if let url = viewModel.todaysPuzzle?.player.headshotUrl,
-               let imageUrl = URL(string: url) {
+        let player = viewModel.todaysPuzzle?.player
+        let imageUrl: URL? = {
+            if let url = player?.headshotUrl, let parsed = URL(string: url) { return parsed }
+            if let id = player?.id {
+                return URL(string: "https://cdn.nba.com/headshots/nba/latest/1040x760/\(id).png")
+            }
+            return nil
+        }()
+
+        return VStack(spacing: 12) {
+            if let imageUrl {
                 AsyncImage(url: imageUrl) { phase in
                     switch phase {
                     case .success(let image):
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: 100, height: 100)
+                            .frame(width: 120, height: 120)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(NETRTheme.neonGreen, lineWidth: 2))
-                            .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
+                            .overlay(Circle().stroke(NETRTheme.neonGreen, lineWidth: 3))
+                            .shadow(color: NETRTheme.neonGreen.opacity(0.5), radius: 16)
                     default:
-                        Circle()
-                            .fill(NETRTheme.surface)
-                            .frame(width: 100, height: 100)
-                            .overlay(
-                                Text(String(viewModel.todaysPuzzle?.player.name.prefix(2) ?? "??").uppercased())
-                                    .font(.system(size: 28, weight: .black))
-                                    .foregroundStyle(NETRTheme.neonGreen)
-                            )
+                        playerInitialsCircle
                     }
                 }
+            } else {
+                playerInitialsCircle
             }
 
             Text("TODAY'S ANSWER")
                 .font(.system(size: 10, weight: .heavy))
                 .tracking(1.4)
                 .foregroundStyle(NETRTheme.subtext)
-            Text(viewModel.todaysPuzzle?.player.name ?? "—")
-                .font(.system(size: 22, weight: .black, design: .rounded))
+            Text(player?.name ?? "—")
+                .font(.system(size: 24, weight: .black, design: .rounded))
                 .foregroundStyle(NETRTheme.text)
         }
         .padding(.top, 4)
+    }
+
+    private var playerInitialsCircle: some View {
+        Circle()
+            .fill(NETRTheme.surface)
+            .frame(width: 120, height: 120)
+            .overlay(Circle().stroke(NETRTheme.neonGreen.opacity(0.4), lineWidth: 2))
+            .overlay(
+                Text(String(viewModel.todaysPuzzle?.player.name.prefix(2) ?? "??").uppercased())
+                    .font(.system(size: 32, weight: .black))
+                    .foregroundStyle(NETRTheme.neonGreen)
+            )
     }
 
     private var countdownToNext: some View {
