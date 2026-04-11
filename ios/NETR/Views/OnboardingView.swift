@@ -26,6 +26,8 @@ struct OnboardingView: View {
     @State private var signUpError: String?
     @State private var isSigningUp: Bool = false
     @State private var isGoogleUser: Bool = false
+    @State private var isCheckingUsername: Bool = false
+    @State private var usernameError: String?
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
 
     private let totalSteps = 8
@@ -35,7 +37,7 @@ struct OnboardingView: View {
             NETRTheme.background.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                if currentStep > 0 && currentStep < 3 {
+                if currentStep > 0 && currentStep < totalSteps - 1 {
                     progressBar
                         .padding(.horizontal, 24)
                         .padding(.top, 8)
@@ -187,27 +189,43 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .background(NETRTheme.red.opacity(0.1), in: .rect(cornerRadius: 8))
                     }
+
+                    if let error = usernameError {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.red)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(NETRTheme.red.opacity(0.1), in: .rect(cornerRadius: 8))
+                    }
                 }
                 .padding(.horizontal, 24)
 
                 Spacer(minLength: 40)
 
                 Button {
-                    withAnimation { currentStep = 3 }  // → photo prompt
+                    checkUsernameAndContinue()
                 } label: {
-                    Text("CONTINUE")
-                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                        .tracking(1)
-                        .foregroundStyle(NETRTheme.background)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            canContinueAccount ? NETRTheme.neonGreen : NETRTheme.muted,
-                            in: .rect(cornerRadius: 14)
-                        )
+                    ZStack {
+                        if isCheckingUsername {
+                            ProgressView()
+                                .tint(NETRTheme.background)
+                        } else {
+                            Text("CONTINUE")
+                                .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                                .tracking(1)
+                                .foregroundStyle(NETRTheme.background)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(
+                        canContinueAccount ? NETRTheme.neonGreen : NETRTheme.muted,
+                        in: .rect(cornerRadius: 14)
+                    )
                 }
                 .buttonStyle(PressButtonStyle())
-                .disabled(!canContinueAccount)
+                .disabled(!canContinueAccount || isCheckingUsername)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
@@ -586,6 +604,20 @@ struct OnboardingView: View {
         }
     }
 
+    private func checkUsernameAndContinue() {
+        usernameError = nil
+        isCheckingUsername = true
+        Task {
+            let available = await supabase.checkUsernameAvailable(username)
+            isCheckingUsername = false
+            if available {
+                withAnimation { currentStep = 3 }
+            } else {
+                usernameError = "This username is already taken. Please choose another."
+            }
+        }
+    }
+
     private func performSignUp() {
         isSigningUp = true
         signUpError = nil
@@ -676,7 +708,14 @@ struct OnboardingView: View {
                 biometrics.isUnlocked = true
                 hasCompletedOnboarding = true
             } catch {
-                signUpError = error.localizedDescription
+                let msg = error.localizedDescription.lowercased()
+                if msg.contains("unique") && msg.contains("username") {
+                    signUpError = "This username is already taken. Please go back and choose another."
+                } else if msg.contains("already registered") || msg.contains("already been registered") || msg.contains("user already") {
+                    signUpError = "An account with this email already exists. Try signing in instead."
+                } else {
+                    signUpError = error.localizedDescription
+                }
             }
             isSigningUp = false
         }
@@ -710,7 +749,12 @@ struct OnboardingView: View {
                 biometrics.isUnlocked = true
                 hasCompletedOnboarding = true
             } catch {
-                signUpError = error.localizedDescription
+                let msg = error.localizedDescription.lowercased()
+                if msg.contains("unique") && msg.contains("username") {
+                    signUpError = "This username is already taken. Please go back and choose another."
+                } else {
+                    signUpError = error.localizedDescription
+                }
             }
             isSigningUp = false
         }

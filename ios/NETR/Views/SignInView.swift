@@ -175,6 +175,7 @@ struct SignInView: View {
                 }
             }
         case .failure(let error):
+            if (error as? ASAuthorizationError)?.code == .canceled { return }
             print("[NETR Auth] Apple Sign-In failed: \(error)")
             errorMessage = "Apple sign in failed. Try again."
         }

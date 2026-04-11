@@ -117,8 +117,13 @@ struct EmailSignUpView: View {
 
     private var passwordsMatch: Bool { password == confirmPassword }
 
+    private var isValidEmail: Bool {
+        let parts = email.split(separator: "@")
+        return parts.count == 2 && !parts[0].isEmpty && parts[1].contains(".")
+    }
+
     private var isFormValid: Bool {
-        !email.isEmpty && email.contains("@") && password.count >= 6 && passwordsMatch
+        !email.isEmpty && isValidEmail && password.count >= 6 && passwordsMatch
     }
 
     private func continueToOnboarding() {

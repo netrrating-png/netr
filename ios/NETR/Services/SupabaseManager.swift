@@ -173,6 +173,19 @@ class SupabaseManager {
         UserDefaults.standard.set(0, forKey: "photoPromptSkipCount")
     }
 
+    func checkUsernameAvailable(_ username: String) async -> Bool {
+        let lower = username.lowercased()
+        nonisolated struct Row: Decodable, Sendable { let username: String? }
+        let rows: [Row]? = try? await client
+            .from("profiles")
+            .select("username")
+            .eq("username", value: lower)
+            .limit(1)
+            .execute()
+            .value
+        return rows?.isEmpty ?? true
+    }
+
     func saveProfile(
         userId: String,
         fullName: String,
@@ -183,7 +196,7 @@ class SupabaseManager {
         var params: [String: AnyJSON] = [
             "id": .string(userId),
             "full_name": .string(fullName),
-            "username": .string(username),
+            "username": .string(username.lowercased()),
         ]
         if !position.isEmpty && position != "?" {
             params["position"] = .string(position)
