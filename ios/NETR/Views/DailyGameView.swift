@@ -620,28 +620,52 @@ struct DailyGameView: View {
     private var shareText: String {
         let total = DailyGameViewModel.maxGuesses
         let dateLabel: String = {
+            guard let puzzleDate = viewModel.todaysPuzzle?.puzzleDate else {
+                let df = DateFormatter()
+                df.dateFormat = "MMM d"
+                return df.string(from: Date()).uppercased()
+            }
             let df = DateFormatter()
+            df.dateFormat = "yyyy-MM-dd"
+            df.timeZone = TimeZone(identifier: "UTC")
+            guard let date = df.date(from: puzzleDate) else { return puzzleDate.uppercased() }
             df.dateFormat = "MMM d"
-            return df.string(from: Date()).uppercased()
+            return df.string(from: date).uppercased()
         }()
+
+        let guessSquares = viewModel.guesses.map { $0.isCorrect ? "🟩" : "⬛" }.joined()
+        let remaining = max(0, total - viewModel.guesses.count)
+        let emptySquares = String(repeating: "⬜", count: remaining)
+        let grid = guessSquares + emptySquares
+
+        let cluesUsed = viewModel.revealedHints.count
+        let clueText = cluesUsed > 0 ? "Used \(cluesUsed)/5 clues" : "No clues needed"
 
         if case .won(let count) = viewModel.status {
             return """
-            NETR DAILY — \(dateLabel)
-            Cracked today's mystery player in \(count)/\(total).
+            NETR DAILY \u{1F3C0} — \(dateLabel)
 
-            Think you can beat me?
+            \(grid)
+
+            Solved in \(count)/\(total) guesses
+            \(clueText)
+
+            Think you can beat me? \u{1F525}
             """
         }
         if case .lost = viewModel.status {
             return """
-            NETR DAILY — \(dateLabel)
-            Stumped by today's mystery player. \(total)/\(total).
+            NETR DAILY \u{1F3C0} — \(dateLabel)
 
-            Think you can do better?
+            \(grid)
+
+            Stumped \u{1F62D} \(total)/\(total)
+            Used all 5 clues
+
+            Can you do better?
             """
         }
-        return "NETR DAILY — \(dateLabel)"
+        return "NETR DAILY \u{1F3C0} — \(dateLabel)"
     }
 
     private var shareButton: some View {
@@ -667,7 +691,32 @@ struct DailyGameView: View {
     }
 
     private var answerReveal: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 12) {
+            if let url = viewModel.todaysPuzzle?.player.headshotUrl,
+               let imageUrl = URL(string: url) {
+                AsyncImage(url: imageUrl) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(NETRTheme.neonGreen, lineWidth: 2))
+                            .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
+                    default:
+                        Circle()
+                            .fill(NETRTheme.surface)
+                            .frame(width: 100, height: 100)
+                            .overlay(
+                                Text(String(viewModel.todaysPuzzle?.player.name.prefix(2) ?? "??").uppercased())
+                                    .font(.system(size: 28, weight: .black))
+                                    .foregroundStyle(NETRTheme.neonGreen)
+                            )
+                    }
+                }
+            }
+
             Text("TODAY'S ANSWER")
                 .font(.system(size: 10, weight: .heavy))
                 .tracking(1.4)
@@ -735,7 +784,7 @@ struct DailyGameView: View {
     }
 
     private func distributionRow(guessCount: Int) -> some View {
-        let count = viewModel.stats.guessDistribution[guessCount] ?? 0
+        let count = viewModel.stats.guessDistribution["\(guessCount)"] ?? 0
         let maxCount = max(1, viewModel.stats.guessDistribution.values.max() ?? 1)
         let ratio = CGFloat(count) / CGFloat(maxCount)
 

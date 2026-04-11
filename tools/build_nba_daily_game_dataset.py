@@ -243,7 +243,7 @@ def fetch_all_players() -> list[CandidatePlayer]:
                 from_year=from_year,
                 to_year=to_year,
                 # ROSTERSTATUS == 1 means currently on a roster
-                is_active=bool(row.get("ROSTERSTATUS") == 1),
+                is_active=bool(int(row.get("ROSTERSTATUS") or 0) == 1),
             )
         )
 
@@ -415,6 +415,7 @@ def to_dict(tier: str, player: CandidatePlayer) -> dict:
         "careerGames": player.career_games,
         "careerMinutes": player.career_minutes,
         "funFact": None,
+        "headshotUrl": f"https://cdn.nba.com/headshots/nba/latest/1040x760/{player.id}.png",
     }
 
 
@@ -448,6 +449,16 @@ def main() -> int:
         type=Path,
         default=OUTPUT_PATH,
         help=f"Output JSON path (default: {OUTPUT_PATH})",
+    )
+    parser.add_argument(
+        "--letters",
+        type=str,
+        default=None,
+        help=(
+            "Only include players whose last name starts with letters in this range. "
+            "Examples: 'I-Z' (I through Z), 'A-H', 'M-M' (only M). "
+            "Case-insensitive."
+        ),
     )
     parser.add_argument(
         "--from-checkpoint",
@@ -486,6 +497,17 @@ def main() -> int:
 
     # Step 1: candidate list
     candidates = fetch_all_players()
+
+    # Filter by last-name letter range (e.g. --letters I-Z)
+    if args.letters:
+        lo, hi = args.letters.upper().split("-")
+        before = len(candidates)
+        candidates = [
+            c for c in candidates
+            if c.name.split()[-1][0].upper() >= lo and c.name.split()[-1][0].upper() <= hi
+        ]
+        print(f"  Filtered to last names {lo}–{hi}: {len(candidates)} (was {before})")
+
     if args.limit:
         candidates = candidates[: args.limit]
         print(f"  (limited to first {args.limit} for test run)")

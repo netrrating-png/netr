@@ -89,12 +89,15 @@ final class DailyGameViewModel {
             // 2. Full active player pool for autocomplete
             let pool: [NBAGamePlayer] = try await client
                 .from("nba_game_players")
-                .select("id, name, retired, years_active, from_year, to_year, draft_team, teams, position, height, jerseys, tier, fun_fact")
+                .select("id, name, retired, years_active, from_year, to_year, draft_team, teams, position, height, jerseys, tier, fun_fact, headshot_url")
                 .eq("active", value: true)
                 .order("name", ascending: true)
                 .execute()
                 .value
             self.playerPool = pool
+            if !pool.contains(where: { $0.id == puzzle.player.id }) {
+                self.playerPool.append(puzzle.player)
+            }
 
             // 3. Restore in-progress guesses for today (if any)
             restoreProgress(for: puzzle.puzzleDate)
@@ -160,8 +163,7 @@ final class DailyGameViewModel {
         let byId: [Int64: NBAGamePlayer] = Dictionary(uniqueKeysWithValues: playerPool.map { ($0.id, $0) })
         var restored: [DailyGameGuess] = []
         for row in snap.guesses {
-            let player = byId[row.playerId] ?? todaysPuzzle?.player
-            guard let player else { continue }
+            guard let player = byId[row.playerId] else { continue }
             restored.append(DailyGameGuess(player: player, isCorrect: row.isCorrect))
         }
         self.guesses = restored
@@ -176,6 +178,7 @@ final class DailyGameViewModel {
     }
 
     private func recordResult(won: Bool, puzzleDate: String) {
+        guard stats.lastPlayedDate != puzzleDate else { return }
         // 1. Update local stats
         var s = stats
         let wasConsecutive = (s.lastPlayedDate == previousDate(of: puzzleDate))
@@ -184,7 +187,7 @@ final class DailyGameViewModel {
             s.totalWon += 1
             s.currentStreak = wasConsecutive ? s.currentStreak + 1 : 1
             s.maxStreak = max(s.maxStreak, s.currentStreak)
-            s.guessDistribution[guesses.count, default: 0] += 1
+            s.guessDistribution["\(guesses.count)", default: 0] += 1
         } else {
             s.currentStreak = 0
         }
@@ -217,8 +220,10 @@ final class DailyGameViewModel {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"
         fmt.timeZone = TimeZone(identifier: "UTC")
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
         guard let date = fmt.date(from: dateString),
-              let prev = Calendar.current.date(byAdding: .day, value: -1, to: date) else {
+              let prev = cal.date(byAdding: .day, value: -1, to: date) else {
             return nil
         }
         return fmt.string(from: prev)

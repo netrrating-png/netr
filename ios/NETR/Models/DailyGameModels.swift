@@ -16,6 +16,7 @@ nonisolated struct NBAGamePlayer: Identifiable, Sendable, Hashable {
     let jerseys: [String]
     let tier: String
     let funFact: String?
+    let headshotUrl: String?
 }
 
 extension NBAGamePlayer: Decodable {
@@ -33,6 +34,7 @@ extension NBAGamePlayer: Decodable {
         case jerseys
         case tier
         case funFact = "fun_fact"
+        case headshotUrl = "headshot_url"
     }
 }
 
@@ -59,6 +61,7 @@ extension DailyPuzzle: Decodable {
         case jerseys
         case tier
         case funFact = "fun_fact"
+        case headshotUrl = "headshot_url"
     }
 
     nonisolated init(from decoder: Decoder) throws {
@@ -77,7 +80,8 @@ extension DailyPuzzle: Decodable {
             height: try c.decodeIfPresent(String.self, forKey: .height),
             jerseys: try c.decodeIfPresent([String].self, forKey: .jerseys) ?? [],
             tier: try c.decode(String.self, forKey: .tier),
-            funFact: try c.decodeIfPresent(String.self, forKey: .funFact)
+            funFact: try c.decodeIfPresent(String.self, forKey: .funFact),
+            headshotUrl: try c.decodeIfPresent(String.self, forKey: .headshotUrl)
         )
     }
 }
@@ -157,7 +161,7 @@ nonisolated struct DailyGameStats: Codable, Sendable {
     var maxStreak: Int = 0
     var totalPlayed: Int = 0
     var totalWon: Int = 0
-    var guessDistribution: [Int: Int] = [:]    // guessCount -> times achieved (1-6)
+    var guessDistribution: [String: Int] = [:]  // "1"–"6" -> times achieved
     var lastPlayedDate: String? = nil           // "2026-04-10"
 
     var winPercent: Int {

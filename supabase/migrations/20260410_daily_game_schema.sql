@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS nba_game_players (
     career_games    INT NOT NULL DEFAULT 0,
     career_minutes  INT NOT NULL DEFAULT 0,
     fun_fact        TEXT,                             -- hand-curated 5th hint; optional
+    headshot_url    TEXT,                             -- NBA CDN headshot URL
     active          BOOLEAN NOT NULL DEFAULT true,    -- set false to exclude without deleting
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -88,6 +89,7 @@ CREATE TABLE IF NOT EXISTS nba_game_results (
     puzzle_date     DATE NOT NULL,
     guess_count     INT NOT NULL CHECK (guess_count BETWEEN 1 AND 6),
     won             BOOLEAN NOT NULL,
+    CHECK ((won = true AND guess_count BETWEEN 1 AND 6) OR (won = false AND guess_count = 6)),
     completed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (user_id, puzzle_date)
 );
@@ -108,7 +110,7 @@ DROP POLICY IF EXISTS "nba_game_results_insert_own" ON nba_game_results;
 CREATE POLICY "nba_game_results_insert_own"
     ON nba_game_results FOR INSERT
     TO authenticated
-    WITH CHECK (user_id::text = auth.uid()::text);
+    WITH CHECK (user_id::text = auth.uid()::text AND puzzle_date <= CURRENT_DATE);
 
 -- ─── SCHEDULER FUNCTION ────────────────────────────────────
 -- Ensures the next 7 days of puzzles are populated. Idempotent.
@@ -226,7 +228,8 @@ SELECT
     p.height,
     p.jerseys,
     p.tier,
-    p.fun_fact
+    p.fun_fact,
+    p.headshot_url
 FROM nba_game_daily_puzzle d
 JOIN nba_game_players p ON p.id = d.player_id
 WHERE d.puzzle_date = CURRENT_DATE;
