@@ -628,7 +628,13 @@ struct DailyGameView: View {
                         .focused($searchFocused)
                         .autocorrectionDisabled()
                         .textInputAutocapitalization(.words)
-                        .submitLabel(.search)
+                        .submitLabel(.go)
+                        .onSubmit {
+                            if let first = viewModel.searchResults.first {
+                                selectedPlayer = first
+                                viewModel.searchQuery = ""
+                            }
+                        }
 
                     if !viewModel.searchQuery.isEmpty {
                         Button {
@@ -658,9 +664,28 @@ struct DailyGameView: View {
                     color: searchFocused ? NETRTheme.neonGreen.opacity(0.25) : .clear,
                     radius: 12
                 )
+
+                if viewModel.searchResults.count == 1 {
+                    Button {
+                        let player = viewModel.searchResults[0]
+                        viewModel.submitGuess(player)
+                        viewModel.searchQuery = ""
+                        searchFocused = false
+                    } label: {
+                        Text("GUESS \(viewModel.searchResults[0].name.uppercased())")
+                            .font(.system(size: 14, weight: .heavy))
+                            .tracking(1)
+                            .foregroundStyle(Color.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                            .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
+                    }
+                    .buttonStyle(PressButtonStyle())
+                }
             }
 
-            if selectedPlayer == nil && !viewModel.searchResults.isEmpty {
+            if selectedPlayer == nil && !viewModel.searchResults.isEmpty && viewModel.searchResults.count > 1 {
                 ScrollView {
                     VStack(spacing: 0) {
                         ForEach(viewModel.searchResults) { player in
