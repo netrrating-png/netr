@@ -6,7 +6,6 @@ struct DailyGameView: View {
     @Bindable var dmViewModel: DMViewModel
     @FocusState private var searchFocused: Bool
     @State private var showStats: Bool = false
-    @State private var selectedPlayer: NBAGamePlayer? = nil
 
     var body: some View {
         ZStack {
@@ -42,10 +41,7 @@ struct DailyGameView: View {
             }
         }
         .onChange(of: viewModel.isGameOver) { _, isOver in
-            if isOver {
-                selectedPlayer = nil
-                searchFocused = false
-            }
+            if isOver { searchFocused = false }
         }
         .sheet(isPresented: $showStats) {
             statsSheet
@@ -556,178 +552,103 @@ struct DailyGameView: View {
 
     // MARK: - Guess input
 
-    private var guessInput: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                LucideIcon("search", size: 12)
-                    .foregroundStyle(NETRTheme.neonGreen)
-                Text("YOUR GUESS")
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(1.4)
-                    .foregroundStyle(NETRTheme.subtext)
-                Spacer()
-            }
-            .padding(.horizontal, 4)
+    @State private var guessError: String?
 
-            // Selected player chip + guess button
-            if let player = selectedPlayer {
-                HStack(spacing: 12) {
-                    HStack(spacing: 10) {
-                        LucideIcon("user", size: 16)
-                            .foregroundStyle(NETRTheme.neonGreen)
-                        Text(player.name)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(NETRTheme.text)
-                        Spacer()
-                        Button {
-                            selectedPlayer = nil
-                        } label: {
-                            LucideIcon("x", size: 12)
-                                .foregroundStyle(NETRTheme.subtext)
-                                .frame(width: 24, height: 24)
-                                .background(NETRTheme.muted, in: Circle())
-                        }
+    private var guessInput: some View {
+        VStack(spacing: 10) {
+            if let error = guessError {
+                Text(error)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(NETRTheme.red)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+                    .transition(.opacity)
+            }
+
+            HStack(spacing: 10) {
+                TextField("", text: $viewModel.searchQuery, prompt: Text("Enter player name…").foregroundColor(NETRTheme.subtext.opacity(0.6)))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(NETRTheme.text)
+                    .focused($searchFocused)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.words)
+                    .submitLabel(.go)
+                    .onSubmit { submitTypedGuess() }
+                    .onChange(of: viewModel.searchQuery) { _, _ in
+                        guessError = nil
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(NETRTheme.neonGreen.opacity(0.08))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(NETRTheme.neonGreen.opacity(0.4), lineWidth: 1.5)
-                            )
-                    )
-                }
 
                 Button {
-                    viewModel.submitGuess(player)
-                    selectedPlayer = nil
-                    searchFocused = false
+                    submitTypedGuess()
                 } label: {
                     Text("GUESS")
-                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                        .tracking(1.5)
-                        .foregroundStyle(Color.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
-                        .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
-                }
-                .buttonStyle(PressButtonStyle())
-                .sensoryFeedback(.impact(weight: .medium), trigger: viewModel.guesses.count)
-            } else {
-                // Search field
-                HStack(spacing: 10) {
-                    LucideIcon("search", size: 16)
-                        .foregroundStyle(NETRTheme.subtext)
-
-                    TextField("", text: $viewModel.searchQuery, prompt: Text("Type a player's name…").foregroundColor(NETRTheme.subtext.opacity(0.6)))
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(NETRTheme.text)
-                        .focused($searchFocused)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.words)
-                        .submitLabel(.go)
-                        .onSubmit {
-                            if let first = viewModel.searchResults.first {
-                                selectedPlayer = first
-                                viewModel.searchQuery = ""
-                            }
-                        }
-
-                    if !viewModel.searchQuery.isEmpty {
-                        Button {
-                            viewModel.searchQuery = ""
-                        } label: {
-                            LucideIcon("x", size: 12)
-                                .foregroundStyle(NETRTheme.subtext)
-                                .frame(width: 22, height: 22)
-                                .background(NETRTheme.muted, in: Circle())
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(NETRTheme.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(
-                                    searchFocused ? NETRTheme.neonGreen.opacity(0.6) : NETRTheme.border,
-                                    lineWidth: searchFocused ? 1.5 : 1
-                                )
+                        .font(.system(size: 15, weight: .black))
+                        .tracking(1)
+                        .foregroundStyle(viewModel.searchQuery.isEmpty ? NETRTheme.muted : Color.black)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(
+                            viewModel.searchQuery.isEmpty ? NETRTheme.card : NETRTheme.neonGreen,
+                            in: .rect(cornerRadius: 12)
                         )
-                )
-                .shadow(
-                    color: searchFocused ? NETRTheme.neonGreen.opacity(0.25) : .clear,
-                    radius: 12
-                )
-
-                if viewModel.searchResults.count == 1 {
-                    Button {
-                        let player = viewModel.searchResults[0]
-                        viewModel.submitGuess(player)
-                        viewModel.searchQuery = ""
-                        searchFocused = false
-                    } label: {
-                        Text("GUESS \(viewModel.searchResults[0].name.uppercased())")
-                            .font(.system(size: 14, weight: .heavy))
-                            .tracking(1)
-                            .foregroundStyle(Color.black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
-                            .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
-                    }
-                    .buttonStyle(PressButtonStyle())
                 }
+                .disabled(viewModel.searchQuery.trimmingCharacters(in: .whitespaces).isEmpty)
+                .buttonStyle(.plain)
             }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 14)
+                    .fill(NETRTheme.surface)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(
+                                searchFocused ? NETRTheme.neonGreen.opacity(0.6) : NETRTheme.border,
+                                lineWidth: searchFocused ? 1.5 : 1
+                            )
+                    )
+            )
+        }
+        .animation(.easeOut(duration: 0.2), value: guessError)
+    }
 
-            if selectedPlayer == nil && !viewModel.searchResults.isEmpty && viewModel.searchResults.count > 1 {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        ForEach(viewModel.searchResults) { player in
-                            Button {
-                                selectedPlayer = player
-                                viewModel.searchQuery = ""
-                                searchFocused = false
-                            } label: {
-                                HStack(spacing: 12) {
-                                    LucideIcon("user", size: 14)
-                                        .foregroundStyle(NETRTheme.neonGreen.opacity(0.8))
-                                    Text(player.name)
-                                        .font(.system(size: 15, weight: .semibold))
-                                        .foregroundStyle(NETRTheme.text)
-                                    Spacer()
-                                    LucideIcon("arrow-right", size: 13)
-                                        .foregroundStyle(NETRTheme.subtext)
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+    private func submitTypedGuess() {
+        let query = viewModel.searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty else { return }
 
-                            if player.id != viewModel.searchResults.last?.id {
-                                Divider().background(NETRTheme.border).padding(.leading, 42)
-                            }
-                        }
+        // Find matching player in the pool (case-insensitive)
+        let guessedIds = Set(viewModel.guesses.map { $0.player.id })
+        guard let match = viewModel.playerPool.first(where: {
+            !guessedIds.contains($0.id) && $0.name.lowercased() == query
+        }) else {
+            // Check if it's a player they already guessed
+            if viewModel.guesses.contains(where: { $0.player.name.lowercased() == query }) {
+                guessError = "You already guessed that player."
+            } else {
+                guessError = "Player not found. Check the spelling."
+            }
+            return
+        }
+
+        // Validate against revealed letters
+        let revealed = viewModel.revealedLetterIndices
+        if let answer = viewModel.todaysPuzzle?.player.name {
+            let answerChars = Array(answer.lowercased())
+            let guessChars = Array(match.name.lowercased())
+            for idx in revealed {
+                if idx < answerChars.count && idx < guessChars.count {
+                    if answerChars[idx] != guessChars[idx] {
+                        guessError = "Doesn't match the revealed letters."
+                        return
                     }
                 }
-                .frame(maxHeight: 220)
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(NETRTheme.surface)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(NETRTheme.border, lineWidth: 1)
-                        )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
         }
+
+        guessError = nil
+        viewModel.submitGuess(match)
+        viewModel.searchQuery = ""
+        searchFocused = false
     }
 
     // MARK: - Result card
