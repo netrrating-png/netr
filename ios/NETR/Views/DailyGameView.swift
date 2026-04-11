@@ -6,6 +6,7 @@ struct DailyGameView: View {
     @Bindable var dmViewModel: DMViewModel
     @FocusState private var searchFocused: Bool
     @State private var showStats: Bool = false
+    @State private var guessError: String?
 
     var body: some View {
         ZStack {
@@ -147,15 +148,19 @@ struct DailyGameView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 16)
+                .padding(.bottom, viewModel.isGameOver ? 100 : 16)
             }
             .scrollDismissesKeyboard(.interactively)
 
             if !viewModel.isGameOver {
-                guessInput
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                    .background(NETRTheme.background)
+                VStack(spacing: 0) {
+                    Divider().background(NETRTheme.border)
+                    guessInput
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+                        .padding(.bottom, 90)
+                }
+                .background(NETRTheme.background)
             }
         }
     }
@@ -551,8 +556,6 @@ struct DailyGameView: View {
     }
 
     // MARK: - Guess input
-
-    @State private var guessError: String?
 
     private var guessInput: some View {
         VStack(spacing: 10) {
