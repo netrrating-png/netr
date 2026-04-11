@@ -41,6 +41,12 @@ struct DailyGameView: View {
                 await viewModel.loadTodaysGame()
             }
         }
+        .onChange(of: viewModel.isGameOver) { _, isOver in
+            if isOver {
+                selectedPlayer = nil
+                searchFocused = false
+            }
+        }
         .sheet(isPresented: $showStats) {
             statsSheet
                 .presentationDetents([.medium])
@@ -212,8 +218,9 @@ struct DailyGameView: View {
         let revealed = viewModel.revealedLetterIndices
         let isOver = viewModel.isGameOver
         let words = answer.split(separator: " ", omittingEmptySubsequences: false)
+        let letterCount = answer.filter { $0 != " " }.count
 
-        return VStack(spacing: 8) {
+        return VStack(spacing: 10) {
             ForEach(Array(words.enumerated()), id: \.offset) { wordIdx, word in
                 HStack(spacing: 4) {
                     let startIndex = charOffset(for: wordIdx, in: words)
@@ -228,6 +235,16 @@ struct DailyGameView: View {
                     }
                 }
             }
+
+            if !isOver && !viewModel.guesses.isEmpty {
+                Text("\(revealed.count)/\(letterCount) letters revealed")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.8))
+            } else if !isOver {
+                Text("\(letterCount) letters \u{2022} \(words.count) word\(words.count == 1 ? "" : "s")")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: revealed)
     }
@@ -240,8 +257,18 @@ struct DailyGameView: View {
         return offset
     }
 
+    private var tileSize: CGFloat {
+        let answer = viewModel.todaysPuzzle?.player.name ?? ""
+        let longestWord = answer.split(separator: " ").map(\.count).max() ?? 6
+        if longestWord > 12 { return 20 }
+        if longestWord > 9 { return 24 }
+        return 28
+    }
+
     @ViewBuilder
     private func letterTile(character: Character, isRevealed: Bool, isCorrectReveal: Bool) -> some View {
+        let size = tileSize
+        let fontSize: CGFloat = size > 24 ? 18 : (size > 20 ? 14 : 12)
         ZStack {
             RoundedRectangle(cornerRadius: 4)
                 .fill(isRevealed ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.muted.opacity(0.3))
@@ -255,12 +282,12 @@ struct DailyGameView: View {
 
             if isRevealed {
                 Text(String(character).uppercased())
-                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .font(.system(size: fontSize, weight: .black, design: .rounded))
                     .foregroundStyle(isCorrectReveal ? NETRTheme.text : NETRTheme.neonGreen)
                     .transition(.scale.combined(with: .opacity))
             }
         }
-        .frame(width: 28, height: 36)
+        .frame(width: size, height: size + 8)
         .shadow(
             color: isRevealed ? NETRTheme.neonGreen.opacity(0.3) : .clear,
             radius: 4

@@ -80,16 +80,21 @@ final class DailyGameViewModel {
         })
     }
 
-    /// Filtered autocomplete results while the user types
+    /// Filtered autocomplete results while the user types.
+    /// Prioritizes names starting with the query, then contains matches.
     var searchResults: [NBAGamePlayer] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !query.isEmpty else { return [] }
+        guard query.count >= 2 else { return [] }
         let guessedIds = Set(guesses.map { $0.player.id })
-        return playerPool
-            .filter { !guessedIds.contains($0.id) }
-            .filter { $0.name.lowercased().contains(query) }
-            .prefix(8)
-            .map { $0 }
+        let candidates = playerPool.filter {
+            !guessedIds.contains($0.id) && $0.name.lowercased().contains(query)
+        }
+        let startsWith = candidates.filter {
+            $0.name.lowercased().hasPrefix(query) ||
+            $0.name.lowercased().split(separator: " ").contains { $0.hasPrefix(query) }
+        }
+        let rest = candidates.filter { p in !startsWith.contains(where: { $0.id == p.id }) }
+        return Array((startsWith + rest).prefix(8))
     }
 
     // MARK: - Loading
