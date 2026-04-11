@@ -10,7 +10,6 @@ final class DailyGameViewModel {
     // MARK: - State
 
     var todaysPuzzle: DailyPuzzle?
-    var playerPool: [NBAGamePlayer] = []           // full search pool (all active players)
     var guesses: [DailyGameGuess] = []
     var status: DailyGameStatus = .playing
     var stats: DailyGameStats = DailyGameViewModel.loadStats()
@@ -57,7 +56,7 @@ final class DailyGameViewModel {
         var revealed = Set<Int>()
         let answerChars = Array(answer.lowercased())
         for guess in guesses where !guess.isCorrect {
-            let guessChars = Array(guess.player.name.lowercased())
+            let guessChars = Array(guess.guessName.lowercased())
             for i in 0..<min(answerChars.count, guessChars.count) {
                 if answerChars[i] == guessChars[i] {
                     revealed.insert(i)
@@ -80,21 +79,17 @@ final class DailyGameViewModel {
         })
     }
 
-    /// Filtered autocomplete results while the user types.
-    /// Prioritizes names starting with the query, then contains matches.
-    var searchResults: [NBAGamePlayer] {
-        let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !query.isEmpty else { return [] }
-        let guessedIds = Set(guesses.map { $0.player.id })
-        let candidates = playerPool.filter {
-            !guessedIds.contains($0.id) && $0.name.lowercased().contains(query)
+    /// Number of letters that matched in the last guess (for feedback)
+    var lastGuessMatchCount: Int? {
+        guard let last = guesses.last, !last.isCorrect,
+              let answer = todaysPuzzle?.player.name else { return nil }
+        let a = Array(answer.lowercased())
+        let g = Array(last.guessName.lowercased())
+        var count = 0
+        for i in 0..<min(a.count, g.count) {
+            if a[i] == g[i] && a[i] != " " { count += 1 }
         }
-        let startsWith = candidates.filter {
-            $0.name.lowercased().hasPrefix(query) ||
-            $0.name.lowercased().split(separator: " ").contains { $0.hasPrefix(query) }
-        }
-        let rest = candidates.filter { p in !startsWith.contains(where: { $0.id == p.id }) }
-        return Array((startsWith + rest).prefix(8))
+        return count
     }
 
     // MARK: - Loading
@@ -121,20 +116,7 @@ final class DailyGameViewModel {
             }
             self.todaysPuzzle = puzzle
 
-            // 2. Full active player pool for autocomplete
-            let pool: [NBAGamePlayer] = try await client
-                .from("nba_game_players")
-                .select("id, name, retired, years_active, from_year, to_year, draft_team, teams, position, height, jerseys, tier, fun_fact, headshot_url")
-                .eq("active", value: true)
-                .order("name", ascending: true)
-                .execute()
-                .value
-            self.playerPool = pool
-            if !pool.contains(where: { $0.id == puzzle.player.id }) {
-                self.playerPool.append(puzzle.player)
-            }
-
-            // 3. Restore in-progress guesses for today (if any)
+            // 2. Restore in-progress guesses for today (if any)
             restoreProgress(for: puzzle.puzzleDate)
 
             isLoading = false
@@ -147,12 +129,13 @@ final class DailyGameViewModel {
 
     // MARK: - Gameplay
 
-    func submitGuess(_ player: NBAGamePlayer) {
-        guard case .playing = status, let puzzle = todaysPuzzle else { return }
-        guard !guesses.contains(where: { $0.player.id == player.id }) else { return }
+    func submitGuess(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard case .playing = status, let puzzle = todaysPuzzle, !trimmed.isEmpty else { return }
+        guard !guesses.contains(where: { $0.guessName.lowercased() == trimmed.lowercased() }) else { return }
 
-        let isCorrect = player.id == puzzle.player.id
-        guesses.append(DailyGameGuess(player: player, isCorrect: isCorrect))
+        let isCorrect = trimmed.lowercased() == puzzle.player.name.lowercased()
+        guesses.append(DailyGameGuess(name: trimmed, isCorrect: isCorrect))
         searchQuery = ""
 
         if isCorrect {
@@ -174,7 +157,7 @@ final class DailyGameViewModel {
 
     private func saveProgress(for date: String) {
         let payload = ProgressSnapshot(
-            guesses: guesses.map { ProgressSnapshot.GuessRow(playerId: $0.player.id, isCorrect: $0.isCorrect) },
+            guesses: guesses.map { ProgressSnapshot.GuessRow(guessName: $0.guessName, isCorrect: $0.isCorrect) },
             status: {
                 switch status {
                 case .playing: return "playing"
@@ -194,12 +177,9 @@ final class DailyGameViewModel {
             return
         }
 
-        // Rehydrate guesses by looking up player ids in the pool + puzzle
-        let byId: [Int64: NBAGamePlayer] = Dictionary(uniqueKeysWithValues: playerPool.map { ($0.id, $0) })
         var restored: [DailyGameGuess] = []
         for row in snap.guesses {
-            guard let player = byId[row.playerId] else { continue }
-            restored.append(DailyGameGuess(player: player, isCorrect: row.isCorrect))
+            restored.append(DailyGameGuess(name: row.guessName, isCorrect: row.isCorrect))
         }
         self.guesses = restored
 
@@ -282,7 +262,7 @@ final class DailyGameViewModel {
 
     private struct ProgressSnapshot: Codable {
         struct GuessRow: Codable {
-            let playerId: Int64
+            let guessName: String
             let isCorrect: Bool
         }
         let guesses: [GuessRow]

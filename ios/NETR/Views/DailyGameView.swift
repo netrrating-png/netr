@@ -516,13 +516,13 @@ struct DailyGameView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(guess.player.name)
+                            Text(guess.guessName)
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundStyle(NETRTheme.text)
                                 .strikethrough(!guess.isCorrect, color: NETRTheme.subtext.opacity(0.5))
 
                             if !guess.isCorrect {
-                                let matched = matchedLetterCount(guess: guess.player.name)
+                                let matched = matchedLetterCount(guess: guess.guessName)
                                 if matched > 0 {
                                     Text("\(matched) letter\(matched == 1 ? "" : "s") revealed")
                                         .font(.system(size: 11, weight: .semibold))
@@ -616,41 +616,16 @@ struct DailyGameView: View {
     }
 
     private func submitTypedGuess() {
-        let query = viewModel.searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !query.isEmpty else { return }
+        let name = viewModel.searchQuery.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
 
-        // Find matching player in the pool (case-insensitive)
-        let guessedIds = Set(viewModel.guesses.map { $0.player.id })
-        guard let match = viewModel.playerPool.first(where: {
-            !guessedIds.contains($0.id) && $0.name.lowercased() == query
-        }) else {
-            // Check if it's a player they already guessed
-            if viewModel.guesses.contains(where: { $0.player.name.lowercased() == query }) {
-                guessError = "You already guessed that player."
-            } else {
-                guessError = "Player not found. Check the spelling."
-            }
+        if viewModel.guesses.contains(where: { $0.guessName.lowercased() == name.lowercased() }) {
+            guessError = "You already guessed that."
             return
         }
 
-        // Validate against revealed letters
-        let revealed = viewModel.revealedLetterIndices
-        if let answer = viewModel.todaysPuzzle?.player.name {
-            let answerChars = Array(answer.lowercased())
-            let guessChars = Array(match.name.lowercased())
-            for idx in revealed {
-                if idx < answerChars.count && idx < guessChars.count {
-                    if answerChars[idx] != guessChars[idx] {
-                        guessError = "Doesn't match the revealed letters."
-                        return
-                    }
-                }
-            }
-        }
-
         guessError = nil
-        viewModel.submitGuess(match)
-        viewModel.searchQuery = ""
+        viewModel.submitGuess(name: name)
         searchFocused = false
     }
 

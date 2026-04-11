@@ -136,12 +136,12 @@ extension NBAGamePlayer {
 
 nonisolated struct DailyGameGuess: Identifiable, Sendable, Hashable {
     let id: UUID
-    let player: NBAGamePlayer
+    let guessName: String
     let isCorrect: Bool
 
-    init(player: NBAGamePlayer, isCorrect: Bool) {
+    init(name: String, isCorrect: Bool) {
         self.id = UUID()
-        self.player = player
+        self.guessName = name
         self.isCorrect = isCorrect
     }
 }
