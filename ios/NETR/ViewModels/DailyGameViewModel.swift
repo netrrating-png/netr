@@ -50,6 +50,36 @@ final class DailyGameViewModel {
         return true
     }
 
+    /// Letters revealed so far — indices into the answer name that have been uncovered
+    /// by matching positions from wrong guesses (Wheel of Fortune style).
+    var revealedLetterIndices: Set<Int> {
+        guard let answer = todaysPuzzle?.player.name else { return [] }
+        var revealed = Set<Int>()
+        let answerChars = Array(answer.lowercased())
+        for guess in guesses where !guess.isCorrect {
+            let guessChars = Array(guess.player.name.lowercased())
+            for i in 0..<min(answerChars.count, guessChars.count) {
+                if answerChars[i] == guessChars[i] {
+                    revealed.insert(i)
+                }
+            }
+        }
+        return revealed
+    }
+
+    /// The answer name with unrevealed letters replaced by underscores,
+    /// preserving spaces and grouping by word.
+    var letterBoard: String {
+        guard let answer = todaysPuzzle?.player.name else { return "" }
+        let revealed = revealedLetterIndices
+        let isOver = isGameOver
+        return String(answer.enumerated().map { i, ch in
+            if ch == " " { return ch }
+            if isOver || revealed.contains(i) { return ch }
+            return "_"
+        })
+    }
+
     /// Filtered autocomplete results while the user types
     var searchResults: [NBAGamePlayer] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()

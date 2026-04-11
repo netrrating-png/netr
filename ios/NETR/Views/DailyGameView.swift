@@ -154,32 +154,33 @@ struct DailyGameView: View {
 
     private var heroCard: some View {
         VStack(spacing: 18) {
-            // Mystery silhouette
+            // Mystery silhouette (smaller to make room for letter board)
             ZStack {
                 Circle()
                     .fill(NETRTheme.neonGreen.opacity(0.08))
-                    .frame(width: 108, height: 108)
+                    .frame(width: 72, height: 72)
                 Circle()
                     .stroke(NETRTheme.neonGreen.opacity(0.4), lineWidth: 2)
-                    .frame(width: 108, height: 108)
+                    .frame(width: 72, height: 72)
                 Text("?")
-                    .font(.system(size: 58, weight: .black, design: .rounded))
+                    .font(.system(size: 38, weight: .black, design: .rounded))
                     .foregroundStyle(NETRTheme.neonGreen)
                     .neonGlow(NETRTheme.neonGreen, radius: 10)
             }
             .padding(.top, 6)
 
-            VStack(spacing: 6) {
-                Text("MYSTERY PLAYER")
-                    .font(.system(size: 11, weight: .heavy))
-                    .tracking(2.0)
-                    .foregroundStyle(NETRTheme.subtext)
+            Text("MYSTERY PLAYER")
+                .font(.system(size: 11, weight: .heavy))
+                .tracking(2.0)
+                .foregroundStyle(NETRTheme.subtext)
 
-                Text(bigGuessText)
-                    .font(.system(size: 28, weight: .black, design: .rounded))
-                    .foregroundStyle(NETRTheme.text)
-                    .monospacedDigit()
-            }
+            // Letter board — Wheel of Fortune style
+            letterBoardView
+
+            Text(bigGuessText)
+                .font(.system(size: 20, weight: .black, design: .rounded))
+                .foregroundStyle(NETRTheme.text)
+                .monospacedDigit()
 
             // Segmented guess track
             HStack(spacing: 6) {
@@ -201,6 +202,68 @@ struct DailyGameView: View {
                 )
         )
         .shadow(color: NETRTheme.neonGreen.opacity(0.18), radius: 20, x: 0, y: 0)
+    }
+
+    // MARK: - Letter Board (Wheel of Fortune)
+
+    private var letterBoardView: some View {
+        let answer = viewModel.todaysPuzzle?.player.name ?? ""
+        let revealed = viewModel.revealedLetterIndices
+        let isOver = viewModel.isGameOver
+        let words = answer.split(separator: " ", omittingEmptySubsequences: false)
+
+        return VStack(spacing: 8) {
+            ForEach(Array(words.enumerated()), id: \.offset) { wordIdx, word in
+                HStack(spacing: 4) {
+                    let startIndex = charOffset(for: wordIdx, in: words)
+                    ForEach(Array(word.enumerated()), id: \.offset) { charIdx, character in
+                        let globalIdx = startIndex + charIdx
+                        let isRevealed = isOver || revealed.contains(globalIdx)
+                        letterTile(
+                            character: character,
+                            isRevealed: isRevealed,
+                            isCorrectReveal: isOver && !revealed.contains(globalIdx)
+                        )
+                    }
+                }
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: revealed)
+    }
+
+    private func charOffset(for wordIndex: Int, in words: [Substring]) -> Int {
+        var offset = 0
+        for i in 0..<wordIndex {
+            offset += words[i].count + 1
+        }
+        return offset
+    }
+
+    @ViewBuilder
+    private func letterTile(character: Character, isRevealed: Bool, isCorrectReveal: Bool) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isRevealed ? NETRTheme.neonGreen.opacity(0.15) : NETRTheme.muted.opacity(0.3))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(
+                            isRevealed ? NETRTheme.neonGreen.opacity(0.6) : NETRTheme.border,
+                            lineWidth: isRevealed ? 1.5 : 1
+                        )
+                )
+
+            if isRevealed {
+                Text(String(character).uppercased())
+                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .foregroundStyle(isCorrectReveal ? NETRTheme.text : NETRTheme.neonGreen)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .frame(width: 28, height: 36)
+        .shadow(
+            color: isRevealed ? NETRTheme.neonGreen.opacity(0.3) : .clear,
+            radius: 4
+        )
     }
 
     private var bigGuessText: String {
@@ -322,6 +385,17 @@ struct DailyGameView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
+    private func matchedLetterCount(guess: String) -> Int {
+        guard let answer = viewModel.todaysPuzzle?.player.name else { return 0 }
+        let a = Array(answer.lowercased())
+        let g = Array(guess.lowercased())
+        var count = 0
+        for i in 0..<min(a.count, g.count) {
+            if a[i] == g[i] && a[i] != " " { count += 1 }
+        }
+        return count
+    }
+
     private func icon(for stage: HintStage) -> String {
         switch stage {
         case .retiredStatus: return "zap"
@@ -405,10 +479,25 @@ struct DailyGameView: View {
                                 .foregroundStyle(guess.isCorrect ? NETRTheme.neonGreen : NETRTheme.subtext)
                         }
 
-                        Text(guess.player.name)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(NETRTheme.text)
-                            .strikethrough(!guess.isCorrect, color: NETRTheme.subtext.opacity(0.5))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(guess.player.name)
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundStyle(NETRTheme.text)
+                                .strikethrough(!guess.isCorrect, color: NETRTheme.subtext.opacity(0.5))
+
+                            if !guess.isCorrect {
+                                let matched = matchedLetterCount(guess: guess.player.name)
+                                if matched > 0 {
+                                    Text("\(matched) letter\(matched == 1 ? "" : "s") revealed")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(NETRTheme.neonGreen)
+                                } else {
+                                    Text("No matching positions")
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(NETRTheme.subtext)
+                                }
+                            }
+                        }
 
                         Spacer()
                     }
@@ -641,6 +730,11 @@ struct DailyGameView: View {
         let cluesUsed = viewModel.revealedHints.count
         let clueText = cluesUsed > 0 ? "Used \(cluesUsed)/5 clues" : "No clues needed"
 
+        let letterCount = viewModel.todaysPuzzle?.player.name.filter({ $0 != " " }).count ?? 0
+        let wordCount = viewModel.todaysPuzzle?.player.name.split(separator: " ").count ?? 0
+        let letterInfo = "\(letterCount) letters, \(wordCount) word\(wordCount == 1 ? "" : "s")"
+        let revealedCount = viewModel.revealedLetterIndices.count
+
         if case .won(let count) = viewModel.status {
             return """
             NETR DAILY \u{1F3C0} — \(dateLabel)
@@ -648,6 +742,7 @@ struct DailyGameView: View {
             \(grid)
 
             Solved in \(count)/\(total) guesses
+            \(letterInfo) \u{2022} \(revealedCount) letters revealed before solving
             \(clueText)
 
             Think you can beat me? \u{1F525}
@@ -660,6 +755,7 @@ struct DailyGameView: View {
             \(grid)
 
             Stumped \u{1F62D} \(total)/\(total)
+            \(letterInfo) \u{2022} \(revealedCount)/\(letterCount) letters revealed
             Used all 5 clues
 
             Can you do better?
