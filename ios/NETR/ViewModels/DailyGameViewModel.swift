@@ -84,7 +84,7 @@ final class DailyGameViewModel {
     /// Prioritizes names starting with the query, then contains matches.
     var searchResults: [NBAGamePlayer] {
         let query = searchQuery.trimmingCharacters(in: .whitespaces).lowercased()
-        guard query.count >= 2 else { return [] }
+        guard !query.isEmpty else { return [] }
         let guessedIds = Set(guesses.map { $0.player.id })
         let candidates = playerPool.filter {
             !guessedIds.contains($0.id) && $0.name.lowercased().contains(query)

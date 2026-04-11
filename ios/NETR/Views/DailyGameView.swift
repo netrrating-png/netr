@@ -129,32 +129,39 @@ struct DailyGameView: View {
 
     @ViewBuilder
     private var gameContent: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                heroCard
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(spacing: 18) {
+                    heroCard
 
-                if !viewModel.revealedHints.isEmpty {
-                    revealedCluesSection
-                }
+                    if !viewModel.revealedHints.isEmpty {
+                        revealedCluesSection
+                    }
 
-                if !viewModel.isGameOver && hasMoreCluesToReveal {
-                    nextClueTeaser
-                }
+                    if !viewModel.isGameOver && hasMoreCluesToReveal {
+                        nextClueTeaser
+                    }
 
-                if !viewModel.guesses.isEmpty {
-                    previousGuessesSection
-                }
+                    if !viewModel.guesses.isEmpty {
+                        previousGuessesSection
+                    }
 
-                if viewModel.isGameOver {
-                    resultCard
-                } else {
-                    guessInput
+                    if viewModel.isGameOver {
+                        resultCard
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 120)
+            .scrollDismissesKeyboard(.interactively)
+
+            if !viewModel.isGameOver {
+                guessInput
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+                    .background(NETRTheme.background)
+            }
         }
-        .scrollDismissesKeyboard(.interactively)
     }
 
     // MARK: - Hero Card (Mystery Player + Progress)
@@ -654,34 +661,37 @@ struct DailyGameView: View {
             }
 
             if selectedPlayer == nil && !viewModel.searchResults.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(viewModel.searchResults) { player in
-                        Button {
-                            selectedPlayer = player
-                            viewModel.searchQuery = ""
-                            searchFocused = false
-                        } label: {
-                            HStack(spacing: 12) {
-                                LucideIcon("user", size: 14)
-                                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.8))
-                                Text(player.name)
-                                    .font(.system(size: 15, weight: .semibold))
-                                    .foregroundStyle(NETRTheme.text)
-                                Spacer()
-                                LucideIcon("arrow-right", size: 13)
-                                    .foregroundStyle(NETRTheme.subtext)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(viewModel.searchResults) { player in
+                            Button {
+                                selectedPlayer = player
+                                viewModel.searchQuery = ""
+                                searchFocused = false
+                            } label: {
+                                HStack(spacing: 12) {
+                                    LucideIcon("user", size: 14)
+                                        .foregroundStyle(NETRTheme.neonGreen.opacity(0.8))
+                                    Text(player.name)
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(NETRTheme.text)
+                                    Spacer()
+                                    LucideIcon("arrow-right", size: 13)
+                                        .foregroundStyle(NETRTheme.subtext)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
+                            .buttonStyle(.plain)
 
-                        if player.id != viewModel.searchResults.last?.id {
-                            Divider().background(NETRTheme.border).padding(.leading, 42)
+                            if player.id != viewModel.searchResults.last?.id {
+                                Divider().background(NETRTheme.border).padding(.leading, 42)
+                            }
                         }
                     }
                 }
+                .frame(maxHeight: 220)
                 .background(
                     RoundedRectangle(cornerRadius: 14)
                         .fill(NETRTheme.surface)
@@ -690,9 +700,9 @@ struct DailyGameView: View {
                                 .stroke(NETRTheme.border, lineWidth: 1)
                         )
                 )
+                .clipShape(RoundedRectangle(cornerRadius: 14))
             }
         }
-        .padding(.top, 4)
     }
 
     // MARK: - Result card
