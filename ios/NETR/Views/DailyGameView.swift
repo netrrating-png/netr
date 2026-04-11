@@ -6,6 +6,7 @@ struct DailyGameView: View {
     @Bindable var dmViewModel: DMViewModel
     @FocusState private var searchFocused: Bool
     @State private var showStats: Bool = false
+    @State private var selectedPlayer: NBAGamePlayer? = nil
 
     var body: some View {
         ZStack {
@@ -534,52 +535,103 @@ struct DailyGameView: View {
             }
             .padding(.horizontal, 4)
 
-            HStack(spacing: 10) {
-                LucideIcon("search", size: 16)
-                    .foregroundStyle(NETRTheme.subtext)
-
-                TextField("", text: $viewModel.searchQuery, prompt: Text("Type a player's name…").foregroundColor(NETRTheme.subtext.opacity(0.6)))
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(NETRTheme.text)
-                    .focused($searchFocused)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.words)
-                    .submitLabel(.search)
-
-                if !viewModel.searchQuery.isEmpty {
-                    Button {
-                        viewModel.searchQuery = ""
-                    } label: {
-                        LucideIcon("x", size: 12)
-                            .foregroundStyle(NETRTheme.subtext)
-                            .frame(width: 22, height: 22)
-                            .background(NETRTheme.muted, in: Circle())
+            // Selected player chip + guess button
+            if let player = selectedPlayer {
+                HStack(spacing: 12) {
+                    HStack(spacing: 10) {
+                        LucideIcon("user", size: 16)
+                            .foregroundStyle(NETRTheme.neonGreen)
+                        Text(player.name)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundStyle(NETRTheme.text)
+                        Spacer()
+                        Button {
+                            selectedPlayer = nil
+                        } label: {
+                            LucideIcon("x", size: 12)
+                                .foregroundStyle(NETRTheme.subtext)
+                                .frame(width: 24, height: 24)
+                                .background(NETRTheme.muted, in: Circle())
+                        }
                     }
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(NETRTheme.surface)
-                    .overlay(
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(
                         RoundedRectangle(cornerRadius: 14)
-                            .stroke(
-                                searchFocused ? NETRTheme.neonGreen.opacity(0.6) : NETRTheme.border,
-                                lineWidth: searchFocused ? 1.5 : 1
+                            .fill(NETRTheme.neonGreen.opacity(0.08))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14)
+                                    .stroke(NETRTheme.neonGreen.opacity(0.4), lineWidth: 1.5)
                             )
                     )
-            )
-            .shadow(
-                color: searchFocused ? NETRTheme.neonGreen.opacity(0.25) : .clear,
-                radius: 12
-            )
+                }
 
-            if !viewModel.searchResults.isEmpty {
+                Button {
+                    viewModel.submitGuess(player)
+                    selectedPlayer = nil
+                    searchFocused = false
+                } label: {
+                    Text("GUESS")
+                        .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                        .tracking(1.5)
+                        .foregroundStyle(Color.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                        .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
+                }
+                .buttonStyle(PressButtonStyle())
+                .sensoryFeedback(.impact(weight: .medium), trigger: viewModel.guesses.count)
+            } else {
+                // Search field
+                HStack(spacing: 10) {
+                    LucideIcon("search", size: 16)
+                        .foregroundStyle(NETRTheme.subtext)
+
+                    TextField("", text: $viewModel.searchQuery, prompt: Text("Type a player's name…").foregroundColor(NETRTheme.subtext.opacity(0.6)))
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(NETRTheme.text)
+                        .focused($searchFocused)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.words)
+                        .submitLabel(.search)
+
+                    if !viewModel.searchQuery.isEmpty {
+                        Button {
+                            viewModel.searchQuery = ""
+                        } label: {
+                            LucideIcon("x", size: 12)
+                                .foregroundStyle(NETRTheme.subtext)
+                                .frame(width: 22, height: 22)
+                                .background(NETRTheme.muted, in: Circle())
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(NETRTheme.surface)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(
+                                    searchFocused ? NETRTheme.neonGreen.opacity(0.6) : NETRTheme.border,
+                                    lineWidth: searchFocused ? 1.5 : 1
+                                )
+                        )
+                )
+                .shadow(
+                    color: searchFocused ? NETRTheme.neonGreen.opacity(0.25) : .clear,
+                    radius: 12
+                )
+            }
+
+            if selectedPlayer == nil && !viewModel.searchResults.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(viewModel.searchResults) { player in
                         Button {
-                            viewModel.submitGuess(player)
+                            selectedPlayer = player
+                            viewModel.searchQuery = ""
                             searchFocused = false
                         } label: {
                             HStack(spacing: 12) {
