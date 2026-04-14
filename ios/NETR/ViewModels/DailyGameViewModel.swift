@@ -23,9 +23,15 @@ final class DailyGameViewModel {
     // MARK: - Constants
 
     static let maxGuesses = 5
-    private static let statsKey = "NETR.dailyGame.stats.v1"
+    // Scoped by user id so multiple accounts on the same device don't share state.
+    private static var userScope: String {
+        SupabaseManager.shared.session?.user.id.uuidString ?? "anon"
+    }
+    private static var statsKey: String {
+        "NETR.dailyGame.stats.v1.\(userScope)"
+    }
     private static func progressKey(for date: String) -> String {
-        "NETR.dailyGame.progress.\(date)"
+        "NETR.dailyGame.progress.\(userScope).\(date)"
     }
 
     private let client = SupabaseManager.shared.client
