@@ -3,10 +3,18 @@ import SwiftUI
 struct DailyGameView: View {
 
     @State private var viewModel = DailyGameViewModel()
+    @State private var connectionsViewModel = ConnectionsGameViewModel()
     @Bindable var dmViewModel: DMViewModel
     @FocusState private var searchFocused: Bool
     @State private var showStats: Bool = false
+    @State private var showConnectionsStats: Bool = false
     @State private var guessError: String?
+    @State private var gameMode: GameMode = .guess
+
+    enum GameMode: String, CaseIterable {
+        case guess       = "Guess"
+        case connections = "Connections"
+    }
 
     var body: some View {
         ZStack {
@@ -23,14 +31,30 @@ struct DailyGameView: View {
             .allowsHitTesting(false)
 
             VStack(spacing: 0) {
-                header
+                // Swap header based on active game mode
+                if gameMode == .guess {
+                    header
+                } else {
+                    connectionsHeader
+                }
 
-                if viewModel.isLoading && viewModel.todaysPuzzle == nil {
-                    loadingState
-                } else if let msg = viewModel.errorMessage, viewModel.todaysPuzzle == nil {
-                    errorState(message: msg)
-                } else if viewModel.todaysPuzzle != nil {
-                    gameContent
+                // Game mode picker (always visible)
+                gameModeSelector
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 8)
+
+                if gameMode == .guess {
+                    // ── Guess game (existing) ──────────────────────────────
+                    if viewModel.isLoading && viewModel.todaysPuzzle == nil {
+                        loadingState
+                    } else if let msg = viewModel.errorMessage, viewModel.todaysPuzzle == nil {
+                        errorState(message: msg)
+                    } else if viewModel.todaysPuzzle != nil {
+                        gameContent
+                    }
+                } else {
+                    // ── Connections game (new) ─────────────────────────────
+                    ConnectionsGameView(viewModel: connectionsViewModel)
                 }
 
                 Spacer(minLength: 0)
@@ -50,6 +74,113 @@ struct DailyGameView: View {
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.surface)
         }
+        .sheet(isPresented: $showConnectionsStats) {
+            connectionsStatsSheet
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.surface)
+        }
+    }
+
+    // MARK: - Connections Header
+
+    private var connectionsHeader: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("CONNECTIONS")
+                    .font(NETRTheme.headingFont(size: .largeTitle))
+                    .foregroundStyle(NETRTheme.text)
+                    .neonGlow(NETRTheme.neonGreen, radius: 6)
+                Text("Group today's NBA players into 4 categories")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            Spacer()
+            HStack(spacing: 10) {
+                Button {
+                    showConnectionsStats = true
+                } label: {
+                    LucideIcon("bar-chart-3", size: 18)
+                        .foregroundStyle(NETRTheme.text)
+                        .frame(width: 38, height: 38)
+                        .background(NETRTheme.card, in: Circle())
+                        .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
+                }
+                DMHeaderButton(dmViewModel: dmViewModel)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 14)
+    }
+
+    // MARK: - Connections Stats Sheet
+
+    private var connectionsStatsSheet: some View {
+        let s = connectionsViewModel.stats
+        return VStack(spacing: 24) {
+            Text("CONNECTIONS STATS")
+                .font(NETRTheme.headingFont(size: .title2))
+                .foregroundStyle(NETRTheme.text)
+                .padding(.top, 8)
+
+            HStack(spacing: 12) {
+                connStatPill(value: "\(s.totalPlayed)", label: "PLAYED")
+                connStatPill(value: "\(s.winPercent)%", label: "WIN %")
+                connStatPill(value: "\(s.currentStreak)", label: "STREAK")
+                connStatPill(value: "\(s.maxStreak)", label: "BEST")
+            }
+            .padding(.horizontal, 16)
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func connStatPill(value: String, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(size: 22, weight: .black, design: .rounded))
+                .foregroundStyle(NETRTheme.text)
+            Text(label)
+                .font(.system(size: 10, weight: .heavy))
+                .tracking(0.8)
+                .foregroundStyle(NETRTheme.subtext)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(NETRTheme.card, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
+    }
+
+    // MARK: - Game Mode Selector
+
+    private var gameModeSelector: some View {
+        HStack(spacing: 0) {
+            ForEach(GameMode.allCases, id: \.rawValue) { mode in
+                let isActive = gameMode == mode
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        gameMode = mode
+                    }
+                } label: {
+                    Text(mode.rawValue.uppercased())
+                        .font(.system(size: 12, weight: .heavy))
+                        .tracking(0.8)
+                        .foregroundStyle(isActive ? Color.black : NETRTheme.subtext)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(isActive ? NETRTheme.neonGreen : Color.clear)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(4)
+        .background(NETRTheme.surface, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
     }
 
     // MARK: - Header
