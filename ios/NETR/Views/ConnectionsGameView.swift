@@ -178,12 +178,7 @@ struct ConnectionsGameView: View {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let img):
-                        // scaledToFill + slight scale crops past the white
-                        // cutout borders baked into NBA CDN / newer BBR photos.
-                        img.resizable()
-                            .scaledToFill()
-                            .scaleEffect(1.15)
-                            .offset(y: size.height * 0.02)
+                        img.resizable().scaledToFit()
                     default:
                         ZStack {
                             Circle().fill(NETRTheme.muted)
