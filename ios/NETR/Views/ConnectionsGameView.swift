@@ -173,9 +173,7 @@ struct ConnectionsGameView: View {
             ?? URL(string: "https://cdn.nba.com/headshots/nba/latest/1040x760/\(p.id).png")
         return VStack(spacing: 4) {
             ZStack {
-                // Consistent white circle behind every photo so NBA-CDN (white bg)
-                // and BBR (transparent bg) headshots look identical.
-                Circle().fill(Color.white)
+                Circle().fill(NETRTheme.background)
 
                 AsyncImage(url: url) { phase in
                     switch phase {
