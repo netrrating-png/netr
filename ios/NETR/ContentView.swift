@@ -41,7 +41,7 @@ struct ContentView: View {
 
         var icon: String {
             switch self {
-            case .feed: return "messages-square"
+            case .feed: return "house"
             case .courts: return "target"
             case .rate: return "star"
             case .dailyGame: return "calendar"
@@ -170,7 +170,7 @@ struct ContentView: View {
             case .rate:
                 RateView(dmViewModel: dmViewModel)
             case .dailyGame:
-                DailyGameView(dmViewModel: dmViewModel)
+                DailyGameHubView(dmViewModel: dmViewModel)
             case .profile:
                 ZStack(alignment: .topTrailing) {
                     ProfileView(courtsViewModel: courtsViewModel, showSelfAssessment: $showSelfAssessment, showPhotoBanner: $showPhotoBanner)
@@ -333,11 +333,10 @@ struct ContentView: View {
                     if !isSelected {
                         let impact = UIImpactFeedbackGenerator(style: .light)
                         impact.impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             selectedTab = tab
                         }
                     } else if tab == .feed {
-                        // Double-tap Feed tab → scroll to top
                         feedScrollToTop.toggle()
                     } else if tab == .profile && photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -345,93 +344,88 @@ struct ContentView: View {
                         }
                     }
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 6) {
                         ZStack {
-                            // Active pill background with matchedGeometryEffect
-                            if isSelected {
+                            if tab == .profile {
+                                // Profile tab: avatar photo (Instagram-style)
                                 ZStack {
-                                    // Pure black base
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(Color.black)
+                                    AvatarView.currentUser(size: 24)
+                                        .opacity(isSelected ? 1.0 : 0.5)
 
-                                    // Ultra thin material overlay
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(.ultraThinMaterial)
-                                        .environment(\.colorScheme, .dark)
+                                    // Neon ring when selected
+                                    if isSelected {
+                                        Circle()
+                                            .stroke(NETRTheme.neonGreen, lineWidth: 1.5)
+                                            .frame(width: 30, height: 30)
+                                    }
 
-                                    // White border at 8% opacity
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    // Photo reminder badge
+                                    if photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
+                                        Circle()
+                                            .fill(Color.orange)
+                                            .frame(width: 8, height: 8)
+                                            .offset(x: 12, y: -10)
+                                    }
                                 }
-                                .frame(width: 48, height: 36)
-                                .matchedGeometryEffect(id: "activeTabPill", in: tabBarNamespace)
-
-                                // Lime green soft glow underneath
-                                Circle()
-                                    .fill(NETRTheme.neonGreen.opacity(0.30))
-                                    .frame(width: 40, height: 40)
-                                    .blur(radius: 20)
-                                    .offset(y: 4)
-                            }
-
-                            // Icon with optional badge
-                            ZStack(alignment: .topTrailing) {
-                                LucideIcon(tab.icon, size: 18)
+                            } else {
+                                // Regular icon tabs
+                                LucideIcon(tab.icon, size: 22)
                                     .foregroundStyle(
                                         isSelected
                                             ? NETRTheme.neonGreen
-                                            : Color.white.opacity(0.40)
+                                            : Color.white.opacity(0.35)
                                     )
-                                    .scaleEffect(isSelected ? 1.15 : 1.0)
-                                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
-
-                                // Photo reminder badge for Profile tab (first 3 sessions after skip)
-                                if tab == .profile && photoPromptSkipCount > 0 && photoPromptSkipCount <= 3 && supabase.currentUserAvatarUrl == nil {
-                                    Circle()
-                                        .fill(Color.orange)
-                                        .frame(width: 8, height: 8)
-                                        .offset(x: 10, y: -6)
-                                }
+                                    .scaleEffect(isSelected ? 1.1 : 1.0)
+                                    .animation(.spring(response: 0.35, dampingFraction: 0.75), value: isSelected)
                             }
                         }
-                        .frame(height: 36)
+                        .frame(height: 28)
 
-                        Text(tab.rawValue)
-                            .font(.system(size: 10, weight: .semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .foregroundStyle(
-                                isSelected
-                                    ? NETRTheme.neonGreen
-                                    : Color.white.opacity(0.40)
-                            )
-                            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+                        // Active indicator bar
+                        ZStack {
+                            if isSelected {
+                                Capsule()
+                                    .fill(NETRTheme.neonGreen)
+                                    .frame(width: 20, height: 3)
+                                    .shadow(color: NETRTheme.neonGreen.opacity(0.6), radius: 6)
+                                    .shadow(color: NETRTheme.neonGreen.opacity(0.3), radius: 12)
+                                    .matchedGeometryEffect(id: "activeTabIndicator", in: tabBarNamespace)
+                            }
+                        }
+                        .frame(height: 3)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 10)
-                    .padding(.bottom, 8)
+                    .padding(.top, 12)
+                    .padding(.bottom, 10)
                 }
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 8)
         .background(
             ZStack {
-                // Dark frosted glass (Apple Music style)
-                RoundedRectangle(cornerRadius: 30)
+                // Dark frosted glass
+                RoundedRectangle(cornerRadius: 24)
                     .fill(.ultraThinMaterial)
                     .environment(\.colorScheme, .dark)
 
-                // Light dark tint — lets blur show through
-                RoundedRectangle(cornerRadius: 30)
-                    .fill(Color.black.opacity(0.3))
+                // Darker tint for depth
+                RoundedRectangle(cornerRadius: 24)
+                    .fill(Color.black.opacity(0.45))
 
-                // Subtle glass edge
-                RoundedRectangle(cornerRadius: 30)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                // Subtle top highlight edge
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.12), Color.white.opacity(0.03)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 0.5
+                    )
             }
         )
-        .shadow(color: Color.black.opacity(0.3), radius: 12, y: 4)
-        .padding(.horizontal, 20)
+        .shadow(color: Color.black.opacity(0.4), radius: 16, y: 6)
+        .padding(.horizontal, 16)
         .padding(.bottom, 14)
     }
 }

@@ -58,7 +58,7 @@ final class DailyGameViewModel {
         for guess in guesses where !guess.isCorrect {
             let guessChars = Array(guess.guessName.lowercased())
             for i in 0..<min(answerChars.count, guessChars.count) {
-                if answerChars[i] == guessChars[i] {
+                if answerChars[i] == guessChars[i] && answerChars[i] != " " {
                     revealed.insert(i)
                 }
             }
