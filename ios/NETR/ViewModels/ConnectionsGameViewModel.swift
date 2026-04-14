@@ -102,11 +102,17 @@ final class ConnectionsGameViewModel {
     static let maxMistakes = 4
 
     // MARK: Persistence keys
+    // Scoped by user id so multiple accounts on the same device don't share state.
 
-    private static func progressKey(for date: String) -> String {
-        "NETR.connections.progress.\(date)"
+    private static var userScope: String {
+        SupabaseManager.shared.session?.user.id.uuidString ?? "anon"
     }
-    private static let statsKey = "NETR.connections.stats.v1"
+    private static func progressKey(for date: String) -> String {
+        "NETR.connections.progress.\(userScope).\(date)"
+    }
+    private static var statsKey: String {
+        "NETR.connections.stats.v1.\(userScope)"
+    }
 
     // MARK: Derived
 

@@ -11,14 +11,10 @@ struct DailyGameHubView: View {
     @State private var tick: Int = 0
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
-    // Completion state computed fresh on each render (cheap — UserDefaults read)
-    private var mysteryDone: Bool {
-        guard let data = UserDefaults.standard.data(forKey: "NETR.dailyGame.stats.v1"),
-              let stats = try? JSONDecoder().decode(DailyGameStats.self, from: data)
-        else { return false }
-        return stats.lastPlayedDate == ConnectionsGameViewModel.todayUTCDateString()
-    }
-    private var connectionsDone: Bool { ConnectionsGameViewModel.didCompleteToday() }
+    // Completion state — per-user, sourced from Supabase so it doesn't leak
+    // across accounts on the same device.
+    @State private var mysteryDone: Bool = false
+    @State private var connectionsDone: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -66,7 +62,45 @@ struct DailyGameHubView: View {
                 }
             }
             .onReceive(ticker) { _ in tick &+= 1 }
+            .task(id: SupabaseManager.shared.session?.user.id.uuidString) {
+                await refreshCompletion()
+            }
         }
+    }
+
+    /// Queries Supabase for today's result rows for the signed-in user.
+    /// Single source of truth — avoids the device-global UserDefaults problem
+    /// where a completed game bleeds across accounts on the same device.
+    private func refreshCompletion() async {
+        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else {
+            mysteryDone = false
+            connectionsDone = false
+            return
+        }
+        let today = ConnectionsGameViewModel.todayUTCDateString()
+        let client = SupabaseManager.shared.client
+
+        struct RowCount: Decodable { let puzzle_date: String }
+        async let mystery: [RowCount] = (try? await client
+            .from("nba_game_results")
+            .select("puzzle_date")
+            .eq("user_id", value: userId)
+            .eq("puzzle_date", value: today)
+            .limit(1)
+            .execute()
+            .value) ?? []
+        async let connections: [RowCount] = (try? await client
+            .from("nba_connections_results")
+            .select("puzzle_date")
+            .eq("user_id", value: userId)
+            .eq("puzzle_date", value: today)
+            .limit(1)
+            .execute()
+            .value) ?? []
+
+        let (m, c) = await (mystery, connections)
+        mysteryDone = !m.isEmpty
+        connectionsDone = !c.isEmpty
     }
 
     // MARK: Header
