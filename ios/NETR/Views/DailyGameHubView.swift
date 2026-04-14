@@ -1,5 +1,8 @@
 import SwiftUI
 import Combine
+import Supabase
+import Auth
+import PostgREST
 
 /// The top-level Daily Game tab. Shows two cards — Mystery Player and Connections —
 /// and lets the user drill into either. A completed game shows a live countdown
