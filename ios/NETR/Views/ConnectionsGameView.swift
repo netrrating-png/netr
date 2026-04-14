@@ -172,17 +172,22 @@ struct ConnectionsGameView: View {
         let url = URL(string: p.headshotUrl ?? "")
             ?? URL(string: "https://cdn.nba.com/headshots/nba/latest/1040x760/\(p.id).png")
         return VStack(spacing: 4) {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .success(let img):
-                    img.resizable().scaledToFit()
-                default:
-                    // Initials fallback for players w/o CDN headshots
-                    ZStack {
-                        Circle().fill(NETRTheme.muted)
-                        Text(initials(p.name))
-                            .font(.system(size: size.height * 0.22, weight: .heavy))
-                            .foregroundStyle(NETRTheme.text)
+            ZStack {
+                // Consistent white circle behind every photo so NBA-CDN (white bg)
+                // and BBR (transparent bg) headshots look identical.
+                Circle().fill(Color.white)
+
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFit()
+                    default:
+                        ZStack {
+                            Circle().fill(NETRTheme.muted)
+                            Text(initials(p.name))
+                                .font(.system(size: size.height * 0.22, weight: .heavy))
+                                .foregroundStyle(NETRTheme.text)
+                        }
                     }
                 }
             }
