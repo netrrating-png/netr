@@ -204,8 +204,9 @@ struct NETRScoreText: View {
                 .font(.custom("BarlowCondensed-Black", size: fontSize))
                 .foregroundColor(color)
         } else {
-            Text("—")
-                .font(.custom("BarlowCondensed-Black", size: fontSize))
+            // Unrated — show a lock to signal "take the self-assessment to unlock".
+            Image(systemName: "lock.fill")
+                .font(.system(size: fontSize * 0.6, weight: .bold))
                 .foregroundColor(color)
         }
     }
