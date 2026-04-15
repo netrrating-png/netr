@@ -415,7 +415,7 @@ def to_dict(tier: str, player: CandidatePlayer) -> dict:
         "careerGames": player.career_games,
         "careerMinutes": player.career_minutes,
         "funFact": None,
-        "headshotUrl": f"https://cdn.nba.com/headshots/nba/latest/1040x760/{player.id}.png",
+        "headshotUrl": None,  # Populated by backfill_headshots.py with BBR URLs (black background)
     }
 
 

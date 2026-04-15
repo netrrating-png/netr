@@ -804,7 +804,7 @@ struct DailyGameView: View {
         let imageUrl: URL? = {
             if let url = player?.headshotUrl, let parsed = URL(string: url) { return parsed }
             if let id = player?.id {
-                return URL(string: "https://cdn.nba.com/headshots/nba/latest/1040x760/\(id).png")
+                return URL(string: "https://cdn.nba.com/headshots/nba/latest/260x190/\(id).png")
             }
             return nil
         }()
