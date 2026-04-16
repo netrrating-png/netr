@@ -1,6 +1,48 @@
 import Foundation
 import SwiftUI
 
+// ─── RE-RATE SUPPORT ─────────────────────────────────────────
+
+/// Snapshot of a rater's previous skill values, stored as JSONB
+/// alongside a re-rate submission so the algorithm has full history.
+nonisolated struct PreviousRatingValues: Encodable, Sendable {
+    let catShooting: Int?
+    let catFinishing: Int?
+    let catDribbling: Int?
+    let catPassing: Int?
+    let catDefense: Int?
+    let catRebounding: Int?
+    let catBasketballIq: Int?
+    let vibeRunAgain: Int?
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case catShooting     = "cat_shooting"
+        case catFinishing    = "cat_finishing"
+        case catDribbling    = "cat_dribbling"
+        case catPassing      = "cat_passing"
+        case catDefense      = "cat_defense"
+        case catRebounding   = "cat_rebounding"
+        case catBasketballIq = "cat_basketball_iq"
+        case vibeRunAgain    = "vibe_run_again"
+    }
+}
+
+/// Contextual data loaded before a re-rate session opens.
+struct RerateContext {
+    let coPlayCount: Int
+    let contextualMessage: String
+    let previousValues: PreviousRatingValues
+}
+
+/// Lifecycle of the re-rate check that runs when the rating sheet opens.
+enum RerateState {
+    case idle
+    case loading
+    case firstTime                         // no prior rating for this pair
+    case rerateAvailable(RerateContext)    // prior rating found, cooldown elapsed
+    case blocked(blockedUntil: Date)       // within 24 h of previous rating
+}
+
 // ─── SUBMISSION ──────────────────────────────────────────────
 
 nonisolated struct RatingSubmission: Encodable, Sendable {
@@ -17,6 +59,11 @@ nonisolated struct RatingSubmission: Encodable, Sendable {
     let catBasketballIq: Int?
     // Single vibe question: 4=Definitely, 3=Yeah, 2=Probably Not, 1=No Thanks
     let vibeRunAgain: Int?
+    // Re-rate fields (always sent; false/nil/0/1.0 for first-time ratings)
+    let isRerate: Bool
+    let previousValues: PreviousRatingValues?
+    let coPlayCount: Int
+    let ratingWeight: Double
 
     nonisolated enum CodingKeys: String, CodingKey {
         case gameId          = "game_id"
@@ -31,6 +78,10 @@ nonisolated struct RatingSubmission: Encodable, Sendable {
         case catRebounding   = "cat_rebounding"
         case catBasketballIq = "cat_basketball_iq"
         case vibeRunAgain    = "vibe_run_again"
+        case isRerate        = "is_rerate"
+        case previousValues  = "previous_values"
+        case coPlayCount     = "co_play_count"
+        case ratingWeight    = "rating_weight"
     }
 }
 

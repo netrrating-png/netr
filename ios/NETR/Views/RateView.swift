@@ -443,6 +443,8 @@ struct RatePlayerSheetView: View {
                     currentVibe: player.vibeScore
                 )
             ]
+            // Check for a previous rating after players is populated
+            Task { await rateVM.loadRerateContext(ratedPlayerId: player.id) }
         }
     }
 }
@@ -464,40 +466,69 @@ struct SkillRatingScreen: View {
     private var allRated: Bool { ratedCount == 7 }
 
     var body: some View {
+        // When the cooldown hasn't elapsed show a full-screen block instead of the sliders
+        if case .blocked(let until) = rateVM.rerateState {
+            rerateBlockedScreen(blockedUntil: until)
+        } else {
+            skillSliderContent
+        }
+    }
+
+    // MARK: Blocked screen
+
+    private func rerateBlockedScreen(blockedUntil: Date) -> some View {
         VStack(spacing: 0) {
-            // Top bar
-            HStack {
-                Button("Cancel", action: onCancel)
-                    .foregroundStyle(NETRTheme.subtext)
-                Spacer()
-                // Compact player info
-                HStack(spacing: 8) {
-                    RatePlayerAvatar(name: player.fullName, avatarUrl: nil, size: 30)
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(player.fullName)
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(NETRTheme.text)
-                        if let netr = player.netrScore {
-                            Text(String(format: "%.1f NETR", netr))
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                    }
+            topBar
+            Rectangle().fill(NETRTheme.border).frame(height: 0.5)
+
+            Spacer()
+
+            VStack(spacing: 18) {
+                ZStack {
+                    Circle().fill(NETRTheme.muted.opacity(0.12)).frame(width: 80, height: 80)
+                    LucideIcon("clock", size: 32).foregroundStyle(NETRTheme.subtext)
                 }
-                Spacer()
-                // Progress
-                Text("\(ratedCount)/7")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(allRated ? NETRTheme.neonGreen : NETRTheme.subtext)
+                VStack(spacing: 8) {
+                    Text("Come back after your next run.")
+                        .font(NETRTheme.headingFont(size: .title3))
+                        .foregroundStyle(NETRTheme.text)
+                        .multilineTextAlignment(.center)
+                    Text("You rated \(player.fullName.components(separatedBy: " ").first ?? player.fullName) recently. You can update at \(formattedBlockEnd(blockedUntil)).")
+                        .font(.system(size: 13))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .padding(.horizontal, 32)
+                }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-            .background(NETRTheme.background)
+
+            Spacer()
+
+            Button(action: onCancel) {
+                Text("CLOSE")
+                    .font(.system(.subheadline, design: .default, weight: .black).width(.compressed))
+                    .tracking(1.5)
+                    .foregroundStyle(NETRTheme.subtext)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(NETRTheme.muted.opacity(0.15), in: .rect(cornerRadius: 14))
+            }
+            .buttonStyle(PressButtonStyle())
+            .padding(.horizontal, 16)
+            .padding(.bottom, 20)
+        }
+        .background(NETRTheme.background.ignoresSafeArea())
+    }
+
+    // MARK: Normal skill slider content
+
+    private var skillSliderContent: some View {
+        VStack(spacing: 0) {
+            topBar
 
             Rectangle().fill(NETRTheme.border).frame(height: 0.5)
 
-            // Comparative framing banner
+            // Comparative framing banner (always shown)
             HStack(spacing: 8) {
                 LucideIcon("user", size: 12).foregroundStyle(NETRTheme.neonGreen)
                 Text("Compare each skill to **your own** — center = same as you")
@@ -508,6 +539,9 @@ struct SkillRatingScreen: View {
             .padding(.vertical, 7)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(NETRTheme.neonGreen.opacity(0.05))
+
+            // Re-rate context banner (only shown when a prior rating was found)
+            rerateContextBanner
 
             HStack {
                 Text("← You're better")
@@ -538,6 +572,7 @@ struct SkillRatingScreen: View {
             // Submit button
             VStack(spacing: 0) {
                 Rectangle().fill(NETRTheme.border).frame(height: 0.5)
+                let canProceed = allRated && !isLoadingOrBlocked
                 Button(action: onNext) {
                     HStack(spacing: 8) {
                         Text(allRated ? "VIBE CHECK" : "RATE ALL 7 TO CONTINUE")
@@ -548,20 +583,106 @@ struct SkillRatingScreen: View {
                                 .font(.system(size: 13, weight: .black))
                         }
                     }
-                    .foregroundStyle(allRated ? NETRTheme.background : NETRTheme.subtext)
+                    .foregroundStyle(canProceed ? NETRTheme.background : NETRTheme.subtext)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(allRated ? NETRTheme.neonGreen : NETRTheme.muted.opacity(0.2),
+                    .background(canProceed ? NETRTheme.neonGreen : NETRTheme.muted.opacity(0.2),
                                 in: .rect(cornerRadius: 14))
                 }
                 .buttonStyle(PressButtonStyle())
-                .disabled(!allRated)
+                .disabled(!canProceed)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
             .background(NETRTheme.background)
         }
         .background(NETRTheme.background.ignoresSafeArea())
+    }
+
+    // MARK: Shared top bar
+
+    private var topBar: some View {
+        HStack {
+            Button("Cancel", action: onCancel)
+                .foregroundStyle(NETRTheme.subtext)
+            Spacer()
+            HStack(spacing: 8) {
+                RatePlayerAvatar(name: player.fullName, avatarUrl: nil, size: 30)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(player.fullName)
+                        .font(.system(size: 13, weight: .black))
+                        .foregroundStyle(NETRTheme.text)
+                    if let netr = player.netrScore {
+                        Text(String(format: "%.1f NETR", netr))
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                }
+            }
+            Spacer()
+            Text("\(ratedCount)/7")
+                .font(.system(size: 13, weight: .black))
+                .foregroundStyle(allRated ? NETRTheme.neonGreen : NETRTheme.subtext)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+        .background(NETRTheme.background)
+    }
+
+    // MARK: Re-rate context banner
+
+    @ViewBuilder
+    private var rerateContextBanner: some View {
+        switch rateVM.rerateState {
+        case .loading:
+            HStack(spacing: 8) {
+                ProgressView().scaleEffect(0.75).tint(NETRTheme.neonGreen)
+                Text("Checking your history…")
+                    .font(.system(size: 11)).foregroundStyle(NETRTheme.subtext)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(NETRTheme.muted.opacity(0.06))
+
+        case .rerateAvailable(let ctx):
+            HStack(spacing: 8) {
+                LucideIcon("refresh-cw", size: 12).foregroundStyle(NETRTheme.neonGreen)
+                Text(ctx.contextualMessage)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                Spacer()
+                Text("\(ctx.coPlayCount) co-play\(ctx.coPlayCount == 1 ? "" : "s")")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.7))
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(NETRTheme.neonGreen.opacity(0.1), in: Capsule())
+            }
+            .padding(.horizontal, 16).padding(.vertical, 7)
+            .frame(maxWidth: .infinity)
+            .background(NETRTheme.neonGreen.opacity(0.04))
+
+        default:
+            EmptyView()
+        }
+    }
+
+    // MARK: Helpers
+
+    private var isLoadingOrBlocked: Bool {
+        switch rateVM.rerateState {
+        case .loading, .blocked: return true
+        default: return false
+        }
+    }
+
+    private func formattedBlockEnd(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = Calendar.current.isDateInToday(date) ? .none : .short
+        return formatter.string(from: date)
     }
 }
 
