@@ -178,7 +178,7 @@ struct ConnectionsGameView: View {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let img):
-                        img.resizable().scaledToFit()
+                        img.resizable().scaledToFill()
                     default:
                         ZStack {
                             Circle().fill(NETRTheme.muted)
