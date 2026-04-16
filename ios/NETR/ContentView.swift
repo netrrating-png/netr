@@ -44,7 +44,7 @@ struct ContentView: View {
             case .feed: return "house"
             case .courts: return "target"
             case .rate: return "star"
-            case .dailyGame: return "calendar"
+            case .dailyGame: return "gamepad-2"
             case .profile: return "user"
             }
         }
