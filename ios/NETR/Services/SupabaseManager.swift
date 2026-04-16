@@ -3,6 +3,7 @@ import Supabase
 import Auth
 import PostgREST
 import GoogleSignIn
+import UserNotifications
 
 @Observable
 class SupabaseManager {
@@ -167,6 +168,10 @@ class SupabaseManager {
         session = nil
         currentProfile = nil
         currentUserAvatarUrl = nil
+        // Cancel all scheduled local notifications so another user on this
+        // device doesn't get pinged about the previous user's games/streak.
+        LocalNotificationScheduler.cancelRecurring()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         // Reset onboarding so a fresh sign-in starts from scratch
         UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
         UserDefaults.standard.set(false, forKey: "hasCompletedPhotoPrompt")

@@ -95,6 +95,23 @@ class GameViewModel {
             isJoining = false
             await subscribeToLobby(gameId: found.id)
             await loadPlayers(gameId: found.id)
+
+            // Schedule a 30-min-before reminder for scheduled games
+            if let s = found.scheduledAt {
+                let iso = ISO8601DateFormatter()
+                iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let date = iso.date(from: s) ?? {
+                    iso.formatOptions = [.withInternetDateTime]
+                    return iso.date(from: s)
+                }()
+                if let scheduled = date {
+                    LocalNotificationScheduler.scheduleGameStartReminder(
+                        gameId: found.id,
+                        scheduledAt: scheduled,
+                        courtName: nil
+                    )
+                }
+            }
         } catch {
             joinError = "Game not found. Check the code and try again."
             isJoining = false
@@ -258,6 +275,11 @@ class GameViewModel {
             await unsubscribe()
             completedGameId = gameId
             showRateScreen = true
+
+            // Cancel the 30-min-before game reminder (game is over) and schedule
+            // the post-game rating-window reminder for 15 min from now.
+            LocalNotificationScheduler.cancelGameStartReminder(gameId: gameId)
+            LocalNotificationScheduler.scheduleRatingWindowReminder(gameId: gameId, gameEndedAt: Date())
         } catch {
             print("[NETR] End game error: \(error)")
         }

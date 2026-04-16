@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 import Supabase
 import PostgREST
+import UserNotifications
 
 @Observable
 @MainActor
@@ -148,6 +149,10 @@ final class DailyGameViewModel {
             status = .won(guessCount: guesses.count)
             recordResult(won: true, puzzleDate: puzzle.puzzleDate)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            // Player already solved today — no need to remind them tonight
+            UNUserNotificationCenter.current().removePendingNotificationRequests(
+                withIdentifiers: ["netr.daily.streak_risk"]
+            )
         } else if guesses.count >= Self.maxGuesses {
             status = .lost
             recordResult(won: false, puzzleDate: puzzle.puzzleDate)

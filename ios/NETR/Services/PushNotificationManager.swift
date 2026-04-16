@@ -21,6 +21,7 @@ class PushNotificationManager: NSObject {
                 self.permissionGranted = granted
                 if granted {
                     UIApplication.shared.registerForRemoteNotifications()
+                    LocalNotificationScheduler.scheduleRecurringReminders()
                 }
             }
             if let error {
@@ -62,6 +63,7 @@ class PushNotificationManager: NSObject {
                 self.permissionGranted = settings.authorizationStatus == .authorized
                 if self.permissionGranted {
                     UIApplication.shared.registerForRemoteNotifications()
+                    LocalNotificationScheduler.scheduleRecurringReminders()
                 }
             }
         }
