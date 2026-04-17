@@ -170,7 +170,6 @@ struct ConnectionsGameView: View {
     private func playerTile(_ p: ConnectionsPlayer, size: CGSize) -> some View {
         let isSelected = viewModel.selected.contains(p.id)
         let url = URL(string: p.headshotUrl ?? "")
-            ?? URL(string: "https://cdn.nba.com/headshots/nba/latest/260x190/\(p.id).png")
         return VStack(spacing: 4) {
             ZStack {
                 Circle().fill(NETRTheme.background)
