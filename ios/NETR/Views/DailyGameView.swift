@@ -126,41 +126,55 @@ struct DailyGameView: View {
 
     @ViewBuilder
     private var gameContent: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 18) {
-                    heroCard
+        GeometryReader { geo in
+            VStack(spacing: 0) {
+                ScrollViewReader { scrollProxy in
+                    ScrollView {
+                        VStack(spacing: 18) {
+                            heroCard
 
-                    if !viewModel.revealedHints.isEmpty {
-                        revealedCluesSection
-                    }
+                            if !viewModel.revealedHints.isEmpty {
+                                revealedCluesSection
+                            }
 
-                    if !viewModel.isGameOver && hasMoreCluesToReveal {
-                        nextClueTeaser
-                    }
+                            if !viewModel.isGameOver && hasMoreCluesToReveal {
+                                nextClueTeaser
+                            }
 
-                    if !viewModel.guesses.isEmpty {
-                        previousGuessesSection
-                    }
+                            if !viewModel.guesses.isEmpty {
+                                previousGuessesSection
+                            }
 
-                    if viewModel.isGameOver {
-                        resultCard
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, viewModel.isGameOver ? 100 : 16)
-            }
-            .scrollDismissesKeyboard(.interactively)
+                            if viewModel.isGameOver {
+                                resultCard
+                            }
 
-            if !viewModel.isGameOver {
-                VStack(spacing: 0) {
-                    Divider().background(NETRTheme.border)
-                    guessInput
+                            Color.clear.frame(height: 1).id("scroll-bottom")
+                        }
                         .padding(.horizontal, 16)
-                        .padding(.top, 10)
-                        .padding(.bottom, 90)
+                        .padding(.bottom, viewModel.isGameOver ? 100 : 16)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: searchFocused) { _, focused in
+                        if focused {
+                            withAnimation {
+                                scrollProxy.scrollTo("scroll-bottom", anchor: .bottom)
+                            }
+                        }
+                    }
                 }
-                .background(NETRTheme.background)
+
+                if !viewModel.isGameOver {
+                    VStack(spacing: 0) {
+                        Divider().background(NETRTheme.border)
+                        guessInput
+                            .padding(.horizontal, 16)
+                            .padding(.top, 10)
+                            .padding(.bottom, searchFocused ? 8 : 90)
+                            .animation(.easeOut(duration: 0.25), value: searchFocused)
+                    }
+                    .background(NETRTheme.background)
+                }
             }
         }
     }
