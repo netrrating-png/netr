@@ -5,6 +5,7 @@ import Auth
 
 struct SignInView: View {
     @Environment(SupabaseManager.self) private var supabase
+    @Environment(BiometricAuthManager.self) private var biometrics
     @Environment(\.dismiss) private var dismiss
 
     @State private var email: String = ""
@@ -134,11 +135,15 @@ struct SignInView: View {
         do {
             try await supabase.signInWithEmail(email: email, password: password)
 
-            // Existing user with a profile — skip onboarding entirely
-            if supabase.currentProfile != nil {
-                hasCompletedOnboarding = true
+            // Poll briefly for profile to load (loadProfile runs async)
+            for _ in 0..<6 {
+                if supabase.currentProfile != nil { break }
+                try? await Task.sleep(for: .milliseconds(300))
             }
 
+            // SignInView is for returning users only — sign-in success means onboarding is done
+            hasCompletedOnboarding = true
+            biometrics.isUnlocked = true
             dismiss()
         } catch let authError as AuthError {
             errorMessage = authError.localizedDescription
@@ -178,15 +183,14 @@ struct SignInView: View {
                     try await supabase.signInWithApple(idToken: idToken, nonce: currentNonce, fullName: appleFullName)
 
                     // Wait briefly for profile to load
-                    for _ in 0..<4 {
+                    for _ in 0..<6 {
                         if supabase.currentProfile != nil { break }
-                        try? await Task.sleep(for: .milliseconds(500))
+                        try? await Task.sleep(for: .milliseconds(300))
                     }
 
-                    if supabase.currentProfile != nil {
-                        hasCompletedOnboarding = true
-                    }
-
+                    // Apple Sign-In on this screen is for returning users only
+                    hasCompletedOnboarding = true
+                    biometrics.isUnlocked = true
                     dismiss()
                 } catch {
                     print("[NETR Auth] Apple Sign-In error: \(error)")

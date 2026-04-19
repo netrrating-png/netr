@@ -85,11 +85,11 @@ struct WelcomeView: View {
                                     if supabase.currentProfile != nil { break }
                                     try? await Task.sleep(for: .milliseconds(500))
                                 }
-                                if supabase.currentProfile == nil || supabase.currentProfile?.netrScore == nil {
-                                    // New Google user or profile with no score — go through setup
+                                if supabase.currentProfile == nil {
+                                    // New Google user with no profile yet — go through setup
                                     onGoogleSignedInAsNewUser?()
                                 } else {
-                                    // Returning Google user with completed profile — go straight in
+                                    // Returning Google user with profile — go straight in
                                     onGoogleSignedInAsExistingUser?()
                                 }
                             } catch is CancellationError {
@@ -159,11 +159,17 @@ struct WelcomeView: View {
                     email: supabase.pendingEmail,
                     password: supabase.pendingPassword
                 )
+
+                // Poll briefly for profile
+                for _ in 0..<6 {
+                    if supabase.currentProfile != nil { break }
+                    try? await Task.sleep(for: .milliseconds(300))
+                }
+
                 // Sign-in succeeded — this is a returning user
                 if supabase.currentProfile != nil {
                     hasCompletedOnboarding = true
                 } else {
-                    // Has account but no profile yet — continue to onboarding
                     onContinue()
                 }
             } catch let authError as AuthError {

@@ -581,6 +581,7 @@ struct OnboardingView: View {
                     withAnimation { currentStep = 2 } // skip location, go to name/username
                 },
                 onGoogleSignedInAsExistingUser: {
+                    biometrics.isUnlocked = true
                     hasCompletedOnboarding = true
                 }
             )

@@ -160,7 +160,7 @@ class SupabaseManager {
             )
         )
         self.session = session
-        await loadProfile(userId: session.user.id.uuidString)
+        await loadProfile(userId: session.user.id.uuidString.lowercased())
     }
 
     func signOut() async throws {
