@@ -126,11 +126,19 @@ struct SignInView: View {
         !email.isEmpty && email.contains("@") && password.count >= 6
     }
 
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+
     private func signIn() async {
         isLoading = true
         errorMessage = nil
         do {
             try await supabase.signInWithEmail(email: email, password: password)
+
+            // Existing user with a profile — skip onboarding entirely
+            if supabase.currentProfile != nil {
+                hasCompletedOnboarding = true
+            }
+
             dismiss()
         } catch let authError as AuthError {
             errorMessage = authError.localizedDescription
@@ -168,6 +176,17 @@ struct SignInView: View {
             Task {
                 do {
                     try await supabase.signInWithApple(idToken: idToken, nonce: currentNonce, fullName: appleFullName)
+
+                    // Wait briefly for profile to load
+                    for _ in 0..<4 {
+                        if supabase.currentProfile != nil { break }
+                        try? await Task.sleep(for: .milliseconds(500))
+                    }
+
+                    if supabase.currentProfile != nil {
+                        hasCompletedOnboarding = true
+                    }
+
                     dismiss()
                 } catch {
                     print("[NETR Auth] Apple Sign-In error: \(error)")

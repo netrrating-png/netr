@@ -149,6 +149,8 @@ struct WelcomeView: View {
         }
     }
 
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+
     private func trySignInExistingUser() {
         isCheckingExisting = true
         Task {
@@ -157,6 +159,13 @@ struct WelcomeView: View {
                     email: supabase.pendingEmail,
                     password: supabase.pendingPassword
                 )
+                // Sign-in succeeded — this is a returning user
+                if supabase.currentProfile != nil {
+                    hasCompletedOnboarding = true
+                } else {
+                    // Has account but no profile yet — continue to onboarding
+                    onContinue()
+                }
             } catch let authError as AuthError {
                 print("[NETR] Existing user check failed (auth): \(authError.localizedDescription)")
                 onContinue()
