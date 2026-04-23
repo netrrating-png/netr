@@ -29,6 +29,8 @@ struct ProfileView: View {
     @State private var crewViewModel = CrewViewModel()
     @State private var showMyCrews: Bool = false
     @State private var showSkillBreakdown: Bool = false
+    @State private var leagueViewModel = LeagueViewModel()
+    @State private var selectedLeague: MyLeague? = nil
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false), showPhotoBanner: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -80,6 +82,12 @@ struct ProfileView: View {
                             selfAssessmentButton(user: user)
 
                             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 16)
+
+                            if viewModel.isCurrentUser && !leagueViewModel.myLeagues.isEmpty {
+                                myLeaguesSection
+                                    .padding(.bottom, 16)
+                                Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 16)
+                            }
 
                             if !viewModel.userPosts.isEmpty {
                                 recentPostsSection
@@ -204,6 +212,9 @@ struct ProfileView: View {
         .task(id: "profile") {
             await viewModel.loadProfile(userId: profileUserId)
             await viewModel.loadUserPosts()
+            if viewModel.isCurrentUser {
+                await leagueViewModel.loadMyLeagues()
+            }
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -283,6 +294,12 @@ struct ProfileView: View {
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
             .presentationBackground(NETRTheme.background)
+        }
+        .sheet(item: $selectedLeague) { league in
+            LeagueDetailView(myLeague: league)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.background)
         }
     }
 
@@ -1079,6 +1096,86 @@ struct ProfileView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - My Leagues
+
+    @ViewBuilder
+    private var myLeaguesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("MY LEAGUES")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.5)
+                .padding(.horizontal, 20)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(leagueViewModel.myLeagues) { myLeague in
+                        leagueCard(myLeague)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
+    private func leagueCard(_ myLeague: MyLeague) -> some View {
+        let accent = Color(hex: myLeague.league.accentColor ?? "") ?? NETRTheme.neonGreen
+        return Button {
+            selectedLeague = myLeague
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                // Logo or sport initial
+                if let logoStr = myLeague.league.logoUrl, let url = URL(string: logoStr) {
+                    AsyncImage(url: url) { phase in
+                        if let img = phase.image {
+                            img.resizable().scaledToFill()
+                                .frame(width: 36, height: 36).clipShape(Circle())
+                        } else {
+                            leagueInitialBadge(myLeague.league.sport, accent: accent)
+                        }
+                    }
+                } else {
+                    leagueInitialBadge(myLeague.league.sport, accent: accent)
+                }
+
+                Text(myLeague.league.name.uppercased())
+                    .font(.system(size: 12, weight: .black).width(.compressed))
+                    .foregroundStyle(NETRTheme.text)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text(myLeague.league.sport.capitalized)
+                    .font(.system(size: 10))
+                    .foregroundStyle(NETRTheme.subtext)
+
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color(hex: myLeague.team.color) ?? NETRTheme.subtext)
+                        .frame(width: 7, height: 7)
+                    Text(myLeague.team.name.uppercased())
+                        .font(.system(size: 10, weight: .semibold).width(.compressed))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .lineLimit(1)
+                }
+            }
+            .frame(width: 130, alignment: .leading)
+            .padding(14)
+            .background(NETRTheme.card)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(accent.opacity(0.25), lineWidth: 1))
+            .clipShape(.rect(cornerRadius: 14))
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+
+    private func leagueInitialBadge(_ sport: String, accent: Color) -> some View {
+        ZStack {
+            Circle().fill(accent.opacity(0.12)).frame(width: 36, height: 36)
+            Text(String(sport.prefix(1)).uppercased())
+                .font(.system(size: 15, weight: .black))
+                .foregroundStyle(accent)
         }
     }
 
