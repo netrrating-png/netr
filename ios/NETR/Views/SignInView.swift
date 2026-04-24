@@ -108,6 +108,8 @@ struct SignInView: View {
 
                         Spacer(minLength: 32)
                     }
+                    .frame(maxWidth: 400)
+                    .frame(maxWidth: .infinity)
                 }
                 .dismissKeyboardOnScroll()
             }

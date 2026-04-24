@@ -64,7 +64,7 @@ struct WelcomeView: View {
                     }
 
                     // Apple sign-in — FIRST and most prominent (guideline 4.8)
-                    SignInWithAppleButton(.signUp) { request in
+                    SignInWithAppleButton(.continue) { request in
                         let nonce = randomNonceString()
                         currentNonce = nonce
                         request.requestedScopes = [.fullName, .email]
@@ -122,6 +122,7 @@ struct WelcomeView: View {
                     }
                     .padding(.top, 4)
                 }
+                .frame(maxWidth: 400)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
