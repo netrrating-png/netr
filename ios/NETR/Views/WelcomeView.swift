@@ -63,23 +63,8 @@ struct WelcomeView: View {
                             .padding(.horizontal)
                     }
 
-                    // Email sign-up
-                    Button {
-                        showEmailSignUp = true
-                    } label: {
-                        Text("SIGN UP WITH EMAIL")
-                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                            .tracking(1.5)
-                            .foregroundStyle(NETRTheme.background)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
-                            .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
-                    }
-                    .buttonStyle(PressButtonStyle())
-
-                    // Apple sign-in (required by App Store guideline 4.8)
-                    SignInWithAppleButton(.continue) { request in
+                    // Apple sign-in — FIRST and most prominent (guideline 4.8)
+                    SignInWithAppleButton(.signUp) { request in
                         let nonce = randomNonceString()
                         currentNonce = nonce
                         request.requestedScopes = [.fullName, .email]
@@ -115,6 +100,20 @@ struct WelcomeView: View {
                             }
                         }
                     }
+
+                    // Email sign-up
+                    Button {
+                        showEmailSignUp = true
+                    } label: {
+                        Text("SIGN UP WITH EMAIL")
+                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                            .tracking(1.5)
+                            .foregroundStyle(NETRTheme.background)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                    }
+                    .buttonStyle(PressButtonStyle())
 
                     Button {
                         showSignIn = true
