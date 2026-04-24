@@ -29,6 +29,7 @@ struct OnboardingView: View {
     @State private var isCheckingUsername: Bool = false
     @State private var usernameError: String?
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("hasCompletedPhotoPrompt") private var hasCompletedPhotoPrompt: Bool = false
 
     private let totalSteps = 8
 
@@ -583,6 +584,7 @@ struct OnboardingView: View {
                 onGoogleSignedInAsExistingUser: {
                     biometrics.isUnlocked = true
                     hasCompletedOnboarding = true
+                    hasCompletedPhotoPrompt = true
                 }
             )
         case 1:

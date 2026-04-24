@@ -160,6 +160,7 @@ struct WelcomeView: View {
     }
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("hasCompletedPhotoPrompt") private var hasCompletedPhotoPrompt: Bool = false
 
     private func trySignInExistingUser() {
         isCheckingExisting = true
@@ -179,6 +180,7 @@ struct WelcomeView: View {
                 // Sign-in succeeded — this is a returning user
                 if supabase.currentProfile != nil {
                     hasCompletedOnboarding = true
+                    hasCompletedPhotoPrompt = true
                 } else {
                     onContinue()
                 }

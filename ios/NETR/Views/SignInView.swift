@@ -130,6 +130,7 @@ struct SignInView: View {
     }
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("hasCompletedPhotoPrompt") private var hasCompletedPhotoPrompt: Bool = false
 
     private func signIn() async {
         isLoading = true
@@ -143,8 +144,9 @@ struct SignInView: View {
                 try? await Task.sleep(for: .milliseconds(300))
             }
 
-            // SignInView is for returning users only — sign-in success means onboarding is done
+            // SignInView is for returning users only — skip all first-time screens
             hasCompletedOnboarding = true
+            hasCompletedPhotoPrompt = true
             biometrics.isUnlocked = true
             dismiss()
         } catch let authError as AuthError {
@@ -192,6 +194,7 @@ struct SignInView: View {
 
                     // Apple Sign-In on this screen is for returning users only
                     hasCompletedOnboarding = true
+                    hasCompletedPhotoPrompt = true
                     biometrics.isUnlocked = true
                     dismiss()
                 } catch {
