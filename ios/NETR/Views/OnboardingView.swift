@@ -710,6 +710,7 @@ struct OnboardingView: View {
 
                 biometrics.isUnlocked = true
                 hasCompletedOnboarding = true
+                hasCompletedPhotoPrompt = true
             } catch {
                 let msg = error.localizedDescription.lowercased()
                 if msg.contains("unique") && msg.contains("username") {
@@ -751,6 +752,7 @@ struct OnboardingView: View {
                 }
                 biometrics.isUnlocked = true
                 hasCompletedOnboarding = true
+                hasCompletedPhotoPrompt = true
             } catch {
                 let msg = error.localizedDescription.lowercased()
                 if msg.contains("unique") && msg.contains("username") {
