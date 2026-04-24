@@ -81,16 +81,10 @@ struct WelcomeView: View {
                         Task {
                             do {
                                 try await supabase.signInWithGoogle()
-                                // Wait up to 3s for loadProfile to finish
-                                for _ in 0..<6 {
-                                    if supabase.currentProfile != nil { break }
-                                    try? await Task.sleep(for: .milliseconds(500))
-                                }
-                                if supabase.currentProfile == nil {
-                                    // New Google user with no profile yet — go through setup
+
+                                if supabase.lastSignInWasNewUser {
                                     onGoogleSignedInAsNewUser?()
                                 } else {
-                                    // Returning Google user with profile — go straight in
                                     onGoogleSignedInAsExistingUser?()
                                 }
                             } catch is CancellationError {
@@ -220,16 +214,12 @@ struct WelcomeView: View {
                 if !name.isEmpty { appleFullName = name }
             }
 
+            errorMessage = nil
             Task {
                 do {
                     try await supabase.signInWithApple(idToken: idToken, nonce: currentNonce, fullName: appleFullName)
 
-                    for _ in 0..<6 {
-                        if supabase.currentProfile != nil { break }
-                        try? await Task.sleep(for: .milliseconds(500))
-                    }
-
-                    if supabase.currentProfile == nil {
+                    if supabase.lastSignInWasNewUser {
                         onGoogleSignedInAsNewUser?()
                     } else {
                         onGoogleSignedInAsExistingUser?()
