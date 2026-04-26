@@ -6,13 +6,15 @@
 --
 -- Accounts targeted:
 --   - Nolan Carter  (nolan123@gmail.com / @nolan_c)
---   - Marcus        (match by name — confirm email before running)
+--   - Marcus T.     (@marc_t)
+--   - Dre Williams  (@dre_w)
 -- ─────────────────────────────────────────────────────────────
 
 DO $$
 DECLARE
-    nolan_id   UUID;
-    marcus_id  UUID;
+    nolan_id  UUID;
+    marcus_id UUID;
+    dre_id    UUID;
 BEGIN
 
     -- ── Nolan Carter ──────────────────────────────────────────
@@ -28,19 +30,30 @@ BEGIN
         RAISE NOTICE 'Nolan Carter not found — already removed or never seeded';
     END IF;
 
-    -- ── Marcus ────────────────────────────────────────────────
-    -- Update the name/email below to match the exact account.
-    -- Check first with: SELECT id, full_name, username FROM profiles WHERE full_name ILIKE '%marcus%';
-    SELECT p.id INTO marcus_id
-    FROM profiles p
-    WHERE p.full_name ILIKE '%marcus%'
+    -- ── Marcus T. (@marc_t) ───────────────────────────────────
+    SELECT id INTO marcus_id
+    FROM profiles
+    WHERE username = '@marc_t'
     LIMIT 1;
 
     IF marcus_id IS NOT NULL THEN
         DELETE FROM auth.users WHERE id = marcus_id;
-        RAISE NOTICE 'Deleted Marcus account (%)', marcus_id;
+        RAISE NOTICE 'Deleted Marcus T. (%)', marcus_id;
     ELSE
-        RAISE NOTICE 'Marcus account not found';
+        RAISE NOTICE 'Marcus T. (@marc_t) not found';
+    END IF;
+
+    -- ── Dre Williams (@dre_w) ────────────────────────────────
+    SELECT id INTO dre_id
+    FROM profiles
+    WHERE username = '@dre_w'
+    LIMIT 1;
+
+    IF dre_id IS NOT NULL THEN
+        DELETE FROM auth.users WHERE id = dre_id;
+        RAISE NOTICE 'Deleted Dre Williams (%)', dre_id;
+    ELSE
+        RAISE NOTICE 'Dre Williams (@dre_w) not found';
     END IF;
 
 END $$;
