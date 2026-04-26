@@ -112,6 +112,7 @@ struct ConnectionsGameView: View {
                     solvedRowView(g)
                 }
             }
+            .frame(maxWidth: sizeClass == .regular ? 500 : .infinity)
             .animation(.spring(response: 0.45, dampingFraction: 0.75), value: viewModel.solvedGroups.count)
         }
     }
@@ -138,39 +139,54 @@ struct ConnectionsGameView: View {
 
     // MARK: Board grid
 
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    private var maxTileWidth: CGFloat {
+        sizeClass == .regular ? 120 : .greatestFiniteMagnitude
+    }
+
     private var boardGrid: some View {
         GeometryReader { proxy in
             let cols = 4
             let totalSpacing = gridSpacing * CGFloat(cols - 1)
-            let tileW = (proxy.size.width - totalSpacing) / CGFloat(cols)
+            let rawTileW = (proxy.size.width - totalSpacing) / CGFloat(cols)
+            let tileW = min(rawTileW, maxTileWidth)
             let tileH = max(96, tileW * 1.30)
+            let gridWidth = tileW * CGFloat(cols) + totalSpacing
 
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: cols),
-                spacing: gridSpacing
-            ) {
-                ForEach(viewModel.boardOrder, id: \.self) { id in
-                    if let player = viewModel.puzzle?.players[id] {
-                        playerTile(player, size: CGSize(width: tileW, height: tileH))
-                            .onTapGesture { viewModel.toggle(id) }
+            HStack {
+                Spacer(minLength: 0)
+                LazyVGrid(
+                    columns: Array(repeating: GridItem(.fixed(tileW), spacing: gridSpacing), count: cols),
+                    spacing: gridSpacing
+                ) {
+                    ForEach(viewModel.boardOrder, id: \.self) { id in
+                        if let player = viewModel.puzzle?.players[id] {
+                            playerTile(player, size: CGSize(width: tileW, height: tileH))
+                                .onTapGesture { viewModel.toggle(id) }
+                        }
                     }
                 }
+                .frame(width: gridWidth)
+                Spacer(minLength: 0)
             }
         }
         .frame(height: boardHeight)
     }
 
     private var boardHeight: CGFloat {
-        // Approximate 4-row height; when rows are solved and removed the grid shrinks.
         let rows = max(1, Int(ceil(Double(viewModel.boardOrder.count) / 4.0)))
-        let tileH: CGFloat = 108
+        let tileW = sizeClass == .regular ? maxTileWidth : CGFloat(108)
+        let tileH = max(96, tileW * 1.30)
         return CGFloat(rows) * tileH + CGFloat(max(0, rows - 1)) * gridSpacing
     }
 
     private func playerTile(_ p: ConnectionsPlayer, size: CGSize) -> some View {
         let isSelected = viewModel.selected.contains(p.id)
         let url = URL(string: p.headshotUrl ?? "")
-        return VStack(spacing: 4) {
+        let photoSize = size.width * 0.58
+        let fontSize = min(size.width * 0.12, 13.0)
+        return VStack(spacing: 3) {
             ZStack {
                 Circle().fill(NETRTheme.background)
 
@@ -182,21 +198,22 @@ struct ConnectionsGameView: View {
                         ZStack {
                             Circle().fill(NETRTheme.muted)
                             Text(initials(p.name))
-                                .font(.system(size: size.height * 0.22, weight: .heavy))
+                                .font(.system(size: photoSize * 0.35, weight: .heavy))
                                 .foregroundStyle(NETRTheme.text)
                         }
                     }
                 }
             }
-            .frame(width: size.height * 0.62, height: size.height * 0.62)
+            .frame(width: photoSize, height: photoSize)
             .clipShape(Circle())
 
             Text(p.name)
-                .font(.system(size: 10, weight: .bold))
+                .font(.system(size: fontSize, weight: .bold))
                 .foregroundStyle(isSelected ? .black : NETRTheme.text)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.6)
+                .frame(height: size.height * 0.28)
                 .padding(.horizontal, 3)
         }
         .frame(width: size.width, height: size.height)

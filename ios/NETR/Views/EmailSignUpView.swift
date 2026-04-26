@@ -100,6 +100,8 @@ struct EmailSignUpView: View {
                             .padding(.horizontal, 32)
                             .padding(.bottom, 32)
                     }
+                    .frame(maxWidth: 400)
+                    .frame(maxWidth: .infinity)
                 }
                 .dismissKeyboardOnScroll()
             }

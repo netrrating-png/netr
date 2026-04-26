@@ -44,6 +44,7 @@ struct RootView: View {
                         .tint(NETRTheme.neonGreen)
                         .scaleEffect(1.5)
                 }
+                .allowsHitTesting(false)
             }
         }
     }

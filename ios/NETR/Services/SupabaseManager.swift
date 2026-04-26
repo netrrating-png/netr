@@ -96,6 +96,11 @@ class SupabaseManager {
         await loadProfile(userId: session.user.id.uuidString.lowercased())
     }
 
+    /// True if the most recent Apple/Google sign-in was for a brand-new user
+    /// (no profile row existed before sign-in). Checked by WelcomeView to decide
+    /// whether to route into onboarding or straight into the app.
+    var lastSignInWasNewUser: Bool = false
+
     func signInWithApple(idToken: String, nonce: String, fullName: String? = nil) async throws {
         isLoading = true
         authError = nil
@@ -110,7 +115,20 @@ class SupabaseManager {
         )
         self.session = session
         print("[NETR Auth] Apple session established: \(session.user.id)")
-        await loadProfile(userId: session.user.id.uuidString.lowercased())
+
+        // Check if profile existed BEFORE loadProfile (which may auto-create it)
+        let userId = session.user.id.uuidString.lowercased()
+        nonisolated struct ProfileCheck: Decodable, Sendable { let id: String }
+        let existing: [ProfileCheck]? = try? await client
+            .from("profiles")
+            .select("id")
+            .eq("id", value: userId)
+            .limit(1)
+            .execute()
+            .value
+        lastSignInWasNewUser = (existing ?? []).isEmpty
+
+        await loadProfile(userId: userId)
 
         // Apple only sends the user's name on the very first sign-in.
         // Save it to the profiles table if we got it and the profile doesn't have one yet.
@@ -160,7 +178,19 @@ class SupabaseManager {
             )
         )
         self.session = session
-        await loadProfile(userId: session.user.id.uuidString.lowercased())
+
+        let userId = session.user.id.uuidString.lowercased()
+        nonisolated struct ProfileCheck2: Decodable, Sendable { let id: String }
+        let existing: [ProfileCheck2]? = try? await client
+            .from("profiles")
+            .select("id")
+            .eq("id", value: userId)
+            .limit(1)
+            .execute()
+            .value
+        lastSignInWasNewUser = (existing ?? []).isEmpty
+
+        await loadProfile(userId: userId)
     }
 
     func signOut() async throws {

@@ -63,22 +63,7 @@ struct WelcomeView: View {
                             .padding(.horizontal)
                     }
 
-                    // Email sign-up
-                    Button {
-                        showEmailSignUp = true
-                    } label: {
-                        Text("SIGN UP WITH EMAIL")
-                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
-                            .tracking(1.5)
-                            .foregroundStyle(NETRTheme.background)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 54)
-                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
-                            .shadow(color: NETRTheme.neonGreen.opacity(0.4), radius: 12)
-                    }
-                    .buttonStyle(PressButtonStyle())
-
-                    // Apple sign-in (required by App Store guideline 4.8)
+                    // Apple sign-in — FIRST and most prominent (guideline 4.8)
                     SignInWithAppleButton(.continue) { request in
                         let nonce = randomNonceString()
                         currentNonce = nonce
@@ -96,16 +81,10 @@ struct WelcomeView: View {
                         Task {
                             do {
                                 try await supabase.signInWithGoogle()
-                                // Wait up to 3s for loadProfile to finish
-                                for _ in 0..<6 {
-                                    if supabase.currentProfile != nil { break }
-                                    try? await Task.sleep(for: .milliseconds(500))
-                                }
-                                if supabase.currentProfile == nil {
-                                    // New Google user with no profile yet — go through setup
+
+                                if supabase.lastSignInWasNewUser {
                                     onGoogleSignedInAsNewUser?()
                                 } else {
-                                    // Returning Google user with profile — go straight in
                                     onGoogleSignedInAsExistingUser?()
                                 }
                             } catch is CancellationError {
@@ -115,6 +94,20 @@ struct WelcomeView: View {
                             }
                         }
                     }
+
+                    // Email sign-up
+                    Button {
+                        showEmailSignUp = true
+                    } label: {
+                        Text("SIGN UP WITH EMAIL")
+                            .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                            .tracking(1.5)
+                            .foregroundStyle(NETRTheme.background)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 54)
+                            .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 14))
+                    }
+                    .buttonStyle(PressButtonStyle())
 
                     Button {
                         showSignIn = true
@@ -129,6 +122,7 @@ struct WelcomeView: View {
                     }
                     .padding(.top, 4)
                 }
+                .frame(maxWidth: 400)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
@@ -166,6 +160,7 @@ struct WelcomeView: View {
     }
 
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("hasCompletedPhotoPrompt") private var hasCompletedPhotoPrompt: Bool = false
 
     private func trySignInExistingUser() {
         isCheckingExisting = true
@@ -185,6 +180,7 @@ struct WelcomeView: View {
                 // Sign-in succeeded — this is a returning user
                 if supabase.currentProfile != nil {
                     hasCompletedOnboarding = true
+                    hasCompletedPhotoPrompt = true
                 } else {
                     onContinue()
                 }
@@ -221,16 +217,12 @@ struct WelcomeView: View {
                 if !name.isEmpty { appleFullName = name }
             }
 
+            errorMessage = nil
             Task {
                 do {
                     try await supabase.signInWithApple(idToken: idToken, nonce: currentNonce, fullName: appleFullName)
 
-                    for _ in 0..<6 {
-                        if supabase.currentProfile != nil { break }
-                        try? await Task.sleep(for: .milliseconds(500))
-                    }
-
-                    if supabase.currentProfile == nil {
+                    if supabase.lastSignInWasNewUser {
                         onGoogleSignedInAsNewUser?()
                     } else {
                         onGoogleSignedInAsExistingUser?()
