@@ -264,12 +264,21 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         isLoading = true
         error = nil
         do {
-            let result: [Court] = try await client
-                .from("courts")
-                .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
-                .execute()
-                .value
-            courts = result
+            let batchSize = 1000
+            var all: [Court] = []
+            var offset = 0
+            while true {
+                let batch: [Court] = try await client
+                    .from("courts")
+                    .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
+                    .range(from: offset, to: offset + batchSize - 1)
+                    .execute()
+                    .value
+                all.append(contentsOf: batch)
+                if batch.count < batchSize { break }
+                offset += batchSize
+            }
+            courts = all
             isLoading = false
         } catch let decodingError as DecodingError {
             self.error = "Failed to load courts"
