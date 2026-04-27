@@ -81,12 +81,16 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             let trimmed = searchText.trimmingCharacters(in: .whitespaces)
             let isZip = trimmed.count == 5 && trimmed.allSatisfy(\.isNumber)
             if isZip {
-                results = results.filter { $0.zipCode == trimmed }
+                results = results.filter {
+                    $0.zipCode == trimmed ||
+                    $0.address.localizedCaseInsensitiveContains(trimmed)
+                }
             } else {
                 results = results.filter {
                     $0.name.localizedStandardContains(searchText) ||
                     $0.neighborhood.localizedStandardContains(searchText) ||
                     $0.city.localizedStandardContains(searchText) ||
+                    $0.address.localizedStandardContains(searchText) ||
                     ($0.zipCode?.hasPrefix(trimmed) ?? false)
                 }
             }
@@ -276,7 +280,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             while true {
                 let batch: [Court] = try await client
                     .from("courts")
-                    .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
+                    .select("id, name, address, neighborhood, city, zip_code, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
                     .range(from: offset, to: offset + batchSize - 1)
                     .execute()
                     .value
