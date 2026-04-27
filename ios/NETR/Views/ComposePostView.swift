@@ -256,12 +256,13 @@ struct ComposePostView: View {
 
             Spacer()
 
-            Text("\(charCount)/\(maxChars)")
-                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+            Text("\(charsRemaining)")
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(
-                    charsRemaining < 0
-                    ? NETRTheme.red
-                    : (charsRemaining < 20 ? NETRTheme.red : (charsRemaining < 50 ? NETRTheme.gold : NETRTheme.subtext))
+                    charsRemaining < 0   ? NETRTheme.red  :
+                    charsRemaining < 50  ? NETRTheme.red  :
+                    charsRemaining < 150 ? NETRTheme.gold :
+                    NETRTheme.muted
                 )
 
             if viewModel.isPosting {

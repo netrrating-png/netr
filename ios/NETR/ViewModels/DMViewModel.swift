@@ -339,7 +339,7 @@ class ChatViewModel {
     }
 
     var characterCount: Int { messageText.count }
-    var showCharCount: Bool { messageText.count > 1800 }
+    var charsRemaining: Int { maxChars - messageText.count }
 
     init(otherUserId: String, otherUser: FeedAuthor? = nil) {
         self.otherUserId = otherUserId

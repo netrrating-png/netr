@@ -211,16 +211,19 @@ struct ChatThreadView: View {
                 .background(NETRTheme.surface)
             }
 
-            if viewModel.showCharCount {
-                HStack {
-                    Spacer()
-                    Text("\(viewModel.characterCount)/2000")
-                        .font(.system(size: 10))
-                        .foregroundStyle(viewModel.characterCount > 2000 ? NETRTheme.red : NETRTheme.subtext)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
+            HStack {
+                Spacer()
+                Text("\(viewModel.charsRemaining)")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .foregroundStyle(
+                        viewModel.charsRemaining < 0    ? NETRTheme.red  :
+                        viewModel.charsRemaining < 100  ? NETRTheme.red  :
+                        viewModel.charsRemaining < 200  ? NETRTheme.gold :
+                        NETRTheme.muted
+                    )
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 2)
 
             HStack(spacing: 8) {
                 // Court tag button
