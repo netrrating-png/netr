@@ -10,7 +10,8 @@ struct CourtFilterSheet: View {
     // Local draft state — only applied on "Show Courts"
     @State private var draftDistance: Double? = nil
     @State private var draftSurfaces: Set<SurfaceType> = []
-    @State private var draftCourtType: Bool? = nil  // nil=any, true=full, false=half
+    @State private var draftCourtType: Bool? = nil   // nil=any, true=full, false=half
+    @State private var draftIndoor: Bool? = nil      // nil=any, true=indoor, false=outdoor
     @State private var showLocationAlert: Bool = false
 
     private let distanceOptions: [(label: String, value: Double?)] = [
@@ -41,6 +42,7 @@ struct CourtFilterSheet: View {
                         draftDistance = nil
                         draftSurfaces = []
                         draftCourtType = nil
+                        draftIndoor = nil
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NETRTheme.neonGreen)
@@ -135,6 +137,15 @@ struct CourtFilterSheet: View {
                             courtTypeButton(label: "Half Court", icon: "grid-2x2", value: false)
                         }
                     }
+
+                    // ── Indoor / Outdoor ──────────────────────────────────
+                    filterSection(title: "SETTING", icon: "home") {
+                        HStack(spacing: 8) {
+                            indoorButton(label: "Any", icon: "circle-dashed", value: nil)
+                            indoorButton(label: "Indoor", icon: "home", value: true)
+                            indoorButton(label: "Outdoor", icon: "sun", value: false)
+                        }
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 32)
@@ -165,10 +176,10 @@ struct CourtFilterSheet: View {
         }
         .background(NETRTheme.surface)
         .onAppear {
-            // Seed draft from current VM state
             draftDistance = viewModel.filterMaxDistance
             draftSurfaces = viewModel.filterSurfaces
             draftCourtType = viewModel.filterCourtType
+            draftIndoor = viewModel.filterIndoor
         }
         .alert("Location Required", isPresented: $showLocationAlert) {
             Button("Open Settings") {
@@ -219,6 +230,26 @@ struct CourtFilterSheet: View {
         .buttonStyle(PressButtonStyle())
     }
 
+    @ViewBuilder
+    private func indoorButton(label: String, icon: String, value: Bool?) -> some View {
+        let selected = draftIndoor == value
+        Button {
+            withAnimation(.snappy) { draftIndoor = value }
+        } label: {
+            VStack(spacing: 5) {
+                LucideIcon(icon, size: 14)
+                Text(label)
+                    .font(.system(size: 11, weight: selected ? .semibold : .regular))
+            }
+            .foregroundStyle(selected ? NETRTheme.background : NETRTheme.subtext)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(selected ? NETRTheme.neonGreen : NETRTheme.card, in: .rect(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? Color.clear : NETRTheme.border, lineWidth: 1))
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+
     private func surfaceIcon(_ surface: SurfaceType) -> String {
         switch surface {
         case .asphalt: return "road"
@@ -229,7 +260,7 @@ struct CourtFilterSheet: View {
     }
 
     private var hasChanges: Bool {
-        draftDistance != nil || !draftSurfaces.isEmpty || draftCourtType != nil
+        draftDistance != nil || !draftSurfaces.isEmpty || draftCourtType != nil || draftIndoor != nil
     }
 
     private var applyCTA: String {
@@ -238,11 +269,11 @@ struct CourtFilterSheet: View {
         if let d = draftDistance { parts.append("≤\(Int(d))mi") }
         if !draftSurfaces.isEmpty { parts.append(draftSurfaces.map { $0.rawValue }.sorted().joined(separator: "/")) }
         if let ct = draftCourtType { parts.append(ct ? "Full" : "Half") }
+        if let indoor = draftIndoor { parts.append(indoor ? "Indoor" : "Outdoor") }
         return "Show Courts — \(parts.joined(separator: " · "))"
     }
 
     private func applyFilters() {
-        // Block distance filter if we don't have the user's location
         if draftDistance != nil && viewModel.userLocation == nil {
             showLocationAlert = true
             return
@@ -250,6 +281,7 @@ struct CourtFilterSheet: View {
         viewModel.filterMaxDistance = draftDistance
         viewModel.filterSurfaces = draftSurfaces
         viewModel.filterCourtType = draftCourtType
+        viewModel.filterIndoor = draftIndoor
         viewModel.isExploring = true
         isPresented = false
     }

@@ -30,10 +30,12 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
     var filterSurfaces: Set<SurfaceType> = []
     /// nil = any, true = full court only, false = half court only
     var filterCourtType: Bool? = nil
+    /// nil = any, true = indoor only, false = outdoor only
+    var filterIndoor: Bool? = nil
 
     /// True when at least one advanced filter is active.
     var hasActiveFilters: Bool {
-        filterMaxDistance != nil || !filterSurfaces.isEmpty || filterCourtType != nil
+        filterMaxDistance != nil || !filterSurfaces.isEmpty || filterCourtType != nil || filterIndoor != nil
     }
 
     var userLocation: CLLocationCoordinate2D?
@@ -109,6 +111,9 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         if let courtType = filterCourtType {
             results = results.filter { $0.fullCourt == courtType }
         }
+        if let indoor = filterIndoor {
+            results = results.filter { $0.indoor == indoor }
+        }
         if let maxMiles = filterMaxDistance, let loc = userLocation {
             let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
             let maxMeters = maxMiles * 1609.34
@@ -145,6 +150,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
         filterMaxDistance = nil
         filterSurfaces = []
         filterCourtType = nil
+        filterIndoor = nil
     }
 
     var totalCourtCount: Int { courts.count }
