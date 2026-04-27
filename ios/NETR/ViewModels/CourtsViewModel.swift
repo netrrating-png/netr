@@ -213,11 +213,11 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
     }
 
-    /// Courts within 5 miles that are not already saved/home — shown in default view for new users.
+    /// Courts within 10 miles that are not already saved/home — shown in default view for new users.
     var nearbyCourtsInDefaultView: [Court] {
         guard let loc = userLocation else { return [] }
         let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
-        let maxMeters = 5.0 * 1609.34
+        let maxMeters = 10.0 * 1609.34
         return courts
             .filter {
                 $0.id != homeCourtId &&

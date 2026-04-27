@@ -778,9 +778,9 @@ class FeedViewModel {
                 .execute()
         }
 
-        // Bounding box: ~5 miles in each direction
-        let latDelta = 0.0725
-        let lngDelta = 0.0725 / max(cos(loc.latitude * .pi / 180), 0.01)
+        // Bounding box: ~10 miles in each direction
+        let latDelta = 0.145
+        let lngDelta = 0.145 / max(cos(loc.latitude * .pi / 180), 0.01)
 
         let results: [UserSearchResult]? = try? await client
             .from("profiles")
@@ -795,7 +795,7 @@ class FeedViewModel {
             .value
 
         let userLoc = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
-        let maxMeters = 5.0 * 1609.34
+        let maxMeters = 10.0 * 1609.34
 
         nearbyUsers = (results ?? [])
             .filter { user in
