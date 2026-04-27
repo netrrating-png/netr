@@ -321,7 +321,7 @@ class ChatViewModel {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeTask: Task<Void, Never>?
 
-    private let maxChars = 500
+    private let maxChars = 2000
 
     var currentUserId: String? {
         SupabaseManager.shared.session?.user.id.uuidString.lowercased()
@@ -339,7 +339,7 @@ class ChatViewModel {
     }
 
     var characterCount: Int { messageText.count }
-    var showCharCount: Bool { messageText.count > 400 }
+    var showCharCount: Bool { messageText.count > 1800 }
 
     init(otherUserId: String, otherUser: FeedAuthor? = nil) {
         self.otherUserId = otherUserId

@@ -9,7 +9,7 @@ struct ComposePostView: View {
     @State private var selectedCourt: FeedCourtSearchResult? = nil
     @State private var showCourtPicker: Bool = false
 
-    private let maxChars = 280
+    private let maxChars = 1000
 
     private var charCount: Int { postText.count }
     private var isOverLimit: Bool { charCount > maxChars }

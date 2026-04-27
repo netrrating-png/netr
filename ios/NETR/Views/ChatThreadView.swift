@@ -214,9 +214,9 @@ struct ChatThreadView: View {
             if viewModel.showCharCount {
                 HStack {
                     Spacer()
-                    Text("\(viewModel.characterCount)/500")
+                    Text("\(viewModel.characterCount)/2000")
                         .font(.system(size: 10))
-                        .foregroundStyle(viewModel.characterCount > 500 ? NETRTheme.red : NETRTheme.subtext)
+                        .foregroundStyle(viewModel.characterCount > 2000 ? NETRTheme.red : NETRTheme.subtext)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 4)
