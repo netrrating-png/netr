@@ -148,14 +148,22 @@ struct CrewChatView: View {
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(message.content)
                         .font(.system(size: 14))
-                        .foregroundStyle(NETRTheme.text)
+                        .foregroundStyle(Color.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
-                        .background(NETRTheme.neonGreen.opacity(0.15), in: .rect(cornerRadius: 16, style: .continuous))
+                        .background {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(NETRTheme.neonGreen.opacity(0.22))
+                            }
+                        }
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(NETRTheme.neonGreen.opacity(0.2), lineWidth: 1)
+                                .stroke(NETRTheme.neonGreen.opacity(0.35), lineWidth: 0.75)
                         )
+                        .shadow(color: NETRTheme.neonGreen.opacity(0.12), radius: 6, x: 0, y: 3)
 
                     Text(formatTime(message.createdAt))
                         .font(.system(size: 10))
@@ -177,11 +185,19 @@ struct CrewChatView: View {
                         .foregroundStyle(NETRTheme.text)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 9)
-                        .background(NETRTheme.card, in: .rect(cornerRadius: 16, style: .continuous))
+                        .background {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(.ultraThinMaterial)
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .fill(Color.black.opacity(0.5))
+                            }
+                        }
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(NETRTheme.border, lineWidth: 1)
+                                .stroke(Color.white.opacity(0.07), lineWidth: 0.75)
                         )
+                        .shadow(color: Color.black.opacity(0.25), radius: 6, x: 0, y: 3)
 
                     Text(formatTime(message.createdAt))
                         .font(.system(size: 10))

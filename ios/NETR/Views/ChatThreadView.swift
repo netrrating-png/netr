@@ -340,30 +340,38 @@ struct MessageBubble: View {
                 if !message.content.isEmpty {
                     MentionTextView(
                         text: message.content,
-                        textColor: isCurrentUser ? .black : NETRTheme.text,
-                        mentionColor: isCurrentUser ? Color(white: 0.15) : NETRTheme.neonGreen,
+                        textColor: isCurrentUser ? .white : NETRTheme.text,
+                        mentionColor: NETRTheme.neonGreen,
                         onMentionTap: onMentionTap
                     )
                     .padding(.horizontal, 16)
                     .padding(.vertical, 11)
-                    .background(
-                        isCurrentUser ? NETRTheme.neonGreen : NETRTheme.card,
-                        in: BubbleShape(isCurrentUser: isCurrentUser)
-                    )
+                    .background {
+                        ZStack {
+                            BubbleShape(isCurrentUser: isCurrentUser)
+                                .fill(.ultraThinMaterial)
+                            BubbleShape(isCurrentUser: isCurrentUser)
+                                .fill(
+                                    isCurrentUser
+                                        ? NETRTheme.neonGreen.opacity(0.22)
+                                        : Color.black.opacity(0.5)
+                                )
+                        }
+                    }
                     .overlay(
                         BubbleShape(isCurrentUser: isCurrentUser)
                             .stroke(
                                 isCurrentUser
-                                    ? Color.white.opacity(0.15)
-                                    : NETRTheme.border.opacity(0.6),
-                                lineWidth: 0.5
+                                    ? NETRTheme.neonGreen.opacity(0.35)
+                                    : Color.white.opacity(0.07),
+                                lineWidth: 0.75
                             )
                     )
                     .shadow(
                         color: isCurrentUser
-                            ? NETRTheme.neonGreen.opacity(0.2)
-                            : Color.black.opacity(0.35),
-                        radius: 4, x: 0, y: 2
+                            ? NETRTheme.neonGreen.opacity(0.12)
+                            : Color.black.opacity(0.25),
+                        radius: 6, x: 0, y: 3
                     )
                 }
 
