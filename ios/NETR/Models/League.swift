@@ -27,6 +27,19 @@ nonisolated struct League: Identifiable, Decodable, Sendable {
     let sport: String?
     let season: String?
     let location: String?
+    let customDomain: String?
+    let customDomainStatus: String?
+
+    var websiteURL: URL? {
+        if let domain = customDomain?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !domain.isEmpty,
+           customDomainStatus == "active" {
+            let prefixed = domain.lowercased().hasPrefix("http") ? domain : "https://\(domain)"
+            if let url = URL(string: prefixed) { return url }
+        }
+        guard let slug, !slug.isEmpty else { return nil }
+        return URL(string: "https://netrrating.com/league/\(slug)")
+    }
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id
@@ -37,6 +50,8 @@ nonisolated struct League: Identifiable, Decodable, Sendable {
         case sport
         case season
         case location
+        case customDomain = "custom_domain"
+        case customDomainStatus = "custom_domain_status"
     }
 }
 

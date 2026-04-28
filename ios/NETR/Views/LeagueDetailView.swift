@@ -57,7 +57,7 @@ struct LeagueDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                leagueLogo
+                logoTappable
                 VStack(alignment: .leading, spacing: 4) {
                     Text(entry.league.name)
                         .font(.system(size: 20, weight: .black))
@@ -87,6 +87,34 @@ struct LeagueDetailView: View {
                         .foregroundStyle(NETRTheme.subtext)
                 }
             }
+
+            if let url = entry.league.websiteURL {
+                Link(destination: url) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.up.right.square")
+                            .font(.system(size: 11, weight: .semibold))
+                        Text("Visit league website")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(accent.opacity(0.1), in: Capsule())
+                    .overlay(Capsule().stroke(accent.opacity(0.35), lineWidth: 1))
+                }
+                .accessibilityHint("Opens the league's public page in your browser")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var logoTappable: some View {
+        if let url = entry.league.websiteURL {
+            Link(destination: url) { leagueLogo }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(entry.league.name) — open league website")
+        } else {
+            leagueLogo
         }
     }
 
