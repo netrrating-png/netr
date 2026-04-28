@@ -1,4 +1,6 @@
 import SwiftUI
+import Supabase
+import PostgREST
 
 struct LeagueDetailView: View {
     let entry: LeagueEntry
@@ -250,7 +252,6 @@ struct LeagueDetailView: View {
             return formatter.date(from: iso)
         }()
         guard let date else { return ("TBD", "—") }
-        let cal = Calendar.current
         let dayFmt = DateFormatter()
         dayFmt.dateFormat = "EEE · MMM d"
         dayFmt.locale = Locale(identifier: "en_US_POSIX")

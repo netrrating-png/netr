@@ -280,7 +280,7 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             while true {
                 let batch: [Court] = try await client
                     .from("courts")
-                    .select("id, name, address, neighborhood, city, zip_code, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
+                    .select("id, name, address, neighborhood, city, lat, lng, surface, lights, indoor, full_court, verified, tags, court_rating, submitted_by, photo_count")
                     .range(from: offset, to: offset + batchSize - 1)
                     .execute()
                     .value

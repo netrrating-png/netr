@@ -30,6 +30,7 @@ struct ProfileView: View {
     @State private var showMyCrews: Bool = false
     @State private var showSkillBreakdown: Bool = false
     @State private var leaguesViewModel = LeaguesViewModel()
+    @State private var selectedLeagueEntry: LeagueEntry?
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false), showPhotoBanner: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -290,6 +291,14 @@ struct ProfileView: View {
         .sheet(isPresented: $showMyCrews) {
             NavigationStack {
                 MyCrewsView(viewModel: crewViewModel)
+            }
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+            .presentationBackground(NETRTheme.background)
+        }
+        .sheet(item: $selectedLeagueEntry) { entry in
+            NavigationStack {
+                LeagueDetailView(entry: entry)
             }
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -1118,7 +1127,7 @@ struct ProfileView: View {
             } else {
                 VStack(spacing: 8) {
                     ForEach(leaguesViewModel.entries) { entry in
-                        NavigationLink(destination: LeagueDetailView(entry: entry)) {
+                        Button { selectedLeagueEntry = entry } label: {
                             leagueCard(entry: entry)
                         }
                         .buttonStyle(.plain)
