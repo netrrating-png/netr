@@ -29,6 +29,7 @@ struct ProfileView: View {
     @State private var crewViewModel = CrewViewModel()
     @State private var showMyCrews: Bool = false
     @State private var showSkillBreakdown: Bool = false
+    @State private var leaguesViewModel = LeaguesViewModel()
 
     init(profileUserId: String? = nil, courtsViewModel: CourtsViewModel? = nil, showSelfAssessment: Binding<Bool> = .constant(false), showPhotoBanner: Binding<Bool> = .constant(false)) {
         self.profileUserId = profileUserId
@@ -112,6 +113,14 @@ struct ProfileView: View {
                                 .id("milestonesSection")
 
                             Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
+
+                            if viewModel.isCurrentUser || viewModel.userProfile?.showLeagues == true {
+                                leaguesSection
+                                    .padding(.horizontal, 20)
+                                    .padding(.bottom, 24)
+
+                                Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 24)
+                            }
 
                             if let court = viewModel.homeCourt {
                                 homeCourtRow(court: court, accentColor: ratingColor(for: user))
@@ -204,6 +213,8 @@ struct ProfileView: View {
         .task(id: "profile") {
             await viewModel.loadProfile(userId: profileUserId)
             await viewModel.loadUserPosts()
+            let targetId = profileUserId ?? SupabaseManager.shared.session?.user.id.uuidString ?? ""
+            await leaguesViewModel.load(profileId: targetId)
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -1079,6 +1090,119 @@ struct ProfileView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Leagues
+
+    @ViewBuilder
+    private var leaguesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("LEAGUES")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.5)
+
+            if leaguesViewModel.isLoading {
+                ProgressView()
+                    .tint(NETRTheme.neonGreen)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+            } else if leaguesViewModel.entries.isEmpty {
+                Text(viewModel.isCurrentUser
+                     ? "You haven't joined a league yet.\nAsk your commissioner for a team invite link."
+                     : "No league activity.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(NETRTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(leaguesViewModel.entries) { entry in
+                        NavigationLink(destination: LeagueDetailView(entry: entry)) {
+                            leagueCard(entry: entry)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private func leagueCard(entry: LeagueEntry) -> some View {
+        let accent = Color(hex: entry.league.accentColor ?? "#39FF14")
+        let teamColor = Color(hex: entry.team.color ?? "#39FF14")
+        let record: String = {
+            guard let s = entry.standing else { return "—" }
+            return "\(s.wins)-\(s.losses)"
+        }()
+
+        return HStack(spacing: 12) {
+            // Logo or default icon
+            Group {
+                if let urlStr = entry.league.logoUrl, let url = URL(string: urlStr) {
+                    AsyncImage(url: url) { phase in
+                        if case .success(let img) = phase {
+                            img.resizable().scaledToFill()
+                                .frame(width: 38, height: 38)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        } else {
+                            defaultLeagueIcon(accent: accent)
+                        }
+                    }
+                } else {
+                    defaultLeagueIcon(accent: accent)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.league.name)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(accent)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(teamColor)
+                        .frame(width: 8, height: 8)
+                    Text(entry.team.name)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(NETRTheme.text)
+                }
+                if let season = entry.league.season {
+                    Text(season)
+                        .font(.system(size: 11))
+                        .foregroundStyle(NETRTheme.subtext)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(record)
+                    .font(.system(size: 15, weight: .black, design: .monospaced))
+                    .foregroundStyle(NETRTheme.text)
+                Text("W-L")
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(1)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            Image(systemName: "chevron.right")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(NETRTheme.muted)
+        }
+        .padding(12)
+        .background(accent.opacity(0.07))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(accent.opacity(0.2), lineWidth: 1))
+        .clipShape(.rect(cornerRadius: 12))
+    }
+
+    private func defaultLeagueIcon(accent: Color) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 8)
+                .fill(accent.opacity(0.15))
+                .frame(width: 38, height: 38)
+            Image(systemName: "trophy.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(accent)
         }
     }
 

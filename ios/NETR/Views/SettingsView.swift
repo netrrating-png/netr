@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @AppStorage("profilePrivate") private var profilePrivate: Bool = false
     @AppStorage("locationEnabled") private var locationEnabled: Bool = true
+    @AppStorage("showLeagues") private var showLeagues: Bool = true
     @State private var showMyGames: Bool = false
     @State private var showNotificationPreferences: Bool = false
     @State private var showEditProfile: Bool = false
@@ -527,6 +528,49 @@ struct SettingsView: View {
                     Toggle("", isOn: $locationEnabled)
                         .tint(NETRTheme.neonGreen)
                         .labelsHidden()
+                }
+                .padding(14)
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    LucideIcon("trophy")
+                        .foregroundStyle(NETRTheme.neonGreen)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Show Leagues on my profile")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        Text(showLeagues
+                             ? "Other users can see your league activity"
+                             : "League activity is hidden from your profile")
+                            .font(.caption)
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+
+                    Spacer()
+
+                    Toggle("", isOn: $showLeagues)
+                        .tint(NETRTheme.neonGreen)
+                        .labelsHidden()
+                        .onChange(of: showLeagues) { _, newValue in
+                            Task {
+                                guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+                                do {
+                                    try await SupabaseManager.shared.client
+                                        .from("profiles")
+                                        .update(["show_leagues": AnyJSON.bool(newValue)])
+                                        .eq("id", value: userId)
+                                        .execute()
+                                } catch {
+                                    print("[NETR] Show leagues update error: \(error)")
+                                }
+                            }
+                        }
                 }
                 .padding(14)
             }
