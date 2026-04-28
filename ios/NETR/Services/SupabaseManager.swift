@@ -61,6 +61,9 @@ class SupabaseManager {
         authError = nil
         defer { isLoading = false }
 
+        // Fresh account — drop any leftover local assessment state.
+        SelfAssessmentStore.clear()
+
         let response = try await client.auth.signUp(
             email: email,
             password: password,
@@ -91,9 +94,20 @@ class SupabaseManager {
         isLoading = true
         authError = nil
         defer { isLoading = false }
+        // Drop any other account's local assessment cache before loading this user's profile.
+        SelfAssessmentStore.clear()
         let session = try await client.auth.signIn(email: email, password: password)
         self.session = session
         await loadProfile(userId: session.user.id.uuidString.lowercased())
+        markOnboardedIfProfileComplete()
+    }
+
+    /// If the signed-in user already has a fleshed-out profile (username set), skip
+    /// the onboarding gate. signOut() clears `hasCompletedOnboarding` so fresh
+    /// sign-ups see onboarding — returning users shouldn't be trapped there.
+    private func markOnboardedIfProfileComplete() {
+        guard let username = currentProfile?.username, !username.isEmpty else { return }
+        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
     }
 
     /// True if the most recent Apple/Google sign-in was for a brand-new user
@@ -106,6 +120,7 @@ class SupabaseManager {
         authError = nil
         defer { isLoading = false }
         print("[NETR Auth] Apple Sign-In started")
+        SelfAssessmentStore.clear()
         let session = try await client.auth.signInWithIdToken(
             credentials: .init(
                 provider: .apple,
@@ -145,6 +160,7 @@ class SupabaseManager {
                 print("[NETR Auth] Failed to save Apple name: \(error)")
             }
         }
+        markOnboardedIfProfileComplete()
     }
 
     func signInWithGoogle() async throws {
@@ -160,6 +176,8 @@ class SupabaseManager {
             throw NSError(domain: "NETRAuth", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "Unable to find root view controller"])
         }
+
+        SelfAssessmentStore.clear()
 
         // Native Google Sign-In — presents the system account picker, no browser required.
         let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: rootVC)
@@ -191,6 +209,7 @@ class SupabaseManager {
         lastSignInWasNewUser = (existing ?? []).isEmpty
 
         await loadProfile(userId: userId)
+        markOnboardedIfProfileComplete()
     }
 
     func signOut() async throws {
@@ -206,6 +225,9 @@ class SupabaseManager {
         UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
         UserDefaults.standard.set(false, forKey: "hasCompletedPhotoPrompt")
         UserDefaults.standard.set(0, forKey: "photoPromptSkipCount")
+        // Clear device-local self-assessment cache so the next account (on the
+        // same device) doesn't inherit the previous user's score/skills.
+        SelfAssessmentStore.clear()
     }
 
     func checkUsernameAvailable(_ username: String) async -> Bool {

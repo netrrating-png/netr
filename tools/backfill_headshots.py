@@ -33,7 +33,31 @@ except ImportError:
 
 BBR_HEAD = "https://www.basketball-reference.com/req/202106291/images/headshots"
 BBR_PAGE = "https://www.basketball-reference.com/players"
-REQ_DELAY = 0.25
+# BBR rate-limits to ~20 req/min on HTML pages. 3.5s between page fetches
+# keeps us at ~17 req/min, under the wall.
+REQ_DELAY = 3.5
+# Seconds to sleep on 429 before retry, capped at MAX_BACKOFF.
+INITIAL_BACKOFF = 60
+MAX_BACKOFF = 300
+MAX_RETRIES = 3
+
+
+def get_with_backoff(session: "requests.Session", url: str, *, method: str = "GET") -> "requests.Response | None":
+    """GET/HEAD with exponential backoff on 429. Returns None if all retries 429."""
+    backoff = INITIAL_BACKOFF
+    for attempt in range(MAX_RETRIES + 1):
+        try:
+            r = session.request(method, url, timeout=20, allow_redirects=True)
+        except requests.RequestException:
+            return None
+        if r.status_code != 429:
+            return r
+        if attempt == MAX_RETRIES:
+            return r
+        print(f"  [429] backing off {backoff}s…", flush=True)
+        time.sleep(backoff)
+        backoff = min(backoff * 2, MAX_BACKOFF)
+    return None
 
 
 def strip_accents(s: str) -> str:
@@ -58,17 +82,16 @@ def find_headshot_url(session: requests.Session, name: str) -> str | None:
     for slug in slug_candidates(name):
         url = f"{BBR_HEAD}/{slug}.jpg"
         time.sleep(REQ_DELAY)
-        try:
-            r = session.head(url, timeout=10, allow_redirects=True)
-        except requests.RequestException:
+        r = get_with_backoff(session, url, method="HEAD")
+        if r is None:
             continue
         if r.status_code == 200:
             # Confirm this slug actually belongs to this player (name collisions exist).
             letter = slug[0]
             page = f"{BBR_PAGE}/{letter}/{slug}.html"
-            try:
-                pr = session.get(page, timeout=15)
-            except requests.RequestException:
+            time.sleep(REQ_DELAY)
+            pr = get_with_backoff(session, page, method="GET")
+            if pr is None:
                 continue
             if pr.status_code == 200 and _page_matches(pr.text, name):
                 return url
@@ -108,7 +131,9 @@ def main() -> None:
     print(f"Processing {len(players)} players…")
 
     session = requests.Session()
-    session.headers.update({"User-Agent": "NETR-headshot-backfill/1.0"})
+    session.headers.update({
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    })
 
     ok = miss = fail = 0
     patch_hdrs = {**hdrs, "Content-Type": "application/json", "Prefer": "return=minimal"}
