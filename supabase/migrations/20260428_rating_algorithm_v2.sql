@@ -368,6 +368,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trigger_rating_v2_apply_netr ON ratings;
 CREATE TRIGGER trigger_rating_v2_apply_netr
 BEFORE INSERT ON ratings
 FOR EACH ROW EXECUTE FUNCTION rating_v2_apply_netr();
@@ -446,6 +447,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Only fire on vibe-relevant changes — keeps backfill fast since the
 -- audit-field UPDATEs in step 6 don't touch vibe inputs.
+DROP TRIGGER IF EXISTS trigger_rating_v2_apply_vibe        ON ratings;
+DROP TRIGGER IF EXISTS trigger_rating_v2_apply_vibe_update ON ratings;
+
 CREATE TRIGGER trigger_rating_v2_apply_vibe
 AFTER INSERT OR DELETE ON ratings
 FOR EACH ROW EXECUTE FUNCTION rating_v2_apply_vibe();
