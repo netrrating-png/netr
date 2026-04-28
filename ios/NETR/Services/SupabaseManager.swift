@@ -356,7 +356,8 @@ class SupabaseManager {
         SelfAssessmentStore.save(score: score, categoryScores: categoryScores)
 
         var params: [String: AnyJSON] = [
-            "netr_score": .double(score)
+            "netr_score": .double(score),
+            "self_assessed_netr": .double(score)
         ]
 
         if let cats = categoryScores {

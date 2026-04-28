@@ -302,6 +302,8 @@ struct PublicPlayerProfileView: View {
                         .overlay(RoundedRectangle(cornerRadius: 5).stroke(NETRTheme.purple.opacity(0.4), lineWidth: 1))
                         .clipShape(.rect(cornerRadius: 5))
                 }
+
+                NETRTierBadge(tier: NETRTierKind.fromCount(user.reviews))
             }
 
             HStack(spacing: 8) {

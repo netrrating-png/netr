@@ -14,6 +14,8 @@ nonisolated struct UserProfile: Codable, Sendable {
     var totalRatings: Int?
     var totalGames: Int?
     var netrScore: Double?
+    var selfAssessedNetr: Double?
+    var tier: String?
     var catShooting: Double?
     var catFinishing: Double?
     var catDribbling: Double?
@@ -52,6 +54,8 @@ nonisolated struct UserProfile: Codable, Sendable {
         case totalRatings = "total_ratings"
         case totalGames = "total_games"
         case netrScore = "netr_score"
+        case selfAssessedNetr = "self_assessed_netr"
+        case tier
         case catShooting = "cat_shooting"
         case catFinishing = "cat_finishing"
         case catDribbling = "cat_dribbling"

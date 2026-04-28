@@ -503,6 +503,8 @@ struct ProfileView: View {
                         scrollToMilestones.toggle()
                     }
                 }
+
+                NETRTierBadge(tier: NETRTierKind.fromCount(user.reviews))
             }
 
             HStack(spacing: 6) {
