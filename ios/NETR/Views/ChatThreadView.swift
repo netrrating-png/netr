@@ -12,6 +12,7 @@ struct ChatThreadView: View {
     @State private var mentionProfileUserId: String?
     @Environment(\.dismiss) private var dismiss
     @FocusState private var inputFocused: Bool
+    @State private var keyboardOffset: CGFloat = 0
 
     init(otherUserId: String, otherUser: FeedAuthor?, dmViewModel: DMViewModel? = nil) {
         self.otherUserId = otherUserId
@@ -29,8 +30,27 @@ struct ChatThreadView: View {
             messageList
             chatInput
         }
+        .padding(.bottom, keyboardOffset)
         .background(Color.black)
+        .ignoresSafeArea(.keyboard)
         .hideKeyboardOnTap()
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notif in
+            guard let frame = notif.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                  let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = scene.windows.first else { return }
+            let screenH = window.bounds.height
+            // Only respond to docked keyboards — floating iPad keyboard stays put
+            guard frame.maxY >= screenH - 10 else {
+                withAnimation(.easeOut(duration: 0.25)) { keyboardOffset = 0 }
+                return
+            }
+            withAnimation(.easeOut(duration: 0.25)) {
+                keyboardOffset = max(0, screenH - frame.minY)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { keyboardOffset = 0 }
+        }
         .task {
             await viewModel.loadMessages()
             await viewModel.subscribeToMessages()

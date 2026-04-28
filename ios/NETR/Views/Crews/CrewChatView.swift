@@ -11,6 +11,7 @@ struct CrewChatView: View {
     @State private var messageText: String = ""
     @State private var isSending: Bool = false
     @State private var scrollProxy: ScrollViewProxy? = nil
+    @State private var keyboardOffset: CGFloat = 0
 
     private var currentUserId: String {
         SupabaseManager.shared.session?.user.id.uuidString ?? ""
@@ -78,6 +79,24 @@ struct CrewChatView: View {
                 // Input Bar
                 inputBar
             }
+            .padding(.bottom, keyboardOffset)
+        }
+        .ignoresSafeArea(.keyboard)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notif in
+            guard let frame = notif.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+                  let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                  let window = scene.windows.first else { return }
+            let screenH = window.bounds.height
+            guard frame.maxY >= screenH - 10 else {
+                withAnimation(.easeOut(duration: 0.25)) { keyboardOffset = 0 }
+                return
+            }
+            withAnimation(.easeOut(duration: 0.25)) {
+                keyboardOffset = max(0, screenH - frame.minY)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            withAnimation(.easeOut(duration: 0.25)) { keyboardOffset = 0 }
         }
         .task {
             await viewModel.loadMessages(crewId: crew.id)
