@@ -38,7 +38,7 @@ nonisolated struct League: Identifiable, Decodable, Sendable {
             if let url = URL(string: prefixed) { return url }
         }
         guard let slug, !slug.isEmpty else { return nil }
-        return URL(string: "https://netrrating.com/league/\(slug)")
+        return URL(string: "https://netr.pro/league/\(slug)")
     }
 
     nonisolated enum CodingKeys: String, CodingKey {
