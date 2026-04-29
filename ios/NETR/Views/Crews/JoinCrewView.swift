@@ -13,6 +13,7 @@ struct JoinCrewView: View {
     @State private var isJoining: Bool = false
     @State private var errorMsg: String? = nil
     @State private var searchTask: Task<Void, Never>? = nil
+    @State private var suppressNextSearch: Bool = false
 
     private var canJoin: Bool {
         selectedCrew != nil && !password.isEmpty && !isJoining
@@ -99,6 +100,10 @@ struct JoinCrewView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .onChange(of: query) { _, newValue in
+                    if suppressNextSearch {
+                        suppressNextSearch = false
+                        return
+                    }
                     selectedCrew = nil
                     errorMsg = nil
                     password = ""
@@ -158,6 +163,7 @@ struct JoinCrewView: View {
                     ForEach(searchResults) { crew in
                         Button {
                             withAnimation(.easeInOut(duration: 0.15)) {
+                                suppressNextSearch = true
                                 selectedCrew = crew
                                 query = crew.name
                             }
