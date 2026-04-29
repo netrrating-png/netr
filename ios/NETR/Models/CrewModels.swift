@@ -206,9 +206,12 @@ enum CrewLeaderboardFilter: String, CaseIterable {
 // MARK: - Crew Icons (15 sport-themed Lucide icons)
 
 let crewIcons: [String] = [
-    "flame", "zap", "trophy", "star", "target",
-    "shield", "crown", "swords", "rocket", "activity",
-    "trending-up", "award", "dumbbell", "medal", "globe"
+    "flame", "zap", "wind", "tornado", "skull",          // energy / danger
+    "trophy", "medal", "award", "target", "crosshair",   // competition
+    "shield", "sword", "swords", "dumbbell", "mountain", // strength
+    "crown", "star", "diamond", "gem", "sparkles",       // prestige
+    "rocket", "moon", "timer", "globe", "activity",      // motion / vibe
+    "trending-up", "headphones", "ghost", "bomb", "pizza" // personality
 ]
 
 // MARK: - Errors
