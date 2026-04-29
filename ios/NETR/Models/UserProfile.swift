@@ -127,7 +127,7 @@ extension UserProfile {
             reviews: totalRatings ?? 0,
             age: ageFromDOB(),
             tier: tier,
-            city: city ?? "New York, NY",
+            city: city ?? "",
             position: posEnum,
             positionLabel: posLabel,
             trend: trend,

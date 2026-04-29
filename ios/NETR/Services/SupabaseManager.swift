@@ -55,7 +55,8 @@ class SupabaseManager {
         fullName: String,
         username: String,
         dateOfBirth: Date?,
-        position: String
+        position: String,
+        city: String? = nil
     ) async throws {
         isLoading = true
         authError = nil
@@ -86,7 +87,8 @@ class SupabaseManager {
             fullName: fullName,
             username: username,
             dateOfBirth: dateOfBirth,
-            position: position
+            position: position,
+            city: city
         )
     }
 
@@ -248,7 +250,8 @@ class SupabaseManager {
         fullName: String,
         username: String,
         dateOfBirth: Date?,
-        position: String
+        position: String,
+        city: String? = nil
     ) async throws {
         var params: [String: AnyJSON] = [
             "id": .string(userId),
@@ -262,6 +265,9 @@ class SupabaseManager {
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
             params["date_of_birth"] = .string(formatter.string(from: dob))
+        }
+        if let city, !city.isEmpty {
+            params["city"] = .string(city)
         }
         try await client
             .from("profiles")

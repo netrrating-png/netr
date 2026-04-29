@@ -375,7 +375,7 @@ class ProfileViewModel {
             reviews: 0,
             age: 0,
             tier: .basic,
-            city: "New York, NY",
+            city: "",
             position: posEnum,
             trend: .none,
             games: 0,

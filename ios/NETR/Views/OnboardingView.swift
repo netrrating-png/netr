@@ -12,6 +12,7 @@ struct OnboardingView: View {
     @State private var currentStep: Int = 0
     @State private var fullName: String = ""
     @State private var username: String = ""
+    @State private var city: String = ""
     @State private var dateOfBirth: Date = Calendar.current.date(byAdding: .year, value: -20, to: Date()) ?? Date()
     @State private var selfAssessmentScore: Double? = nil
     @State private var selfAssessmentCategoryScores: [String: Double] = [:]
@@ -144,6 +145,8 @@ struct OnboardingView: View {
                             let sanitized = newValue.filter { $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." }
                             if sanitized != newValue { username = sanitized }
                         }
+
+                    NETRTextField(placeholder: "City (e.g. Chicago, IL)", text: $city, icon: "mappin")
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("DATE OF BIRTH")
@@ -630,6 +633,7 @@ struct OnboardingView: View {
         let dob = dateOfBirth
         let pos = selfAssessmentPosition
         let score = selfAssessmentScore
+        let userCity = city.trimmingCharacters(in: .whitespaces)
 
         Task {
             do {
@@ -642,7 +646,8 @@ struct OnboardingView: View {
                         fullName: name,
                         username: handle,
                         dateOfBirth: dob,
-                        position: pos
+                        position: pos,
+                        city: userCity.isEmpty ? nil : userCity
                     )
                 } else {
                     let email = supabase.pendingEmail
@@ -661,7 +666,8 @@ struct OnboardingView: View {
                             fullName: name,
                             username: handle,
                             dateOfBirth: dob,
-                            position: pos
+                            position: pos,
+                            city: userCity.isEmpty ? nil : userCity
                         )
                     } catch {
                         let msg = error.localizedDescription.lowercased()
@@ -675,7 +681,8 @@ struct OnboardingView: View {
                                 fullName: name,
                                 username: handle,
                                 dateOfBirth: dob,
-                                position: pos
+                                position: pos,
+                                city: userCity.isEmpty ? nil : userCity
                             )
                         } else {
                             throw error
@@ -739,7 +746,8 @@ struct OnboardingView: View {
                     fullName: fullName,
                     username: username,
                     dateOfBirth: dateOfBirth,
-                    position: selfAssessmentPosition
+                    position: selfAssessmentPosition,
+                    city: city.trimmingCharacters(in: .whitespaces).isEmpty ? nil : city.trimmingCharacters(in: .whitespaces)
                 )
                 if let score = selfAssessmentScore {
                     try await supabase.saveSelfAssessmentScore(
