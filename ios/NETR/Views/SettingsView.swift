@@ -696,8 +696,10 @@ struct SettingsView: View {
     private func deleteAccountAndSignOut() async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let client = SupabaseManager.shared.client
+        // Crew tables store IDs as lowercase; other tables use the raw uuidString
+        let lowerUserId = userId.lowercased()
 
-        // Helper to delete from a table with logging on failure
+        // Helper to delete rows matching userId from a table
         func deleteFrom(_ table: String, column: String) async {
             do {
                 try await client.from(table).delete().eq(column, value: userId).execute()
@@ -705,6 +707,21 @@ struct SettingsView: View {
                 print("[NETR] Delete from \(table) error: \(error)")
             }
         }
+
+        // Helper for tables that store IDs lowercase (crew tables)
+        func deleteFromLower(_ table: String, column: String) async {
+            do {
+                try await client.from(table).delete().eq(column, value: lowerUserId).execute()
+            } catch {
+                print("[NETR] Delete from \(table) (lower) error: \(error)")
+            }
+        }
+
+        // Handle crew admin responsibilities before removing membership.
+        // Transfer admin to the next oldest member, or delete the crew if this
+        // user is the only member. The DB trigger also does this, but running it
+        // here first gives cleaner state if the trigger migration hasn't been applied.
+        await transferOrDeleteAdminCrews(client: client, lowerUserId: lowerUserId)
 
         // Delete user data from all tables (continue on individual failures)
         await deleteFrom("feed_posts", column: "author_id")
@@ -719,12 +736,62 @@ struct SettingsView: View {
         await deleteFrom("notifications", column: "user_id")
         await deleteFrom("notification_preferences", column: "user_id")
         await deleteFrom("court_favorites", column: "user_id")
+
+        // Crew cleanup (IDs stored lowercase in crew tables)
+        await deleteFromLower("crew_members", column: "user_id")
+        await deleteFromLower("crew_messages", column: "sender_id")
+        // Also try uppercase variant in case of legacy data
+        await deleteFrom("crew_members", column: "user_id")
+        await deleteFrom("crew_messages", column: "sender_id")
+
+        // Profile deletion fires the DB trigger which cascades any remaining crew rows
         await deleteFrom("profiles", column: "id")
 
         do {
             try await supabase.signOut()
         } catch {
             print("[NETR] Sign out after delete error: \(error)")
+        }
+    }
+
+    private func transferOrDeleteAdminCrews(client: SupabaseClient, lowerUserId: String) async {
+        nonisolated struct CrewIdRow: Decodable, Sendable { let id: String }
+        nonisolated struct MemberRow: Decodable, Sendable {
+            let userId: String
+            nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
+        }
+
+        var adminCrewIds = Set<String>()
+        for adminId in [lowerUserId, lowerUserId.uppercased()] {
+            let rows: [CrewIdRow] = (try? await client
+                .from("crews")
+                .select("id")
+                .eq("admin_id", value: adminId)
+                .execute()
+                .value) ?? []
+            rows.forEach { adminCrewIds.insert($0.id) }
+        }
+
+        for crewId in adminCrewIds {
+            let others: [MemberRow] = (try? await client
+                .from("crew_members")
+                .select("user_id")
+                .eq("crew_id", value: crewId)
+                .neq("user_id", value: lowerUserId)
+                .order("joined_at", ascending: true)
+                .limit(1)
+                .execute()
+                .value) ?? []
+
+            if let next = others.first {
+                try? await client
+                    .from("crews")
+                    .update(["admin_id": next.userId])
+                    .eq("id", value: crewId)
+                    .execute()
+            } else {
+                try? await client.from("crews").delete().eq("id", value: crewId).execute()
+            }
         }
     }
 }
