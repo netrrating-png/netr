@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import UIKit
 
 // MARK: - QR Code (CoreImage — free, offline, no library)
 

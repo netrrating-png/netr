@@ -10,78 +10,35 @@ struct CrewChatView: View {
 
     @State private var messageText: String = ""
     @State private var isSending: Bool = false
-    @State private var scrollProxy: ScrollViewProxy? = nil
     @State private var keyboardOffset: CGFloat = 0
+    @FocusState private var inputFocused: Bool
 
     private var currentUserId: String {
-        SupabaseManager.shared.session?.user.id.uuidString ?? ""
+        SupabaseManager.shared.session?.user.id.uuidString.lowercased() ?? ""
     }
 
-    private var messages: [CrewMessage] {
-        viewModel.messages
-    }
+    private var messages: [CrewMessage] { viewModel.messages }
 
     var body: some View {
         ZStack {
-            NETRTheme.background.ignoresSafeArea()
+            Color.black.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Header
                 chatHeader
+                Color(NETRTheme.border).frame(height: 0.5)
+                messageList
+                Color(NETRTheme.border).frame(height: 0.5)
 
-                NETRTheme.border.frame(height: 1)
-
-                // Messages
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        LazyVStack(spacing: 4) {
-                            ForEach(messages) { message in
-                                messageBubble(message: message)
-                                    .id(message.id)
-                            }
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                    }
-                    .onAppear {
-                        scrollProxy = proxy
-                        scrollToBottom(proxy: proxy, animated: false)
-                    }
-                    .onChange(of: messages.count) { _, _ in
-                        scrollToBottom(proxy: proxy, animated: true)
-                    }
-                }
-
-                NETRTheme.border.frame(height: 1)
-
-                // Error banner
                 if let err = viewModel.errorMessage {
-                    HStack(spacing: 8) {
-                        LucideIcon("alert-circle", size: 13)
-                            .foregroundStyle(NETRTheme.red)
-                        Text(err)
-                            .font(.system(size: 12))
-                            .foregroundStyle(NETRTheme.red)
-                            .lineLimit(2)
-                        Spacer()
-                        Button {
-                            viewModel.errorMessage = nil
-                        } label: {
-                            LucideIcon("x", size: 11)
-                                .foregroundStyle(NETRTheme.subtext)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(NETRTheme.red.opacity(0.08))
+                    errorBanner(err)
                 }
 
-                // Input Bar
                 inputBar
             }
             .padding(.bottom, keyboardOffset)
         }
         .ignoresSafeArea(.keyboard)
+        .hideKeyboardOnTap()
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { notif in
             guard let frame = notif.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
                   let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
@@ -112,13 +69,11 @@ struct CrewChatView: View {
     private var chatHeader: some View {
         HStack(spacing: 12) {
             Button { dismiss() } label: {
-                ZStack {
-                    Circle()
-                        .fill(NETRTheme.card)
-                        .frame(width: 36, height: 36)
-                    LucideIcon("arrow-left", size: 16)
-                        .foregroundStyle(NETRTheme.text)
-                }
+                LucideIcon("arrow-left", size: 20)
+                    .foregroundStyle(NETRTheme.text)
+                    .frame(width: 38, height: 38)
+                    .background(NETRTheme.card, in: Circle())
+                    .overlay(Circle().stroke(NETRTheme.border, lineWidth: 1))
             }
             .buttonStyle(PressButtonStyle())
 
@@ -132,15 +87,14 @@ struct CrewChatView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(crew.name)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(NETRTheme.text)
                     .lineLimit(1)
-
                 HStack(spacing: 4) {
                     LucideIcon("users", size: 11)
                         .foregroundStyle(NETRTheme.subtext)
                     Text("Group Chat")
-                        .font(.system(size: 11))
+                        .font(.system(size: 12))
                         .foregroundStyle(NETRTheme.subtext)
                 }
             }
@@ -149,129 +103,281 @@ struct CrewChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .background(NETRTheme.surface)
     }
 
-    // MARK: - Message Bubble
+    // MARK: - Message List
+
+    private var messageList: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    if viewModel.isLoading && messages.isEmpty {
+                        ProgressView()
+                            .tint(NETRTheme.neonGreen)
+                            .padding(.top, 48)
+                    } else if messages.isEmpty {
+                        VStack(spacing: 14) {
+                            ZStack {
+                                Circle()
+                                    .fill(NETRTheme.neonGreen.opacity(0.08))
+                                    .frame(width: 72, height: 72)
+                                LucideIcon(crew.icon, size: 30)
+                                    .foregroundStyle(NETRTheme.neonGreen.opacity(0.6))
+                            }
+                            Text(crew.name)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(NETRTheme.text)
+                            Text("Start the crew conversation")
+                                .font(.subheadline)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 70)
+                    } else {
+                        ForEach(Array(messages.enumerated()), id: \.element.id) { index, message in
+                            let isCurrentUser = message.senderId.lowercased() == currentUserId
+                            let prevSenderId = index > 0 ? messages[index - 1].senderId.lowercased() : nil
+                            let nextSenderId = index < messages.count - 1 ? messages[index + 1].senderId.lowercased() : nil
+                            let isFirstInGroup = prevSenderId != message.senderId.lowercased()
+                            let isLastInGroup = nextSenderId != message.senderId.lowercased()
+                            let showTimestamp = shouldShowTimestamp(at: index)
+
+                            if showTimestamp {
+                                crewTimestampPill(formatTime(message.createdAt))
+                            }
+
+                            crewBubble(
+                                message: message,
+                                isCurrentUser: isCurrentUser,
+                                isFirstInGroup: isFirstInGroup,
+                                isLastInGroup: isLastInGroup
+                            )
+                            .id(message.id)
+                            .padding(.top, isFirstInGroup && !showTimestamp ? 6 : 0)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .padding(.bottom, 8)
+            }
+            .scrollIndicators(.hidden)
+            .dismissKeyboardOnScroll()
+            .onAppear { scrollToBottom(proxy: proxy, animated: false) }
+            .onChange(of: messages.count) { _, _ in scrollToBottom(proxy: proxy, animated: true) }
+        }
+    }
+
+    private func crewTimestampPill(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11, weight: .medium))
+            .foregroundStyle(NETRTheme.subtext)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 5)
+            .background(NETRTheme.card, in: Capsule())
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+    }
+
+    // MARK: - Crew Bubble
 
     @ViewBuilder
-    private func messageBubble(message: CrewMessage) -> some View {
-        let isCurrentUser = message.senderId.lowercased() == currentUserId.lowercased()
+    private func crewBubble(
+        message: CrewMessage,
+        isCurrentUser: Bool,
+        isFirstInGroup: Bool,
+        isLastInGroup: Bool
+    ) -> some View {
         let senderInfo = viewModel.senderProfiles[message.senderId.lowercased()]
         let senderName = senderInfo?.name ?? "Player"
         let senderAvatarUrl = senderInfo?.avatarUrl
 
         HStack(alignment: .bottom, spacing: 8) {
             if isCurrentUser {
-                Spacer(minLength: 60)
+                Spacer(minLength: 56)
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(message.content)
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(NETRTheme.neonGreen.opacity(0.22))
-                            }
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(NETRTheme.neonGreen.opacity(0.35), lineWidth: 0.75)
-                        )
-                        .shadow(color: NETRTheme.neonGreen.opacity(0.12), radius: 6, x: 0, y: 3)
+                VStack(alignment: .trailing, spacing: 4) {
+                    bubbleContent(
+                        text: message.content,
+                        isCurrentUser: true,
+                        isLastInGroup: isLastInGroup
+                    )
 
-                    Text(formatTime(message.createdAt))
-                        .font(.system(size: 10))
-                        .foregroundStyle(NETRTheme.muted)
-                        .padding(.trailing, 4)
+                    if isLastInGroup {
+                        Text(formatTime(message.createdAt))
+                            .font(.system(size: 10))
+                            .foregroundStyle(NETRTheme.muted)
+                            .padding(.trailing, 2)
+                            .padding(.bottom, 2)
+                    }
                 }
+
             } else {
-                // Avatar circle
-                AvatarView(url: senderAvatarUrl, name: senderName, size: 30)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(senderName)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(NETRTheme.subtext)
-                        .padding(.leading, 4)
-
-                    Text(message.content)
-                        .font(.system(size: 14))
-                        .foregroundStyle(NETRTheme.text)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(.ultraThinMaterial)
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                    .fill(Color.black.opacity(0.5))
-                            }
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.white.opacity(0.07), lineWidth: 0.75)
-                        )
-                        .shadow(color: Color.black.opacity(0.25), radius: 6, x: 0, y: 3)
-
-                    Text(formatTime(message.createdAt))
-                        .font(.system(size: 10))
-                        .foregroundStyle(NETRTheme.muted)
-                        .padding(.leading, 4)
+                if isLastInGroup {
+                    AvatarView(url: senderAvatarUrl, name: senderName, size: 30)
+                } else {
+                    Color.clear.frame(width: 30, height: 1)
                 }
 
-                Spacer(minLength: 60)
+                VStack(alignment: .leading, spacing: 4) {
+                    if isFirstInGroup {
+                        Text(senderName)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(NETRTheme.subtext)
+                            .padding(.leading, 2)
+                    }
+
+                    bubbleContent(
+                        text: message.content,
+                        isCurrentUser: false,
+                        isLastInGroup: isLastInGroup
+                    )
+
+                    if isLastInGroup {
+                        Text(formatTime(message.createdAt))
+                            .font(.system(size: 10))
+                            .foregroundStyle(NETRTheme.muted)
+                            .padding(.leading, 2)
+                            .padding(.bottom, 2)
+                    }
+                }
+
+                Spacer(minLength: 56)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, isLastInGroup ? 1 : 0.5)
+    }
+
+    @ViewBuilder
+    private func bubbleContent(text: String, isCurrentUser: Bool, isLastInGroup: Bool) -> some View {
+        Text(text)
+            .font(.system(size: 15))
+            .foregroundStyle(isCurrentUser ? Color.white : NETRTheme.text)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 10)
+            .background {
+                if isLastInGroup {
+                    ZStack {
+                        BubbleShape(isCurrentUser: isCurrentUser).fill(.ultraThinMaterial)
+                        BubbleShape(isCurrentUser: isCurrentUser)
+                            .fill(isCurrentUser
+                                  ? NETRTheme.neonGreen.opacity(0.25)
+                                  : Color.white.opacity(0.06))
+                    }
+                } else {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.ultraThinMaterial)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(isCurrentUser
+                                  ? NETRTheme.neonGreen.opacity(0.25)
+                                  : Color.white.opacity(0.06))
+                    }
+                }
+            }
+            .overlay {
+                if isLastInGroup {
+                    BubbleShape(isCurrentUser: isCurrentUser)
+                        .stroke(
+                            isCurrentUser
+                                ? NETRTheme.neonGreen.opacity(0.4)
+                                : Color.white.opacity(0.08),
+                            lineWidth: 0.75
+                        )
+                } else {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(
+                            isCurrentUser
+                                ? NETRTheme.neonGreen.opacity(0.4)
+                                : Color.white.opacity(0.08),
+                            lineWidth: 0.75
+                        )
+                }
+            }
+            .shadow(
+                color: isCurrentUser ? NETRTheme.neonGreen.opacity(0.1) : Color.black.opacity(0.2),
+                radius: 4, x: 0, y: 2
+            )
     }
 
     // MARK: - Input Bar
 
     private var inputBar: some View {
-        HStack(spacing: 10) {
-            TextField("Message \(crew.name)...", text: $messageText, axis: .vertical)
-                .font(.system(size: 14))
-                .foregroundStyle(NETRTheme.text)
-                .lineLimit(1...5)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(NETRTheme.card, in: .rect(cornerRadius: 20))
-                .overlay(Capsule().stroke(NETRTheme.border, lineWidth: 1))
+        HStack(alignment: .bottom, spacing: 10) {
+            ZStack(alignment: .bottomTrailing) {
+                TextField("Message \(crew.name)...", text: $messageText, axis: .vertical)
+                    .font(.system(size: 15))
+                    .foregroundStyle(NETRTheme.text)
+                    .focused($inputFocused)
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 22))
+                    .overlay(RoundedRectangle(cornerRadius: 22).stroke(NETRTheme.border, lineWidth: 1))
+
+                if messageText.count > 1700 {
+                    Text("\(2000 - messageText.count)")
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(messageText.count > 1900 ? NETRTheme.red : NETRTheme.gold)
+                        .padding(.trailing, 10)
+                        .padding(.bottom, 11)
+                }
+            }
 
             Button {
                 Task { await sendMessage() }
             } label: {
-                ZStack {
-                    Circle()
-                        .fill(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? NETRTheme.muted : NETRTheme.neonGreen)
-                        .frame(width: 38, height: 38)
-                    LucideIcon("arrow-up", size: 16)
-                        .foregroundStyle(NETRTheme.background)
+                Group {
+                    if isSending {
+                        ProgressView().tint(Color.black)
+                    } else {
+                        LucideIcon("arrow-up", size: 16)
+                            .foregroundStyle(Color.black)
+                    }
                 }
+                .frame(width: 36, height: 36)
+                .background(
+                    messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? NETRTheme.muted : NETRTheme.neonGreen,
+                    in: Circle()
+                )
             }
             .disabled(messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending)
             .buttonStyle(PressButtonStyle())
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .background(NETRTheme.background)
+        .background(NETRTheme.surface)
+    }
+
+    // MARK: - Error Banner
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            LucideIcon("alert-circle", size: 13)
+                .foregroundStyle(NETRTheme.red)
+            Text(message)
+                .font(.system(size: 12))
+                .foregroundStyle(NETRTheme.red)
+                .lineLimit(2)
+            Spacer()
+            Button { viewModel.errorMessage = nil } label: {
+                LucideIcon("x", size: 11).foregroundStyle(NETRTheme.subtext)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(NETRTheme.red.opacity(0.08))
     }
 
     // MARK: - Helpers
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool) {
-        guard let lastMessage = messages.last else { return }
+        guard let last = messages.last else { return }
         if animated {
-            withAnimation(.easeOut(duration: 0.25)) {
-                proxy.scrollTo(lastMessage.id, anchor: .bottom)
-            }
+            withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(last.id, anchor: .bottom) }
         } else {
-            proxy.scrollTo(lastMessage.id, anchor: .bottom)
+            proxy.scrollTo(last.id, anchor: .bottom)
         }
     }
 
@@ -284,26 +390,41 @@ struct CrewChatView: View {
         isSending = true
         await viewModel.sendMessage(crewId: crew.id)
         if viewModel.errorMessage != nil {
-            // Restore text so the user can retry
             messageText = content
         }
         isSending = false
     }
 
-    private func formatTime(_ isoString: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        guard let date = formatter.date(from: isoString) else { return "" }
-        let display = DateFormatter()
-        let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
-            display.dateFormat = "h:mm a"
-        } else if calendar.isDateInYesterday(date) {
-            display.dateFormat = "'Yesterday' h:mm a"
-        } else {
-            display.dateFormat = "MMM d, h:mm a"
-        }
-        return display.string(from: date)
+    private func shouldShowTimestamp(at index: Int) -> Bool {
+        guard index > 0 else { return true }
+        return timeDiffMinutes(messages[index - 1].createdAt, messages[index].createdAt) > 15
     }
 
+    private func timeDiffMinutes(_ a: String, _ b: String) -> Int {
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fb = ISO8601DateFormatter()
+        fb.formatOptions = [.withInternetDateTime]
+        guard let da = fmt.date(from: a) ?? fb.date(from: a),
+              let db = fmt.date(from: b) ?? fb.date(from: b) else { return 0 }
+        return Int(abs(db.timeIntervalSince(da)) / 60)
+    }
+
+    private func formatTime(_ isoString: String) -> String {
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fb = ISO8601DateFormatter()
+        fb.formatOptions = [.withInternetDateTime]
+        guard let date = fmt.date(from: isoString) ?? fb.date(from: isoString) else { return "" }
+        let df = DateFormatter()
+        let cal = Calendar.current
+        if cal.isDateInToday(date) {
+            df.dateFormat = "h:mm a"
+        } else if cal.isDateInYesterday(date) {
+            df.dateFormat = "'Yesterday' h:mm a"
+        } else {
+            df.dateFormat = "MMM d, h:mm a"
+        }
+        return df.string(from: date)
+    }
 }

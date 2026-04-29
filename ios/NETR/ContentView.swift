@@ -7,7 +7,7 @@ struct ContentView: View {
     @Environment(MockDataStore.self) private var store
     @Environment(AppearanceManager.self) private var appearance
     @Environment(SupabaseManager.self) private var supabase
-    @State private var selectedTab: Tab = .feed
+    @State private var selectedTab: Tab = .courts
     @State private var feedScrollToTop: Bool = false
     @State private var courtsViewModel = CourtsViewModel()
     @State private var dmViewModel = DMViewModel()
@@ -81,6 +81,27 @@ struct ContentView: View {
                         .zIndex(selectedTab == .profile ? 1 : 0)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 50, coordinateSpace: .local)
+                        .onEnded { value in
+                            let h = value.translation.width
+                            let v = value.translation.height
+                            // Only fire when clearly horizontal (2.5× more horizontal than vertical)
+                            guard abs(h) > abs(v) * 2.5, abs(h) > 60 else { return }
+                            let tabs = Tab.allCases
+                            guard let idx = tabs.firstIndex(of: selectedTab) else { return }
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            if h < 0, idx < tabs.count - 1 {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    selectedTab = tabs[idx + 1]
+                                }
+                            } else if h > 0, idx > 0 {
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    selectedTab = tabs[idx - 1]
+                                }
+                            }
+                        }
+                )
             }
 
             customTabBar

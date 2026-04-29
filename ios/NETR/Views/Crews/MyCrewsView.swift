@@ -178,64 +178,59 @@ struct MyCrewsView: View {
 
     @ViewBuilder
     private func crewRow(crew: MyCrew) -> some View {
-        Button {
-            selectedCrew = crew
-        } label: {
-            HStack(spacing: 14) {
-                // Icon
-                ZStack {
-                    Circle()
-                        .fill(NETRTheme.neonGreen.opacity(0.12))
-                        .frame(width: 48, height: 48)
-                    LucideIcon(crew.icon, size: 22)
-                        .foregroundStyle(NETRTheme.neonGreen)
-                }
+        HStack(spacing: 14) {
+            // Tappable area → opens detail
+            Button {
+                selectedCrew = crew
+            } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        Circle()
+                            .fill(NETRTheme.neonGreen.opacity(0.12))
+                            .frame(width: 48, height: 48)
+                        LucideIcon(crew.icon, size: 22)
+                            .foregroundStyle(NETRTheme.neonGreen)
+                    }
 
-                // Info
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(crew.name)
                             .font(.system(size: 15, weight: .bold))
                             .foregroundStyle(NETRTheme.text)
+                            .lineLimit(1)
 
-                        if crew.isPrimary {
-                            Text("PRIMARY")
-                                .font(.system(size: 9, weight: .bold))
-                                .tracking(0.8)
-                                .foregroundStyle(NETRTheme.gold)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(NETRTheme.gold.opacity(0.12), in: .rect(cornerRadius: 4))
+                        HStack(spacing: 4) {
+                            LucideIcon("users", size: 11)
+                                .foregroundStyle(NETRTheme.subtext)
+                            Text("Crew")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
                         }
                     }
 
-                    HStack(spacing: 4) {
-                        LucideIcon("users", size: 11)
-                            .foregroundStyle(NETRTheme.subtext)
-                        Text("Crew")
-                            .font(.system(size: 12))
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-                }
+                    Spacer()
 
-                Spacer()
-
-                LucideIcon("chevron-right", size: 16)
-                    .foregroundStyle(NETRTheme.muted)
-            }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 20)
-        }
-        .buttonStyle(PressButtonStyle())
-        .contextMenu {
-            if !crew.isPrimary {
-                Button {
-                    Task { try? await viewModel.setPrimary(crewId: crew.id) }
-                } label: {
-                    Label("Set as Primary", systemImage: "star.fill")
+                    LucideIcon("chevron-right", size: 16)
+                        .foregroundStyle(NETRTheme.muted)
                 }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(PressButtonStyle())
+
+            // Primary star — always visible, yellow when primary
+            Button {
+                Task { try? await viewModel.setPrimary(crewId: crew.id) }
+            } label: {
+                Image(systemName: crew.isPrimary ? "star.fill" : "star")
+                    .font(.system(size: 18))
+                    .foregroundStyle(crew.isPrimary ? NETRTheme.gold : NETRTheme.muted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.trailing, 6)
         }
+        .padding(.vertical, 6)
+        .padding(.leading, 20)
     }
 
     // MARK: - Bottom Bar

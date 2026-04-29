@@ -74,6 +74,22 @@ class CrewViewModel {
                 guard let row = memberMap[crew.id] else { return nil }
                 return MyCrew(crew: crew, memberRow: row)
             }
+
+            // Re-apply locally stored primary preference.
+            // The DB UPDATE in setPrimary is silently blocked by RLS when auth.uid()::text
+            // doesn't case-match the stored user_id text. UserDefaults is the source of truth
+            // for primary crew until the RLS policy is fixed in Supabase.
+            let primaryKey = "primary_crew_\(userId)"
+            if let localPrimary = UserDefaults.standard.string(forKey: primaryKey),
+               myCrews.contains(where: { $0.crew.id == localPrimary }) {
+                myCrews = myCrews.map { item in
+                    var row = item.memberRow
+                    row.isPrimary = (item.crew.id == localPrimary)
+                    return MyCrew(crew: item.crew, memberRow: row)
+                }
+            }
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI during navigation — not a real error
         } catch {
             errorMessage = error.localizedDescription
             print("[NETR Crews] Load my crews error: \(error)")
@@ -159,6 +175,8 @@ class CrewViewModel {
                     joinedAt: member.joinedAt
                 )
             }
+        } catch is CancellationError {
+            // Task cancelled during navigation — not a real error
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -347,20 +365,34 @@ class CrewViewModel {
     // MARK: - Set Primary Crew (for profile display)
     func setPrimary(crewId: String) async throws {
         guard let userId = currentUserId else { throw CrewError.notAuthenticated }
-        // Unset all
-        try await client
-            .from("crew_members")
-            .update(["is_primary": false])
-            .eq("user_id", value: userId)
-            .execute()
-        // Set new primary
-        try await client
-            .from("crew_members")
-            .update(["is_primary": true])
-            .eq("crew_id", value: crewId)
-            .eq("user_id", value: userId)
-            .execute()
-        await loadMyCrews()
+
+        // Persist locally first — survives loadMyCrews() if DB write is blocked by RLS
+        UserDefaults.standard.set(crewId, forKey: "primary_crew_\(userId)")
+
+        // Optimistic local update — star turns gold instantly
+        myCrews = myCrews.map { item in
+            var row = item.memberRow
+            row.isPrimary = (item.crew.id == crewId)
+            return MyCrew(crew: item.crew, memberRow: row)
+        }
+
+        // Best-effort DB sync by row primary key (avoids user_id UUID case issues in WHERE)
+        for item in myCrews where item.crew.id != crewId {
+            try? await client
+                .from("crew_members")
+                .update(["is_primary": false])
+                .eq("id", value: item.memberRow.id)
+                .execute()
+        }
+        if let target = myCrews.first(where: { $0.crew.id == crewId }) {
+            try? await client
+                .from("crew_members")
+                .update(["is_primary": true])
+                .eq("id", value: target.memberRow.id)
+                .execute()
+        }
+        // No loadMyCrews() here — it would revert the star if RLS blocked the DB write.
+        // loadMyCrews() re-applies the UserDefaults preference, so any future refresh is safe.
     }
 
     // MARK: - Messages
@@ -376,6 +408,8 @@ class CrewViewModel {
             messages = msgs
             await loadSenderProfiles(for: msgs)
             await markRead(crewId: crewId)
+        } catch is CancellationError {
+            // Task cancelled by SwiftUI during navigation — not a real error
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -426,8 +460,10 @@ class CrewViewModel {
                 .value
             messages.append(msg)
             await markRead(crewId: crewId)
+        } catch is CancellationError {
+            // Task cancelled during navigation — not a real error
         } catch {
-            sendText = text // restore on failure
+            sendText = text // restore on failure so user can retry
             errorMessage = error.localizedDescription
         }
         isSending = false
@@ -455,6 +491,7 @@ class CrewViewModel {
                 }
             }
         }
+
     }
 
     func unsubscribe() async {
@@ -467,15 +504,27 @@ class CrewViewModel {
     }
 
     private func markRead(crewId: String) async {
-        guard let userId = currentUserId else { return }
         let fmt = ISO8601DateFormatter()
         fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        try? await client
-            .from("crew_members")
-            .update(["last_read_at": fmt.string(from: Date())])
-            .eq("crew_id", value: crewId)
-            .eq("user_id", value: userId)
-            .execute()
+        let ts = fmt.string(from: Date())
+
+        // Always persist locally — survives app restarts even if DB write fails
+        UserDefaults.standard.set(ts, forKey: "crew_lastRead_\(crewId)")
+
+        guard let userId = currentUserId else { return }
+        let originalId = SupabaseManager.shared.session?.user.id.uuidString ?? userId
+        for uid in Array(Set([userId, originalId])) {
+            try? await client
+                .from("crew_members")
+                .update(["last_read_at": ts])
+                .eq("crew_id", value: crewId)
+                .eq("user_id", value: uid)
+                .execute()
+        }
+    }
+
+    static func localLastReadAt(for crewId: String) -> String? {
+        UserDefaults.standard.string(forKey: "crew_lastRead_\(crewId)")
     }
 
     // MARK: - Unread count for a crew (for DM inbox badge)

@@ -330,6 +330,38 @@ class ChatViewModel {
     // Court tag for next message
     var courtTag: FeedCourtSearchResult? = nil
 
+    // @-mention court autocomplete
+    var courtMentionQuery: String? = nil
+    var courtMentionResults: [FeedCourtSearchResult] = []
+    private var courtMentionTask: Task<Void, Never>?
+
+    func searchCourts(query: String) {
+        courtMentionTask?.cancel()
+        guard !query.isEmpty else {
+            courtMentionResults = []
+            return
+        }
+        courtMentionTask = Task {
+            try? await Task.sleep(for: .milliseconds(280))
+            guard !Task.isCancelled else { return }
+            let results: [FeedCourtSearchResult] = (try? await client
+                .from("courts")
+                .select("id, name, neighborhood, city")
+                .or("name.ilike.%\(query)%,neighborhood.ilike.%\(query)%")
+                .limit(6)
+                .execute()
+                .value) ?? []
+            guard !Task.isCancelled else { return }
+            courtMentionResults = results
+        }
+    }
+
+    func clearCourtMention() {
+        courtMentionTask?.cancel()
+        courtMentionQuery = nil
+        courtMentionResults = []
+    }
+
     var canSend: Bool {
         let hasText = !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let hasCourt = courtTag != nil
