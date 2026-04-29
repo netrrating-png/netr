@@ -17,6 +17,7 @@ struct CrewDetailView: View {
     @State private var transferTarget: CrewMemberProfile? = nil
     @State private var isLoading: Bool = false
     @State private var errorMsg: String? = nil
+    @State private var codeCopied: Bool = false
 
     private var currentUserId: String {
         SupabaseManager.shared.session?.user.id.uuidString ?? ""
@@ -24,6 +25,15 @@ struct CrewDetailView: View {
 
     private var isAdmin: Bool {
         crew.adminId == currentUserId
+    }
+
+    private var shareText: String {
+        var text = "Join my crew \"\(crew.name)\" on NETR!"
+        if let code = crew.password, !code.isEmpty {
+            text += "\n\nCode: \(code)"
+        }
+        text += "\n\nDownload the app: https://apps.apple.com/us/app/netr-rating/id6761962317"
+        return text
     }
 
     private var members: [CrewMemberProfile] {
@@ -128,22 +138,28 @@ struct CrewDetailView: View {
 
             Spacer()
 
-            if isAdmin {
-                Button { showSettings = true } label: {
+            HStack(spacing: 8) {
+                ShareLink(item: shareText) {
                     ZStack {
                         Circle()
                             .fill(NETRTheme.card)
                             .frame(width: 36, height: 36)
-                        LucideIcon("settings", size: 16)
+                        LucideIcon("share-2", size: 16)
                             .foregroundStyle(NETRTheme.subtext)
                     }
                 }
-                .buttonStyle(PressButtonStyle())
-            } else {
-                // Placeholder to balance layout
-                Circle()
-                    .fill(Color.clear)
-                    .frame(width: 36, height: 36)
+                if isAdmin {
+                    Button { showSettings = true } label: {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.card)
+                                .frame(width: 36, height: 36)
+                            LucideIcon("settings", size: 16)
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+                    .buttonStyle(PressButtonStyle())
+                }
             }
         }
         .padding(.horizontal, 20)
@@ -488,24 +504,64 @@ struct CrewDetailView: View {
                                 .foregroundStyle(NETRTheme.subtext)
                                 .tracking(1.3)
 
-                            HStack(spacing: 12) {
-                                ZStack {
-                                    Circle()
-                                        .fill(NETRTheme.neonGreen.opacity(0.1))
-                                        .frame(width: 40, height: 40)
-                                    LucideIcon("share-2", size: 18)
-                                        .foregroundStyle(NETRTheme.neonGreen)
-                                }
-                                VStack(alignment: .leading, spacing: 3) {
-                                    Text("Share outside the app")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(NETRTheme.text)
-                                    Text("Send your crew name & code to players so they can join")
+                            VStack(spacing: 0) {
+                                // Crew name row
+                                HStack {
+                                    Text("Crew Name")
                                         .font(.system(size: 12))
                                         .foregroundStyle(NETRTheme.subtext)
+                                    Spacer()
+                                    Text(crew.name)
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(NETRTheme.text)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+
+                                NETRTheme.border.frame(height: 1).padding(.leading, 14)
+
+                                // Code row
+                                HStack {
+                                    Text("Join Code")
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(NETRTheme.subtext)
+                                    Spacer()
+                                    if let code = crew.password, !code.isEmpty {
+                                        Text(code)
+                                            .font(.system(size: 15, weight: .bold).monospaced())
+                                            .foregroundStyle(NETRTheme.neonGreen)
+                                        Button {
+                                            UIPasteboard.general.string = code
+                                            codeCopied = true
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { codeCopied = false }
+                                        } label: {
+                                            LucideIcon(codeCopied ? "check" : "copy", size: 14)
+                                                .foregroundStyle(codeCopied ? NETRTheme.neonGreen : NETRTheme.muted)
+                                        }
+                                        .padding(.leading, 6)
+                                    } else {
+                                        Text("Not available")
+                                            .font(.system(size: 13))
+                                            .foregroundStyle(NETRTheme.muted)
+                                    }
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+
+                                NETRTheme.border.frame(height: 1)
+
+                                // Share button
+                                ShareLink(item: shareText) {
+                                    HStack(spacing: 8) {
+                                        LucideIcon("share-2", size: 16)
+                                        Text("Share Invite")
+                                            .font(.system(size: 14, weight: .semibold))
+                                    }
+                                    .foregroundStyle(NETRTheme.neonGreen)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
                                 }
                             }
-                            .padding(14)
                             .background(NETRTheme.card, in: .rect(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.border, lineWidth: 1))
                         }

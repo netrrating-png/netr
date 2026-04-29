@@ -9,9 +9,10 @@ nonisolated struct Crew: Identifiable, Sendable, Decodable {
     let creatorId: String
     var adminId: String
     let createdAt: String?
+    var password: String?
 
     nonisolated enum CodingKeys: String, CodingKey {
-        case id, name, icon
+        case id, name, icon, password
         case creatorId = "creator_id"
         case adminId   = "admin_id"
         case createdAt = "created_at"
@@ -50,6 +51,7 @@ struct MyCrew: Identifiable {
     var icon: String { crew.icon }
     var adminId: String { crew.adminId }
     var creatorId: String { crew.creatorId }
+    var password: String? { crew.password }
 }
 
 // MARK: - Crew Member Profile (enriched for leaderboard)

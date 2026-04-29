@@ -63,7 +63,7 @@ class CrewViewModel {
 
             let crews: [Crew] = try await client
                 .from("crews")
-                .select("id, name, icon, creator_id, admin_id, created_at")
+                .select("id, name, icon, creator_id, admin_id, created_at, password")
                 .in("id", values: crewIds)
                 .order("created_at", ascending: false)
                 .execute()
