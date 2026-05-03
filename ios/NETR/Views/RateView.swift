@@ -711,7 +711,7 @@ struct SkillSliderRow: View {
     }
 
     // Comparative labels — indexed 0…5 (0 unused)
-    private let labels = ["", "I'm Better", "Slight Edge to Me", "Dead Even", "Slight Edge to Them", "They're Better"]
+    private let labels = ["", "Raw", "Developing", "Solid", "Sharp", "Elite"]
 
     // Maps value 1–5 → 0%–100% of track width (v=3 lands at 50%)
     private func trackFraction(_ v: Int) -> CGFloat {

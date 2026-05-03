@@ -138,11 +138,11 @@ let skillCategories: [SkillCategory] = [
 ]
 
 let peerRatingLabels: [Int: String] = [
-    5: "They're Better — they had me all game",
-    4: "Slight Edge to Them — they outplayed me",
-    3: "Dead Even — we matched up",
-    2: "Slight Edge to Me — I had the upper hand",
-    1: "I'm Better — I outplayed them",
+    1: "Raw",
+    2: "Developing",
+    3: "Solid",
+    4: "Sharp",
+    5: "Elite",
 ]
 
 // ─── VIBE: SINGLE "RUN AGAIN?" QUESTION ──────────────────────
