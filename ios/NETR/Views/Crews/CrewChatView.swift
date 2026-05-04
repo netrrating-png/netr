@@ -12,7 +12,6 @@ struct CrewChatView: View {
     @State private var isSending: Bool = false
     @State private var keyboardOffset: CGFloat = 0
     @FocusState private var inputFocused: Bool
-    @State private var scrollTarget: String? = nil
     @Environment(\.openURL) private var openURL
 
     private var currentUserId: String {
@@ -28,7 +27,6 @@ struct CrewChatView: View {
             VStack(spacing: 0) {
                 chatHeader
                 Color(NETRTheme.border).frame(height: 0.5)
-                pinnedBanner
                 messageList
                 Color(NETRTheme.border).frame(height: 0.5)
 
@@ -64,37 +62,6 @@ struct CrewChatView: View {
         }
         .onDisappear {
             Task { await viewModel.unsubscribe() }
-        }
-    }
-
-    // MARK: - Pinned Banner
-
-    @ViewBuilder
-    private var pinnedBanner: some View {
-        if let pinned = viewModel.pinnedMessage {
-            Button {
-                scrollTarget = pinned.id
-            } label: {
-                HStack(spacing: 8) {
-                    LucideIcon("pin", size: 12)
-                        .foregroundStyle(NETRTheme.gold)
-                    Text(pinned.isGameInvite ? "📅 Game Invite" : String(pinned.content.prefix(60)) + (pinned.content.count > 60 ? "…" : ""))
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(NETRTheme.subtext)
-                        .lineLimit(1)
-                    Spacer()
-                    LucideIcon("x", size: 11)
-                        .foregroundStyle(NETRTheme.muted)
-                        .onTapGesture {
-                            Task { await viewModel.unpinMessage(crewId: crew.id) }
-                        }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-            }
-            .buttonStyle(.plain)
-            .background(NETRTheme.gold.opacity(0.07))
-            Color(NETRTheme.border).frame(height: 0.5)
         }
     }
 
@@ -200,11 +167,6 @@ struct CrewChatView: View {
             .dismissKeyboardOnScroll()
             .onAppear { scrollToBottom(proxy: proxy, animated: false) }
             .onChange(of: messages.count) { _, _ in scrollToBottom(proxy: proxy, animated: true) }
-            .onChange(of: scrollTarget) { _, id in
-                guard let id else { return }
-                withAnimation(.easeOut(duration: 0.3)) { proxy.scrollTo(id, anchor: .top) }
-                scrollTarget = nil
-            }
         }
     }
 
@@ -250,7 +212,6 @@ struct CrewChatView: View {
                 }
             }
             .padding(.vertical, isLastInGroup ? 1 : 0.5)
-            .contextMenu { pinContextMenu(for: message) }
         } else {
             HStack(alignment: .bottom, spacing: 8) {
                 if isCurrentUser {
@@ -306,24 +267,6 @@ struct CrewChatView: View {
                 }
             }
             .padding(.vertical, isLastInGroup ? 1 : 0.5)
-            .contextMenu { pinContextMenu(for: message) }
-        }
-    }
-
-    @ViewBuilder
-    private func pinContextMenu(for message: CrewMessage) -> some View {
-        if message.isPinned {
-            Button(role: .destructive) {
-                Task { await viewModel.unpinMessage(crewId: crew.id) }
-            } label: {
-                Label("Unpin Message", systemImage: "pin.slash")
-            }
-        } else {
-            Button {
-                Task { await viewModel.pinMessage(message, crewId: crew.id) }
-            } label: {
-                Label("Pin Message", systemImage: "pin")
-            }
         }
     }
 
