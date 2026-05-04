@@ -654,8 +654,9 @@ struct CreateGameView: View {
 struct GameLobbyView: View {
     @Bindable var viewModel: GameViewModel
     let onDismiss: () -> Void
-    @State private var showRateSheet: Bool = false
+    @State private var showGameEndedAlert: Bool = false
     @State private var countdownTimer: Timer?
+    @Environment(\.dismiss) private var dismissLobby
     @State private var timeRemaining: TimeInterval = 0
     @State private var showFormatPicker: Bool = false
 
@@ -973,20 +974,21 @@ struct GameLobbyView: View {
             countdownTimer?.invalidate()
             Task { await viewModel.unsubscribe() }
         }
-        .onChange(of: viewModel.showRateScreen) { _, show in
-            if show {
-                // Brief delay lets the completed_at write propagate before the
-                // rate-tab query runs, avoiding an empty first load.
-                Task {
-                    try? await Task.sleep(for: .milliseconds(600))
-                    showRateSheet = true
-                }
-            }
+        .onChange(of: viewModel.gameEnded) { _, ended in
+            if ended { showGameEndedAlert = true }
         }
-        .sheet(isPresented: $showRateSheet, onDismiss: { onDismiss() }) {
-            if let _ = viewModel.completedGameId {
-                RateView()
+        .alert("Game Over!", isPresented: $showGameEndedAlert) {
+            Button("Go to Rate Tab") {
+                dismissLobby()
+                onDismiss()
+                NotificationCenter.default.post(name: .netrOpenRateTab, object: nil)
             }
+            Button("Later", role: .cancel) {
+                dismissLobby()
+                onDismiss()
+            }
+        } message: {
+            Text("Head to your Rate tab to rate everyone you played with.")
         }
     }
 

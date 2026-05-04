@@ -43,6 +43,9 @@ struct RateView: View {
             }
         }
         .task { await tabVM.load() }
+        .onReceive(NotificationCenter.default.publisher(for: .netrGameEnded)) { _ in
+            Task { await tabVM.load() }
+        }
         .fullScreenCover(item: $selectedPlayer) { player in
             RatePlayerSheetView(
                 player: player,

@@ -18,6 +18,7 @@ class GameViewModel {
 
     var showRateScreen: Bool = false
     var completedGameId: String?
+    var gameEnded: Bool = false
     var isCheckingOut: Bool = false
     var checkOutError: String?
     var noShowReports: [NoShowReport] = []
@@ -276,6 +277,8 @@ class GameViewModel {
             await unsubscribe()
             completedGameId = gameId
             showRateScreen = true
+            gameEnded = true
+            NotificationCenter.default.post(name: .netrGameEnded, object: nil)
 
             // Cancel the 30-min-before game reminder (game is over) and schedule
             // the post-game rating-window reminder for 15 min from now.
@@ -350,6 +353,8 @@ class GameViewModel {
 
             completedGameId = gameId
             showRateScreen = true
+            gameEnded = true
+            NotificationCenter.default.post(name: .netrGameEnded, object: nil)
         } catch {
             isCheckingOut = false
             print("[NETR] Check out error: \(error)")
@@ -517,17 +522,45 @@ class GameViewModel {
 
         guard let channel = realtimeChannel else { return }
 
-        let changes = channel.postgresChange(
+        let playerChanges = channel.postgresChange(
             AnyAction.self,
             schema: "public",
             table: "game_players"
         )
 
+        let gameChanges = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "games",
+            filter: "id=eq.\(gameId)"
+        )
+
         await channel.subscribe()
 
         realtimeTask = Task {
-            for await _ in changes {
-                await loadPlayers(gameId: gameId)
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask {
+                    for await _ in playerChanges {
+                        await self.loadPlayers(gameId: gameId)
+                    }
+                }
+                group.addTask {
+                    for await _ in gameChanges {
+                        guard !self.gameEnded else { break }
+                        nonisolated struct StatusRow: Decodable, Sendable { let status: String }
+                        if let row = try? await self.client
+                            .from("games")
+                            .select("status")
+                            .eq("id", value: gameId)
+                            .single()
+                            .execute()
+                            .value as StatusRow,
+                           row.status == "completed" {
+                            await MainActor.run { self.gameEnded = true }
+                            NotificationCenter.default.post(name: .netrGameEnded, object: nil)
+                        }
+                    }
+                }
             }
         }
     }
@@ -594,4 +627,9 @@ class GameViewModel {
         let diff = scheduled.timeIntervalSinceNow
         return diff > 0 ? diff : nil
     }
+}
+
+extension Notification.Name {
+    static let netrGameEnded = Notification.Name("com.netr.gameEnded")
+    static let netrOpenRateTab = Notification.Name("com.netr.openRateTab")
 }

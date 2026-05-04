@@ -136,6 +136,11 @@ struct ContentView: View {
         .onChange(of: selectedTab) { _, _ in
             // DM unread count stays fresh via the header button's own .task
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netrOpenRateTab)) { _ in
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                selectedTab = .rate
+            }
+        }
         .onChange(of: supabase.currentProfile?.fullName) { _, _ in
             if let profile = supabase.currentProfile {
                 store.syncFromProfile(profile)
