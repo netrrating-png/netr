@@ -367,7 +367,7 @@ struct FeedView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity)
-        } else if !viewModel.hasLoadedOnce && viewModel.isLoading {
+        } else if !viewModel.hasLoadedOnce {
             VStack(spacing: 16) {
                 Spacer()
                 ProgressView()
