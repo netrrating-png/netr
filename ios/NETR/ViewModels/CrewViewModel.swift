@@ -400,7 +400,11 @@ class CrewViewModel {
         do {
             let msgs: [CrewMessage] = try await client
                 .from("crew_messages")
-                .select("id, crew_id, sender_id, content, created_at")
+                .select("""
+                    id, crew_id, sender_id, content, created_at,
+                    message_type, game_id, is_pinned,
+                    games(id, join_code, format, scheduled_at, is_private, courts(name))
+                    """)
                 .eq("crew_id", value: crewId)
                 .order("created_at", ascending: true)
                 .execute()
@@ -454,7 +458,7 @@ class CrewViewModel {
             let msg: CrewMessage = try await client
                 .from("crew_messages")
                 .insert(CrewMessagePayload(crewId: crewId, senderId: userId, content: text))
-                .select("id, crew_id, sender_id, content, created_at")
+                .select("id, crew_id, sender_id, content, created_at, message_type, game_id, is_pinned")
                 .single()
                 .execute()
                 .value
@@ -545,12 +549,120 @@ class CrewViewModel {
     func latestMessage(for crewId: String) async -> CrewMessage? {
         let rows: [CrewMessage] = (try? await client
             .from("crew_messages")
-            .select("id, crew_id, sender_id, content, created_at")
+            .select("id, crew_id, sender_id, content, created_at, message_type, game_id, is_pinned")
             .eq("crew_id", value: crewId)
             .order("created_at", ascending: false)
             .limit(1)
             .execute()
             .value) ?? []
         return rows.first
+    }
+
+    // MARK: - Game Invite
+
+    func sendGameInvite(crewId: String, game: SupabaseGame) async {
+        guard let userId = currentUserId else { return }
+        var payload = CrewMessagePayload(
+            crewId: crewId,
+            senderId: userId,
+            content: "📅 \(game.format) run\(game.scheduledAt != nil ? " — tap to see details" : " — happening now!")"
+        )
+        payload.messageType = "game_invite"
+        payload.gameId = game.id
+        do {
+            let msg: CrewMessage = try await client
+                .from("crew_messages")
+                .insert(payload)
+                .select("""
+                    id, crew_id, sender_id, content, created_at,
+                    message_type, game_id, is_pinned,
+                    games(id, join_code, format, scheduled_at, is_private, courts(name))
+                    """)
+                .single()
+                .execute()
+                .value
+            messages.append(msg)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Poll Responses
+
+    func pollCounts(messageId: String) async -> CrewPollCounts {
+        guard let userId = currentUserId else { return CrewPollCounts() }
+        let rows: [CrewPollResponse] = (try? await client
+            .from("crew_poll_responses")
+            .select("id, message_id, user_id, response")
+            .eq("message_id", value: messageId)
+            .execute()
+            .value) ?? []
+
+        var counts = CrewPollCounts()
+        for row in rows {
+            switch row.response {
+            case "in":    counts.inCount += 1
+            case "out":   counts.outCount += 1
+            case "maybe": counts.maybeCount += 1
+            default: break
+            }
+            if row.userId.lowercased() == userId.lowercased() {
+                counts.myResponse = row.response
+            }
+        }
+        return counts
+    }
+
+    func submitPollResponse(messageId: String, response: String) async {
+        guard let userId = currentUserId else { return }
+        let payload = CrewPollResponsePayload(messageId: messageId, userId: userId, response: response)
+        _ = try? await client
+            .from("crew_poll_responses")
+            .upsert(payload, onConflict: "message_id,user_id")
+            .execute()
+    }
+
+    // MARK: - Pinned Messages
+
+    var pinnedMessage: CrewMessage? {
+        messages.first { $0.isPinned }
+    }
+
+    func pinMessage(_ message: CrewMessage, crewId: String) async {
+        // Unpin any existing pinned message
+        do {
+            try await client
+                .from("crew_messages")
+                .update(["is_pinned": false])
+                .eq("crew_id", value: crewId)
+                .eq("is_pinned", value: true)
+                .execute()
+            try await client
+                .from("crew_messages")
+                .update(["is_pinned": true])
+                .eq("id", value: message.id)
+                .execute()
+            // Reflect locally
+            messages = messages.map { m in
+                var updated = m
+                updated.isPinned = m.id == message.id
+                return updated
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func unpinMessage(crewId: String) async {
+        do {
+            try await client
+                .from("crew_messages")
+                .update(["is_pinned": false])
+                .eq("crew_id", value: crewId)
+                .execute()
+            messages = messages.map { m in var u = m; u.isPinned = false; return u }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

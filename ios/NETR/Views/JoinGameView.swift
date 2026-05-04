@@ -14,6 +14,7 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
     let scheduled_at: String?
     let status: String?
     let host_id: String?
+    let is_private: Bool?
 
     let courts: CourtRef?
     let host: HostRef?
@@ -39,7 +40,10 @@ nonisolated struct NearbyGame: Identifiable, Decodable, Sendable {
         case join_code, created_at, max_players, scheduled_at
         case game_players
         case host_id
+        case is_private
     }
+
+    var isPrivate: Bool { is_private ?? false }
 
     // playerCount and resolvedHostName are set separately via direct queries (no FK joins needed)
     var playerCount: Int? = nil
@@ -152,15 +156,15 @@ class JoinGameViewModel {
             let selects = [
                 // Level 1: full — needs games.host_id→profiles FK + games.court_id→courts FK
                 """
-                id, join_code, created_at, format, max_players, scheduled_at, status,
+                id, join_code, created_at, format, max_players, scheduled_at, status, is_private,
                 courts(name, neighborhood, lat, lng),
                 host:profiles!host_id(full_name, username),
                 game_players(id)
                 """,
                 // Level 2: courts name only
-                "id, join_code, created_at, format, max_players, scheduled_at, status, courts(name), game_players(id)",
+                "id, join_code, created_at, format, max_players, scheduled_at, status, is_private, courts(name), game_players(id)",
                 // Level 3: bare — no FK joins needed at all
-                "id, join_code, created_at, format, max_players, scheduled_at, status",
+                "id, join_code, created_at, format, max_players, scheduled_at, status, is_private",
             ]
 
             func fetchGames(select: String) async throws -> (live: [NearbyGame], scheduled: [NearbyGame]) {
@@ -637,6 +641,7 @@ private struct NearbyGameCard: View {
     @State private var appeared: Bool = false
     @State private var pulsing: Bool = false
     @State private var showPlayerPreview: Bool = false
+    @State private var showPasscodeSheet: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -692,6 +697,10 @@ private struct NearbyGameCard: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 4) {
+                        if game.isPrivate {
+                            LucideIcon("lock", size: 13)
+                                .foregroundStyle(NETRTheme.gold)
+                        }
                         if game.isScheduled {
                             Image(systemName: "clock.fill")
                                 .font(.system(size: 14))
@@ -730,10 +739,16 @@ private struct NearbyGameCard: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             } else {
-                Button(action: onJoin) {
+                Button {
+                    if game.isPrivate {
+                        showPasscodeSheet = true
+                    } else {
+                        onJoin()
+                    }
+                } label: {
                     HStack(spacing: 8) {
-                        LucideIcon("arrow-right-circle", size: 16)
-                        Text("Join This Run")
+                        LucideIcon(game.isPrivate ? "lock" : "arrow-right-circle", size: 16)
+                        Text(game.isPrivate ? "Enter Passcode" : "Join This Run")
                             .font(.system(size: 15, weight: .bold))
                     }
                     .foregroundStyle(.black)
@@ -749,7 +764,7 @@ private struct NearbyGameCard: View {
         .background(NETRTheme.card)
         .overlay(
             RoundedRectangle(cornerRadius: 18)
-                .stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1)
+                .stroke(game.isPrivate ? NETRTheme.gold.opacity(0.4) : NETRTheme.neonGreen.opacity(0.3), lineWidth: 1)
         )
         .clipShape(.rect(cornerRadius: 18))
         .shadow(color: NETRTheme.neonGreen.opacity(0.08), radius: 12, y: 4)
@@ -765,6 +780,77 @@ private struct NearbyGameCard: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
                 .presentationBackground(NETRTheme.background)
+        }
+        .sheet(isPresented: $showPasscodeSheet) {
+            PasscodeEntrySheet(onSubmit: { _ in onJoin() })
+                .presentationDetents([.height(260)])
+                .presentationDragIndicator(.visible)
+                .presentationBackground(NETRTheme.background)
+        }
+    }
+}
+
+// MARK: - Passcode Entry Sheet
+
+private struct PasscodeEntrySheet: View {
+    let onSubmit: (String) -> Void
+    @State private var code: String = ""
+    @State private var shake: Bool = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 24) {
+            VStack(spacing: 6) {
+                LucideIcon("lock", size: 28).foregroundStyle(NETRTheme.gold)
+                Text("Private Run")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundStyle(NETRTheme.text)
+                Text("Enter the 4-digit passcode to join")
+                    .font(.system(size: 14))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+            .padding(.top, 24)
+
+            HStack(spacing: 12) {
+                LucideIcon("key-round", size: 16).foregroundStyle(NETRTheme.gold)
+                TextField("Passcode", text: $code)
+                    .keyboardType(.numberPad)
+                    .font(.system(size: 24, weight: .black, design: .monospaced))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(NETRTheme.text)
+                    .onChange(of: code) { _, v in
+                        code = String(v.filter(\.isNumber).prefix(4))
+                    }
+            }
+            .padding(16)
+            .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.gold.opacity(0.4), lineWidth: 1))
+            .padding(.horizontal, 24)
+            .offset(x: shake ? -8 : 0)
+            .animation(.default, value: shake)
+
+            Button {
+                guard code.count == 4 else {
+                    withAnimation(.spring(response: 0.2, dampingFraction: 0.3)) { shake = true }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { shake = false }
+                    return
+                }
+                onSubmit(code)
+                dismiss()
+            } label: {
+                Text("JOIN RUN")
+                    .font(.system(.headline, design: .default, weight: .black).width(.compressed))
+                    .tracking(1)
+                    .foregroundStyle(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(NETRTheme.neonGreen, in: .rect(cornerRadius: 12))
+            }
+            .buttonStyle(PressButtonStyle())
+            .padding(.horizontal, 24)
+            .disabled(code.count != 4)
+
+            Spacer()
         }
     }
 }

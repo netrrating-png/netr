@@ -32,7 +32,9 @@ class GameViewModel {
         courtId: String?,
         format: String,
         skillLevel: String,
-        scheduledAt: Date? = nil
+        scheduledAt: Date? = nil,
+        isPrivate: Bool = false,
+        passcode: String? = nil
     ) async throws -> SupabaseGame {
         guard let hostId = SupabaseManager.shared.session?.user.id.uuidString.lowercased() else {
             throw NSError(domain: "NETR", code: 401, userInfo: [NSLocalizedDescriptionKey: "Not signed in"])
@@ -56,7 +58,9 @@ class GameViewModel {
             skillLevel: skillLevel,
             status: scheduledAt != nil ? "scheduled" : "waiting",
             maxPlayers: maxPlayers,
-            scheduledAt: scheduledAtStr
+            scheduledAt: scheduledAtStr,
+            isPrivate: isPrivate,
+            passcode: isPrivate ? passcode : nil
         )
 
         let created: SupabaseGame = try await client
@@ -76,7 +80,7 @@ class GameViewModel {
         return created
     }
 
-    func joinGameByCode(_ code: String) async {
+    func joinGameByCode(_ code: String, passcode: String? = nil) async {
         isJoining = true
         joinError = nil
 
@@ -89,6 +93,15 @@ class GameViewModel {
                 .single()
                 .execute()
                 .value
+
+            if found.isPrivate {
+                guard let enteredCode = passcode,
+                      enteredCode == found.passcode else {
+                    joinError = "Wrong passcode. Ask the host for the 4-digit code."
+                    isJoining = false
+                    return
+                }
+            }
 
             try await addPlayerToGame(gameId: found.id)
 
@@ -626,6 +639,23 @@ class GameViewModel {
         guard let scheduled = scheduledDate else { return nil }
         let diff = scheduled.timeIntervalSinceNow
         return diff > 0 ? diff : nil
+    }
+}
+
+    var shareText: String {
+        guard let g = game else { return "" }
+        var lines: [String] = ["Join my run on NETR! 🏀"]
+        if let code = g.joinCode.isEmpty ? nil : g.joinCode {
+            var gameLine = "Join code: \(code)"
+            if !g.format.isEmpty { gameLine = "\(g.format) · Join code: \(code)" }
+            lines.append(gameLine)
+        }
+        if g.isPrivate, let pc = g.passcode {
+            lines.append("Passcode: \(pc)")
+        }
+        lines.append("https://netr.pro/join/\(g.joinCode)")
+        lines.append("Don't have NETR? Download: https://apps.apple.com/us/app/netr-rating/id6761962317")
+        return lines.joined(separator: "\n")
     }
 }
 

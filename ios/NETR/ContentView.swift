@@ -23,6 +23,10 @@ struct ContentView: View {
     @State private var activeGameLobbyVM = GameViewModel()
     @State private var showActiveGameSheet: Bool = false
 
+    // Deep link / Universal Link state
+    @State private var deepLinkJoinCode: String? = nil
+    @State private var showDeepLinkJoin: Bool = false
+
     // DM notification banner tap -> open conversation
     @State private var dmBannerTargetUserId: String?
     @State private var dmBannerShowChat: Bool = false
@@ -139,6 +143,14 @@ struct ContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .netrOpenRateTab)) { _ in
             withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                 selectedTab = .rate
+            }
+        }
+        .onOpenURL { url in
+            handleDeepLink(url)
+        }
+        .sheet(isPresented: $showDeepLinkJoin) {
+            if let code = deepLinkJoinCode {
+                DeepLinkJoinView(joinCode: code)
             }
         }
         .onChange(of: supabase.currentProfile?.fullName) { _, _ in
@@ -453,5 +465,136 @@ struct ContentView: View {
         .shadow(color: Color.black.opacity(0.4), radius: 16, y: 6)
         .padding(.horizontal, 16)
         .padding(.bottom, 14)
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        // Handles netr://join/{code} and https://netr.pro/join/{code}
+        var code: String? = nil
+        if url.scheme == "netr", url.host == "join" {
+            code = url.pathComponents.dropFirst().first
+        } else if url.host == "netr.pro", url.pathComponents.count >= 3, url.pathComponents[1] == "join" {
+            code = url.pathComponents[2]
+        }
+        guard let joinCode = code, !joinCode.isEmpty else { return }
+        deepLinkJoinCode = joinCode.uppercased()
+        showDeepLinkJoin = true
+    }
+}
+
+// MARK: - Deep Link Join View
+
+private struct DeepLinkJoinView: View {
+    let joinCode: String
+    @State private var gameVM = GameViewModel()
+    @State private var passcode: String = ""
+    @State private var needsPasscode: Bool = false
+    @State private var isLoading: Bool = true
+    @State private var errorMessage: String? = nil
+    @State private var showLobby: Bool = false
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                NETRTheme.background.ignoresSafeArea()
+                if isLoading {
+                    ProgressView().tint(NETRTheme.neonGreen)
+                } else if needsPasscode {
+                    PasscodeGateView(joinCode: joinCode, gameVM: gameVM, onJoined: {
+                        showLobby = true
+                    })
+                } else if let err = errorMessage {
+                    VStack(spacing: 12) {
+                        LucideIcon("alert-circle", size: 32).foregroundStyle(NETRTheme.red)
+                        Text(err).foregroundStyle(NETRTheme.subtext).multilineTextAlignment(.center)
+                    }.padding()
+                }
+            }
+            .navigationTitle("Join Game")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }.foregroundStyle(NETRTheme.subtext)
+                }
+            }
+            .fullScreenCover(isPresented: $showLobby, onDismiss: { dismiss() }) {
+                GameLobbyView(viewModel: gameVM, onDismiss: { dismiss() })
+            }
+        }
+        .task {
+            await attemptJoin()
+        }
+    }
+
+    private func attemptJoin() async {
+        isLoading = true
+        await gameVM.joinGameByCode(joinCode)
+        isLoading = false
+        if gameVM.joinError?.contains("passcode") == true || gameVM.joinError?.contains("Passcode") == true {
+            needsPasscode = true
+            gameVM.joinError = nil
+        } else if gameVM.joinError != nil {
+            errorMessage = gameVM.joinError
+        } else {
+            showLobby = true
+        }
+    }
+}
+
+private struct PasscodeGateView: View {
+    let joinCode: String
+    let gameVM: GameViewModel
+    let onJoined: () -> Void
+    @State private var passcode: String = ""
+    @State private var isJoining: Bool = false
+    @State private var error: String? = nil
+
+    var body: some View {
+        VStack(spacing: 24) {
+            LucideIcon("lock", size: 40).foregroundStyle(NETRTheme.gold)
+            Text("Private Run").font(.title2.weight(.black)).foregroundStyle(NETRTheme.text)
+            Text("Enter the 4-digit passcode").foregroundStyle(NETRTheme.subtext)
+
+            TextField("Passcode", text: $passcode)
+                .keyboardType(.numberPad)
+                .font(.system(size: 32, weight: .black, design: .monospaced))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(NETRTheme.text)
+                .onChange(of: passcode) { _, v in passcode = String(v.filter(\.isNumber).prefix(4)) }
+                .padding(16)
+                .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.gold.opacity(0.4), lineWidth: 1))
+                .padding(.horizontal, 32)
+
+            if let err = error {
+                Text(err).font(.caption).foregroundStyle(NETRTheme.red)
+            }
+
+            Button {
+                Task {
+                    isJoining = true
+                    await gameVM.joinGameByCode(joinCode, passcode: passcode)
+                    isJoining = false
+                    if gameVM.joinError != nil {
+                        error = gameVM.joinError
+                        gameVM.joinError = nil
+                    } else {
+                        onJoined()
+                    }
+                }
+            } label: {
+                Group {
+                    if isJoining { ProgressView().tint(.black) }
+                    else { Text("JOIN").font(.headline.weight(.black)) }
+                }
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(passcode.count == 4 ? NETRTheme.neonGreen : NETRTheme.muted, in: .rect(cornerRadius: 12))
+            }
+            .disabled(passcode.count != 4 || isJoining)
+            .padding(.horizontal, 32)
+        }
+        .padding(.top, 40)
     }
 }

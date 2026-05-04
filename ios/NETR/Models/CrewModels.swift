@@ -105,14 +105,99 @@ nonisolated struct CrewMessage: Identifiable, Sendable, Decodable {
     let senderId: String
     let content: String
     let createdAt: String
+    var messageType: String
+    let gameId: String?
+    var isPinned: Bool
+    var gameInvite: CrewGameInvite?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id
-        case crewId    = "crew_id"
-        case senderId  = "sender_id"
+        case crewId      = "crew_id"
+        case senderId    = "sender_id"
         case content
-        case createdAt = "created_at"
+        case createdAt   = "created_at"
+        case messageType = "message_type"
+        case gameId      = "game_id"
+        case isPinned    = "is_pinned"
+        case gameInvite  = "games"
     }
+
+    var isGameInvite: Bool { messageType == "game_invite" }
+}
+
+// MARK: - Crew Game Invite (game data joined into crew message)
+
+nonisolated struct CrewGameInvite: Sendable, Decodable {
+    let id: String
+    let joinCode: String
+    let format: String?
+    let scheduledAt: String?
+    let isPrivate: Bool
+    let courtName: String?
+
+    nonisolated struct CourtRef: Decodable, Sendable {
+        let name: String
+    }
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id
+        case joinCode   = "join_code"
+        case format
+        case scheduledAt = "scheduled_at"
+        case isPrivate  = "is_private"
+        case courtName  = "courts"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id          = try c.decode(String.self, forKey: .id)
+        joinCode    = try c.decode(String.self, forKey: .joinCode)
+        format      = try c.decodeIfPresent(String.self, forKey: .format)
+        scheduledAt = try c.decodeIfPresent(String.self, forKey: .scheduledAt)
+        isPrivate   = (try? c.decode(Bool.self, forKey: .isPrivate)) ?? false
+        if let court = try? c.decode(CourtRef.self, forKey: .courtName) {
+            courtName = court.name
+        } else {
+            courtName = nil
+        }
+    }
+}
+
+// MARK: - Crew Poll Response
+
+nonisolated struct CrewPollResponse: Identifiable, Sendable, Decodable {
+    let id: String
+    let messageId: String
+    let userId: String
+    let response: String  // "in" | "out" | "maybe"
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case id
+        case messageId = "message_id"
+        case userId    = "user_id"
+        case response
+    }
+}
+
+nonisolated struct CrewPollResponsePayload: Encodable, Sendable {
+    let messageId: String
+    let userId: String
+    let response: String
+
+    nonisolated enum CodingKeys: String, CodingKey {
+        case messageId = "message_id"
+        case userId    = "user_id"
+        case response
+    }
+}
+
+// MARK: - Crew Poll Counts
+
+struct CrewPollCounts: Sendable {
+    var inCount: Int    = 0
+    var outCount: Int   = 0
+    var maybeCount: Int = 0
+    var myResponse: String? = nil
 }
 
 // MARK: - Crew Search Result
@@ -155,11 +240,15 @@ nonisolated struct CrewMessagePayload: Encodable, Sendable {
     let crewId: String
     let senderId: String
     let content: String
+    var messageType: String = "text"
+    var gameId: String? = nil
 
     nonisolated enum CodingKeys: String, CodingKey {
-        case crewId   = "crew_id"
-        case senderId = "sender_id"
+        case crewId      = "crew_id"
+        case senderId    = "sender_id"
         case content
+        case messageType = "message_type"
+        case gameId      = "game_id"
     }
 }
 

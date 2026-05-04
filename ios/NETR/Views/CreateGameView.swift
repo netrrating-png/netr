@@ -22,6 +22,8 @@ struct CreateGameView: View {
     // Scheduling
     @State private var scheduleForLater: Bool = false
     @State private var scheduledDate: Date
+    @State private var isPrivate: Bool = false
+    @State private var passcode: String = ""
 
     init(viewModel: CourtsViewModel, preselectedCourt: Court? = nil) {
         _viewModel = Bindable(wrappedValue: viewModel)
@@ -541,6 +543,60 @@ struct CreateGameView: View {
                 .font(.subheadline)
                 .foregroundStyle(NETRTheme.subtext)
 
+            // Privacy toggle
+            VStack(spacing: 10) {
+                Button {
+                    withAnimation(.snappy) { isPrivate.toggle() }
+                } label: {
+                    HStack(spacing: 12) {
+                        LucideIcon(isPrivate ? "lock" : "globe", size: 16)
+                            .foregroundStyle(isPrivate ? NETRTheme.gold : NETRTheme.subtext)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isPrivate ? "Private Run" : "Public Run")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(NETRTheme.text)
+                            Text(isPrivate ? "Only players with the passcode can join" : "Anyone nearby can join")
+                                .font(.system(size: 12))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                        Spacer()
+                        ZStack {
+                            Capsule()
+                                .fill(isPrivate ? NETRTheme.gold : NETRTheme.muted)
+                                .frame(width: 44, height: 26)
+                            Circle()
+                                .fill(.white)
+                                .frame(width: 20, height: 20)
+                                .offset(x: isPrivate ? 9 : -9)
+                        }
+                    }
+                    .padding(14)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(isPrivate ? NETRTheme.gold.opacity(0.4) : NETRTheme.border, lineWidth: 1))
+                }
+                .buttonStyle(PressButtonStyle())
+
+                if isPrivate {
+                    HStack(spacing: 8) {
+                        LucideIcon("key-round", size: 14)
+                            .foregroundStyle(NETRTheme.gold)
+                        TextField("4-digit passcode", text: $passcode)
+                            .keyboardType(.numberPad)
+                            .font(.system(size: 15, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(NETRTheme.text)
+                            .onChange(of: passcode) { _, v in
+                                if v.count > 4 { passcode = String(v.prefix(4)) }
+                                passcode = v.filter(\.isNumber)
+                            }
+                    }
+                    .padding(14)
+                    .background(NETRTheme.card, in: .rect(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(NETRTheme.gold.opacity(0.4), lineWidth: 1))
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
+            .padding(.horizontal, 16)
+
             VStack(spacing: 8) {
                 ForEach(SkillFilter.allCases) { skill in
                     Button {
@@ -616,7 +672,9 @@ struct CreateGameView: View {
                             courtId: selectedCourt?.id,
                             format: selectedFormat.rawValue,
                             skillLevel: selectedSkill.rawValue,
-                            scheduledAt: scheduleForLater ? scheduledDate : nil
+                            scheduledAt: scheduleForLater ? scheduledDate : nil,
+                            isPrivate: isPrivate,
+                            passcode: isPrivate ? passcode : nil
                         )
                         isCreating = false
                         withAnimation(.snappy) { showLobby = true }
@@ -655,6 +713,7 @@ struct GameLobbyView: View {
     @Bindable var viewModel: GameViewModel
     let onDismiss: () -> Void
     @State private var showGameEndedAlert: Bool = false
+    @State private var showCrewPicker: Bool = false
     @State private var countdownTimer: Timer?
     @Environment(\.dismiss) private var dismissLobby
     @State private var timeRemaining: TimeInterval = 0
@@ -696,9 +755,58 @@ struct GameLobbyView: View {
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
                 .padding(.horizontal, 16)
 
+                // Private run indicator
+                if viewModel.game?.isPrivate == true {
+                    HStack(spacing: 6) {
+                        LucideIcon("lock", size: 13)
+                            .foregroundStyle(NETRTheme.gold)
+                        Text("Private Run · Passcode: \(viewModel.game?.passcode ?? "----")")
+                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(NETRTheme.gold)
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(NETRTheme.gold.opacity(0.08), in: .rect(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.gold.opacity(0.3), lineWidth: 1))
+                }
+
                 if let code = viewModel.game?.joinCode, !code.isEmpty {
                     QRCodeView(content: "netr://join/\(code)", size: 120)
                 }
+
+                // Share + Send to Crew buttons
+                HStack(spacing: 10) {
+                    if !viewModel.shareText.isEmpty {
+                        ShareLink(item: viewModel.shareText) {
+                            HStack(spacing: 6) {
+                                LucideIcon("share-2", size: 14)
+                                Text("Share")
+                                    .font(.system(size: 14, weight: .semibold))
+                            }
+                            .foregroundStyle(NETRTheme.text)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(NETRTheme.card, in: .rect(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.border, lineWidth: 1))
+                        }
+                    }
+                    Button {
+                        showCrewPicker = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            LucideIcon("users", size: 14)
+                            Text("Send to Crew")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        .foregroundStyle(NETRTheme.neonGreen)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(NETRTheme.neonGreen.opacity(0.08), in: .rect(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.neonGreen.opacity(0.3), lineWidth: 1))
+                    }
+                    .buttonStyle(PressButtonStyle())
+                }
+                .padding(.horizontal, 16)
 
                 HStack(spacing: 16) {
                     // Format — tappable for host while waiting
@@ -989,6 +1097,11 @@ struct GameLobbyView: View {
             }
         } message: {
             Text("Head to your Rate tab to rate everyone you played with.")
+        }
+        .sheet(isPresented: $showCrewPicker) {
+            if let game = viewModel.game {
+                CrewGamePickerSheet(game: game)
+            }
         }
     }
 
@@ -1549,5 +1662,69 @@ struct GamePlayersPreviewSheet: View {
                 )
             )
         }
+    }
+}
+
+// MARK: - Crew Game Picker Sheet
+
+private struct CrewGamePickerSheet: View {
+    let game: SupabaseGame
+    @State private var crewVM = CrewViewModel()
+    @State private var sent: Set<String> = []
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                NETRTheme.background.ignoresSafeArea()
+                if crewVM.myCrews.isEmpty {
+                    VStack(spacing: 12) {
+                        LucideIcon("users", size: 32).foregroundStyle(NETRTheme.subtext)
+                        Text("You're not in any crews yet.")
+                            .foregroundStyle(NETRTheme.subtext)
+                    }
+                } else {
+                    List(crewVM.myCrews) { crew in
+                        Button {
+                            Task {
+                                await crewVM.sendGameInvite(crewId: crew.id, game: game)
+                                sent.insert(crew.id)
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle().fill(NETRTheme.neonGreen.opacity(0.12)).frame(width: 36, height: 36)
+                                    LucideIcon(crew.icon, size: 16).foregroundStyle(NETRTheme.neonGreen)
+                                }
+                                Text(crew.name)
+                                    .foregroundStyle(NETRTheme.text)
+                                    .font(.system(size: 15, weight: .semibold))
+                                Spacer()
+                                if sent.contains(crew.id) {
+                                    LucideIcon("check-circle", size: 18).foregroundStyle(NETRTheme.neonGreen)
+                                } else {
+                                    LucideIcon("send", size: 16).foregroundStyle(NETRTheme.subtext)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(sent.contains(crew.id))
+                        .listRowBackground(NETRTheme.card)
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .navigationTitle("Send to Crew")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .foregroundStyle(NETRTheme.neonGreen)
+                }
+            }
+        }
+        .task { await crewVM.loadMyCrews() }
     }
 }

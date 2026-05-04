@@ -12,6 +12,8 @@ struct CrewChatView: View {
     @State private var isSending: Bool = false
     @State private var keyboardOffset: CGFloat = 0
     @FocusState private var inputFocused: Bool
+    @State private var scrollTarget: String? = nil
+    @Environment(\.openURL) private var openURL
 
     private var currentUserId: String {
         SupabaseManager.shared.session?.user.id.uuidString.lowercased() ?? ""
@@ -26,6 +28,7 @@ struct CrewChatView: View {
             VStack(spacing: 0) {
                 chatHeader
                 Color(NETRTheme.border).frame(height: 0.5)
+                pinnedBanner
                 messageList
                 Color(NETRTheme.border).frame(height: 0.5)
 
@@ -61,6 +64,37 @@ struct CrewChatView: View {
         }
         .onDisappear {
             Task { await viewModel.unsubscribe() }
+        }
+    }
+
+    // MARK: - Pinned Banner
+
+    @ViewBuilder
+    private var pinnedBanner: some View {
+        if let pinned = viewModel.pinnedMessage {
+            Button {
+                scrollTarget = pinned.id
+            } label: {
+                HStack(spacing: 8) {
+                    LucideIcon("pin", size: 12)
+                        .foregroundStyle(NETRTheme.gold)
+                    Text(pinned.isGameInvite ? "📅 Game Invite" : String(pinned.content.prefix(60)) + (pinned.content.count > 60 ? "…" : ""))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .lineLimit(1)
+                    Spacer()
+                    LucideIcon("x", size: 11)
+                        .foregroundStyle(NETRTheme.muted)
+                        .onTapGesture {
+                            Task { await viewModel.unpinMessage(crewId: crew.id) }
+                        }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+            }
+            .buttonStyle(.plain)
+            .background(NETRTheme.gold.opacity(0.07))
+            Color(NETRTheme.border).frame(height: 0.5)
         }
     }
 
@@ -166,6 +200,11 @@ struct CrewChatView: View {
             .dismissKeyboardOnScroll()
             .onAppear { scrollToBottom(proxy: proxy, animated: false) }
             .onChange(of: messages.count) { _, _ in scrollToBottom(proxy: proxy, animated: true) }
+            .onChange(of: scrollTarget) { _, id in
+                guard let id else { return }
+                withAnimation(.easeOut(duration: 0.3)) { proxy.scrollTo(id, anchor: .top) }
+                scrollTarget = nil
+            }
         }
     }
 
@@ -193,60 +232,99 @@ struct CrewChatView: View {
         let senderName = senderInfo?.name ?? "Player"
         let senderAvatarUrl = senderInfo?.avatarUrl
 
-        HStack(alignment: .bottom, spacing: 8) {
-            if isCurrentUser {
-                Spacer(minLength: 56)
-
-                VStack(alignment: .trailing, spacing: 4) {
-                    bubbleContent(
-                        text: message.content,
-                        isCurrentUser: true,
-                        isLastInGroup: isLastInGroup
-                    )
-
-                    if isLastInGroup {
-                        Text(formatTime(message.createdAt))
-                            .font(.system(size: 10))
-                            .foregroundStyle(NETRTheme.muted)
-                            .padding(.trailing, 2)
-                            .padding(.bottom, 2)
-                    }
+        if message.isGameInvite {
+            VStack(alignment: .leading, spacing: 4) {
+                if isFirstInGroup {
+                    Text(senderName)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(NETRTheme.subtext)
+                        .padding(.leading, 2)
                 }
-
-            } else {
+                GameInviteCardView(message: message, viewModel: viewModel)
                 if isLastInGroup {
-                    AvatarView(url: senderAvatarUrl, name: senderName, size: 30)
+                    Text(formatTime(message.createdAt))
+                        .font(.system(size: 10))
+                        .foregroundStyle(NETRTheme.muted)
+                        .padding(.leading, 2)
+                        .padding(.bottom, 2)
+                }
+            }
+            .padding(.vertical, isLastInGroup ? 1 : 0.5)
+            .contextMenu { pinContextMenu(for: message) }
+        } else {
+            HStack(alignment: .bottom, spacing: 8) {
+                if isCurrentUser {
+                    Spacer(minLength: 56)
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        bubbleContent(
+                            text: message.content,
+                            isCurrentUser: true,
+                            isLastInGroup: isLastInGroup
+                        )
+
+                        if isLastInGroup {
+                            Text(formatTime(message.createdAt))
+                                .font(.system(size: 10))
+                                .foregroundStyle(NETRTheme.muted)
+                                .padding(.trailing, 2)
+                                .padding(.bottom, 2)
+                        }
+                    }
+
                 } else {
-                    Color.clear.frame(width: 30, height: 1)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    if isFirstInGroup {
-                        Text(senderName)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(NETRTheme.subtext)
-                            .padding(.leading, 2)
-                    }
-
-                    bubbleContent(
-                        text: message.content,
-                        isCurrentUser: false,
-                        isLastInGroup: isLastInGroup
-                    )
-
                     if isLastInGroup {
-                        Text(formatTime(message.createdAt))
-                            .font(.system(size: 10))
-                            .foregroundStyle(NETRTheme.muted)
-                            .padding(.leading, 2)
-                            .padding(.bottom, 2)
+                        AvatarView(url: senderAvatarUrl, name: senderName, size: 30)
+                    } else {
+                        Color.clear.frame(width: 30, height: 1)
                     }
-                }
 
-                Spacer(minLength: 56)
+                    VStack(alignment: .leading, spacing: 4) {
+                        if isFirstInGroup {
+                            Text(senderName)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(NETRTheme.subtext)
+                                .padding(.leading, 2)
+                        }
+
+                        bubbleContent(
+                            text: message.content,
+                            isCurrentUser: false,
+                            isLastInGroup: isLastInGroup
+                        )
+
+                        if isLastInGroup {
+                            Text(formatTime(message.createdAt))
+                                .font(.system(size: 10))
+                                .foregroundStyle(NETRTheme.muted)
+                                .padding(.leading, 2)
+                                .padding(.bottom, 2)
+                        }
+                    }
+
+                    Spacer(minLength: 56)
+                }
+            }
+            .padding(.vertical, isLastInGroup ? 1 : 0.5)
+            .contextMenu { pinContextMenu(for: message) }
+        }
+    }
+
+    @ViewBuilder
+    private func pinContextMenu(for message: CrewMessage) -> some View {
+        if message.isPinned {
+            Button(role: .destructive) {
+                Task { await viewModel.unpinMessage(crewId: crew.id) }
+            } label: {
+                Label("Unpin Message", systemImage: "pin.slash")
+            }
+        } else {
+            Button {
+                Task { await viewModel.pinMessage(message, crewId: crew.id) }
+            } label: {
+                Label("Pin Message", systemImage: "pin")
             }
         }
-        .padding(.vertical, isLastInGroup ? 1 : 0.5)
     }
 
     @ViewBuilder
@@ -425,6 +503,161 @@ struct CrewChatView: View {
         } else {
             df.dateFormat = "MMM d, h:mm a"
         }
+        return df.string(from: date)
+    }
+}
+
+// MARK: - Game Invite Card
+
+private struct GameInviteCardView: View {
+    let message: CrewMessage
+    let viewModel: CrewViewModel
+
+    @State private var counts = CrewPollCounts()
+    @Environment(\.openURL) private var openURL
+
+    private var game: CrewGameInvite? { message.gameInvite }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            cardHeader
+            if game != nil {
+                Divider().background(Color(NETRTheme.border))
+                gameDetails
+            }
+            Divider().background(Color(NETRTheme.border))
+            pollButtons
+            if let game {
+                Divider().background(Color(NETRTheme.border))
+                joinButton(game: game)
+            }
+        }
+        .background(NETRTheme.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(NETRTheme.border, lineWidth: 1)
+        )
+        .task(id: message.id) {
+            counts = await viewModel.pollCounts(messageId: message.id)
+        }
+    }
+
+    private var cardHeader: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(NETRTheme.neonGreen.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Text("🏀").font(.system(size: 17))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("GAME INVITE")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(NETRTheme.neonGreen)
+                    .tracking(1.5)
+                Text(game?.courtName ?? "Unknown Court")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(NETRTheme.text)
+                    .lineLimit(1)
+            }
+            Spacer()
+            if game?.isPrivate == true {
+                LucideIcon("lock", size: 14)
+                    .foregroundStyle(NETRTheme.gold)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+    }
+
+    @ViewBuilder
+    private var gameDetails: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let format = game?.format {
+                detailRow(icon: "activity", text: format)
+            }
+            if let scheduledAt = game?.scheduledAt {
+                detailRow(icon: "calendar", text: formatScheduledAt(scheduledAt))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+    }
+
+    private func detailRow(icon: String, text: String) -> some View {
+        HStack(spacing: 8) {
+            LucideIcon(icon, size: 12)
+                .foregroundStyle(NETRTheme.subtext)
+            Text(text)
+                .font(.system(size: 13))
+                .foregroundStyle(NETRTheme.text)
+        }
+    }
+
+    private var pollButtons: some View {
+        HStack(spacing: 6) {
+            pollButton(emoji: "✅", label: "IN",    count: counts.inCount,    response: "in")
+            pollButton(emoji: "❌", label: "OUT",   count: counts.outCount,   response: "out")
+            pollButton(emoji: "🤔", label: "MAYBE", count: counts.maybeCount, response: "maybe")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    private func pollButton(emoji: String, label: String, count: Int, response: String) -> some View {
+        let selected = counts.myResponse == response
+        return Button {
+            Task {
+                await viewModel.submitPollResponse(messageId: message.id, response: response)
+                counts = await viewModel.pollCounts(messageId: message.id)
+            }
+        } label: {
+            VStack(spacing: 2) {
+                Text("\(emoji) \(count)")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(selected ? Color.black : NETRTheme.text)
+                Text(label)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(selected ? Color.black.opacity(0.6) : NETRTheme.subtext)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(selected ? NETRTheme.neonGreen : NETRTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(selected ? NETRTheme.neonGreen : NETRTheme.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+
+    private func joinButton(game: CrewGameInvite) -> some View {
+        Button {
+            if let url = URL(string: "netr://join/\(game.joinCode)") {
+                openURL(url)
+            }
+        } label: {
+            Text("Open in NETR")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundStyle(Color.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(NETRTheme.neonGreen)
+        }
+        .buttonStyle(PressButtonStyle())
+    }
+
+    private func formatScheduledAt(_ iso: String) -> String {
+        let fmt = ISO8601DateFormatter()
+        fmt.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let fb = ISO8601DateFormatter()
+        fb.formatOptions = [.withInternetDateTime]
+        guard let date = fmt.date(from: iso) ?? fb.date(from: iso) else { return iso }
+        let df = DateFormatter()
+        df.dateFormat = "EEE, MMM d · h:mm a"
         return df.string(from: date)
     }
 }
