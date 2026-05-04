@@ -133,6 +133,13 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             let aHome = a.id == homeCourtId
             let bHome = b.id == homeCourtId
             if aHome != bHome { return aHome }
+            // When searching, name-starts-with matches float above distance order
+            if !searchText.isEmpty {
+                let q = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+                let aPrefix = a.name.lowercased().hasPrefix(q)
+                let bPrefix = b.name.lowercased().hasPrefix(q)
+                if aPrefix != bPrefix { return aPrefix }
+            }
             if let loc = userLocation {
                 let distA = CLLocation(latitude: a.lat, longitude: a.lng)
                     .distance(from: CLLocation(latitude: loc.latitude, longitude: loc.longitude))

@@ -974,7 +974,14 @@ struct GameLobbyView: View {
             Task { await viewModel.unsubscribe() }
         }
         .onChange(of: viewModel.showRateScreen) { _, show in
-            if show { showRateSheet = true }
+            if show {
+                // Brief delay lets the completed_at write propagate before the
+                // rate-tab query runs, avoiding an empty first load.
+                Task {
+                    try? await Task.sleep(for: .milliseconds(600))
+                    showRateSheet = true
+                }
+            }
         }
         .sheet(isPresented: $showRateSheet, onDismiss: { onDismiss() }) {
             if let _ = viewModel.completedGameId {
