@@ -11,7 +11,11 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if !supabase.isSignedIn || !hasCompletedOnboarding {
+            if !supabase.hasBootstrappedAuth {
+                LaunchSplashView(probablySignedIn: supabase.lastKnownSignedIn)
+                    .preferredColorScheme(.dark)
+                    .transition(.opacity)
+            } else if !supabase.isSignedIn || !hasCompletedOnboarding {
                 OnboardingView()
                     .preferredColorScheme(.dark)
             } else if biometrics.isBiometricsAvailable && biometricsEnabled && !biometrics.isUnlocked {
@@ -33,6 +37,7 @@ struct RootView: View {
                     .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.3), value: supabase.hasBootstrappedAuth)
         .animation(.easeInOut(duration: 0.3), value: supabase.isSignedIn)
         .animation(.easeInOut(duration: 0.3), value: biometrics.isUnlocked)
         .animation(.easeInOut(duration: 0.3), value: hasCompletedPhotoPrompt)
@@ -45,6 +50,28 @@ struct RootView: View {
                         .scaleEffect(1.5)
                 }
                 .allowsHitTesting(false)
+            }
+        }
+    }
+}
+
+/// Neutral launch splash shown while Supabase restores the cached session.
+/// Without it, signed-in users briefly see the sign-in screen during the
+/// 5–10s the auth client takes to emit `.initialSession`.
+struct LaunchSplashView: View {
+    let probablySignedIn: Bool
+
+    var body: some View {
+        ZStack {
+            NETRTheme.background.ignoresSafeArea()
+            VStack(spacing: 18) {
+                Text("NETR")
+                    .font(NETRTheme.headingFont(size: .largeTitle))
+                    .foregroundStyle(NETRTheme.text)
+                    .neonGlow(NETRTheme.neonGreen, radius: 8)
+                ProgressView()
+                    .tint(NETRTheme.neonGreen)
+                    .scaleEffect(1.2)
             }
         }
     }

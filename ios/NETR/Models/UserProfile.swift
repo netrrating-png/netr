@@ -39,6 +39,13 @@ nonisolated struct UserProfile: Codable, Sendable {
     var archetypeName: String?
     var archetypeKey: String?
     var createdAt: String?
+    /// "Male" / "Female" / "Prefer Not to Say" — captured in onboarding.
+    /// Nil for users created before the gender column existed.
+    var gender: String?
+    /// Privacy toggles for the public profile sections. Default true so
+    /// existing rows opt in automatically.
+    var showMilestones: Bool?
+    var showCrews: Bool?
 
     nonisolated enum CodingKeys: String, CodingKey {
         case id
@@ -79,6 +86,21 @@ nonisolated struct UserProfile: Codable, Sendable {
         case archetypeName = "archetype_name"
         case archetypeKey = "archetype_key"
         case createdAt = "created_at"
+        case gender
+        case showMilestones = "show_milestones"
+        case showCrews = "show_crews"
+    }
+}
+
+extension UserProfile {
+    /// Compact label for the gender badge — "M", "F", or nil if the user
+    /// preferred not to say or didn't provide it.
+    var genderShortLabel: String? {
+        switch gender?.lowercased() {
+        case "male":   return "M"
+        case "female": return "F"
+        default:       return nil
+        }
     }
 }
 

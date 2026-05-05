@@ -22,6 +22,23 @@ class SupabaseManager {
 
     var isSignedIn: Bool { session != nil }
 
+    /// Flips true once the auth client has emitted its first state event
+    /// (initialSession / signedIn / signedOut). Until then, RootView shows
+    /// a neutral splash so we don't flash the sign-in screen at users who
+    /// are actually already authenticated. The Supabase auth bootstrap
+    /// can take several seconds on cold launch (secure-storage read +
+    /// token refresh round-trip) — without this gate, those seconds
+    /// render as the sign-in view.
+    var hasBootstrappedAuth: Bool = false
+
+    /// Persisted hint about the previous launch's auth state. Kept so
+    /// future iterations can pick a splash variant based on whether the
+    /// user is likely about to land in the app shell vs the welcome flow.
+    private static let lastSignedInKey = "lastKnownSignedIn"
+    var lastKnownSignedIn: Bool {
+        UserDefaults.standard.bool(forKey: Self.lastSignedInKey)
+    }
+
     /// Single source of truth for the current user's avatar URL.
     /// Stored independently so it survives profile reloads and is immediately observable.
     var currentUserAvatarUrl: String?
@@ -41,6 +58,12 @@ class SupabaseManager {
     func listenForAuthChanges() async {
         for await (event, session) in client.auth.authStateChanges {
             self.session = session
+            // Flip the bootstrap gate immediately so RootView can route to
+            // the right destination without waiting for the profile fetch.
+            // Profile load continues in the background — ContentView can
+            // tolerate a briefly-nil currentProfile.
+            hasBootstrappedAuth = true
+            UserDefaults.standard.set(session != nil, forKey: Self.lastSignedInKey)
             if [.initialSession, .signedIn].contains(event), let session {
                 await loadProfile(userId: session.user.id.uuidString.lowercased())
             } else if event == .signedOut {
@@ -518,6 +541,18 @@ class SupabaseManager {
         currentUserAvatarUrl = cacheBustedUrl
         currentProfile?.avatarUrl = cacheBustedUrl
         print("[NETR Avatar] Updated currentUserAvatarUrl in SupabaseManager")
+    }
+
+    /// Persists the user's gender selection from onboarding so it can show
+    /// up on the public profile and feed gender-aware filters down the road.
+    func saveGender(_ gender: String) async throws {
+        guard let userId = session?.user.id.uuidString.lowercased() else { return }
+        try await client
+            .from("profiles")
+            .update(["gender": AnyJSON.string(gender)])
+            .eq("id", value: userId)
+            .execute()
+        currentProfile?.gender = gender
     }
 
     func flagProVerificationPending() async throws {

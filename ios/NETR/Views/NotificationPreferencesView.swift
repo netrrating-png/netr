@@ -46,6 +46,7 @@ struct NotificationPreferencesView: View {
                     socialSection(prefs: prefs)
                     gameRatingSection(prefs: prefs)
                     courtsNearbySection(prefs: prefs)
+                    dailyGamesSection(prefs: prefs)
                 }
 
                 Spacer(minLength: 100)
@@ -224,6 +225,29 @@ struct NotificationPreferencesView: View {
         }
     }
 
+    // MARK: - Daily Games Section
+
+    private func dailyGamesSection(prefs: Binding<NotificationPreferences>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("DAILY GAMES")
+                .font(.system(.caption, design: .default, weight: .bold).width(.compressed))
+                .tracking(1)
+                .foregroundStyle(NETRTheme.subtext)
+                .padding(.horizontal, 16)
+
+            VStack(spacing: 0) {
+                prefToggle(
+                    icon: "gamepad-2",
+                    title: "Mystery Player & Connections reminders",
+                    binding: prefs.dailyGames
+                )
+            }
+            .background(NETRTheme.card, in: .rect(cornerRadius: 14))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
+            .padding(.horizontal, 16)
+        }
+    }
+
     // MARK: - Reusable Toggle Row
 
     private func prefToggle(icon: String, title: String, binding: Binding<Bool>) -> some View {
@@ -257,6 +281,11 @@ struct NotificationPreferencesView: View {
     private func savePrefs() {
         guard let prefs else { return }
         Task { await viewModel.savePreferences(prefs) }
+        // Reschedule local Daily Games reminders so the toggle takes
+        // effect immediately, not after the next launch.
+        LocalNotificationScheduler.scheduleRecurringReminders(
+            dailyGamesEnabled: prefs.dailyGames
+        )
     }
 
     private func checkLocationPermission() {

@@ -516,6 +516,19 @@ struct ProfileView: View {
                 Text(user.positionLabel)
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(ratingColor(for: user))
+                if let g = SupabaseManager.shared.currentProfile?.genderShortLabel {
+                    Text("·")
+                        .foregroundStyle(NETRTheme.muted)
+                    Text(g)
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundStyle(NETRTheme.background)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(
+                            (g == "F" ? Color.pink : NETRTheme.neonGreen).opacity(0.85),
+                            in: Capsule()
+                        )
+                }
                 let showAge = SupabaseManager.shared.currentProfile?.showAge ?? false
                 if showAge && user.age > 0 {
                     Text("·")

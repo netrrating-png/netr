@@ -32,6 +32,9 @@ struct DailyGameHubView: View {
 
                 VStack(spacing: 0) {
                     header
+
+                    Spacer(minLength: 0)
+
                     VStack(spacing: 14) {
                         NavigationLink {
                             DailyGameView(dmViewModel: dmViewModel)
@@ -61,7 +64,7 @@ struct DailyGameHubView: View {
                     }
                     .padding(.horizontal, 16)
 
-                    Spacer()
+                    Spacer(minLength: 0)
                 }
             }
             .onReceive(ticker) { _ in tick &+= 1 }

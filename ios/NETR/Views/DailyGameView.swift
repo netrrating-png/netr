@@ -410,7 +410,8 @@ struct DailyGameView: View {
                         Text(puzzle.player.hintText(for: stage))
                             .font(.system(size: 17, weight: .bold))
                             .foregroundStyle(NETRTheme.text)
-                            .lineLimit(2)
+                            .lineLimit(nil)
+                            .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

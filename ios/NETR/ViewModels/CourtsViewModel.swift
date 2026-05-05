@@ -234,14 +234,19 @@ class CourtsViewModel: NSObject, CLLocationManagerDelegate {
             .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
     }
 
-    /// All courts within 3 miles of the user — always shown on the map regardless of list filters.
+    /// Every loaded court — the map shows them all and lets MapKit cluster
+    /// at low zoom. We previously capped at a 3-mile radius, which hid
+    /// almost every pin in court-dense regions (Boca: 170 courts, ~10
+    /// visible) and showed nothing for users with no courts within 3 mi.
     var mapCourts: [Court] {
-        guard let loc = userLocation else { return courts }
-        let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
-        let maxMeters = 3.0 * 1609.34
+        if let loc = userLocation {
+            let origin = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
+            return courts.sorted {
+                CLLocation(latitude: $0.lat, longitude: $0.lng).distance(from: origin)
+                    < CLLocation(latitude: $1.lat, longitude: $1.lng).distance(from: origin)
+            }
+        }
         return courts
-            .filter { CLLocation(latitude: $0.lat, longitude: $0.lng).distance(from: origin) <= maxMeters }
-            .sorted { distanceMiles(for: $0) < distanceMiles(for: $1) }
     }
 
     func searchCourts(query: String) -> [Court] {

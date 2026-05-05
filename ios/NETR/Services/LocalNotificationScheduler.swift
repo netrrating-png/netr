@@ -5,8 +5,8 @@ import UserNotifications
 /// Works immediately — no APNs setup, no Apple Developer account needed.
 ///
 /// Categories of local notifications:
-/// - Daily game reminder (9am if not played today)
-/// - Streak at-risk reminder (8pm if still not played)
+/// - Daily Games morning reminder (9am — new puzzles available)
+/// - Daily Games evening reminder (8pm — last call)
 /// - Game start reminder (30min before scheduled game)
 /// - Rating window reminder (15min after game ends)
 /// - Connections puzzle reminder (new puzzle available)
@@ -15,7 +15,7 @@ enum LocalNotificationScheduler {
     // ─── Identifiers (so we can cancel / replace) ──────────────────────
     private enum ID {
         static let dailyMorning = "netr.daily.morning"
-        static let streakEvening = "netr.daily.streak_risk"
+        static let dailyEvening = "netr.daily.evening"
         static let connectionsMorning = "netr.connections.morning"
         static func gameStart(_ gameId: String) -> String { "netr.game.start.\(gameId)" }
         static func ratingWindow(_ gameId: String) -> String { "netr.game.rating.\(gameId)" }
@@ -26,24 +26,29 @@ enum LocalNotificationScheduler {
     /// Call this on app launch (after permission granted) to schedule
     /// recurring daily reminders. Safe to call repeatedly — it cancels
     /// prior schedules first.
-    static func scheduleRecurringReminders() {
+    ///
+    /// Pass `dailyGamesEnabled: false` to opt out of the Daily Games
+    /// (Mystery Player + Connections) reminders. The user controls this
+    /// from NotificationPreferencesView.
+    static func scheduleRecurringReminders(dailyGamesEnabled: Bool = true) {
         cancelRecurring()
+        guard dailyGamesEnabled else { return }
         scheduleDailyPuzzleReminder()
-        scheduleStreakAtRiskReminder()
+        scheduleDailyEveningReminder()
         scheduleConnectionsReminder()
     }
 
     static func cancelRecurring() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [
-            ID.dailyMorning, ID.streakEvening, ID.connectionsMorning
+            ID.dailyMorning, ID.dailyEvening, ID.connectionsMorning
         ])
     }
 
     /// Fires at 9:00 AM local time every day.
     private static func scheduleDailyPuzzleReminder() {
         let content = UNMutableNotificationContent()
-        content.title = "Today's NBA puzzle is live"
-        content.body = "Jump in before your friends solve it 🏀"
+        content.title = "New Daily Games are available"
+        content.body = "Mystery Player + Connections — fresh puzzles dropped 🏀"
         content.sound = .default
         content.userInfo = ["type": "daily_game_ready"]
 
@@ -55,21 +60,22 @@ enum LocalNotificationScheduler {
         schedule(id: ID.dailyMorning, content: content, trigger: trigger)
     }
 
-    /// Fires at 8:00 PM local time — reminds user to preserve streak.
-    /// The PushNotificationManager should cancel this when the user plays.
-    private static func scheduleStreakAtRiskReminder() {
+    /// Fires at 8:00 PM local time — last call for today's puzzles.
+    /// Previously this was a "your streak is on the line" reminder, but
+    /// Daily Games don't track streaks, so the copy was misleading.
+    private static func scheduleDailyEveningReminder() {
         let content = UNMutableNotificationContent()
-        content.title = "Your streak is on the line 🔥"
-        content.body = "Solve today's puzzle before midnight."
+        content.title = "New Daily Games are available"
+        content.body = "Last call for today's Mystery Player + Connections."
         content.sound = .default
-        content.userInfo = ["type": "daily_game_streak"]
+        content.userInfo = ["type": "daily_game_evening"]
 
         var components = DateComponents()
         components.hour = 20
         components.minute = 0
         let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
 
-        schedule(id: ID.streakEvening, content: content, trigger: trigger)
+        schedule(id: ID.dailyEvening, content: content, trigger: trigger)
     }
 
     /// Fires at 9:15 AM — a few minutes after the daily puzzle reminder.

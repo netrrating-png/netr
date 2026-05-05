@@ -12,8 +12,12 @@ struct SelfAssessmentSheetView: View {
         SelfAssessmentFlowView { score, profile, catScores in
             let isProClaim = profile.highestLevel == .nba
             SelfAssessmentStore.save(score: score, categoryScores: catScores)
+            let genderRaw = profile.gender?.rawValue
             Task {
                 try? await supabase.saveSelfAssessmentScore(score: score, categoryScores: catScores)
+                if let genderRaw {
+                    try? await supabase.saveGender(genderRaw)
+                }
                 if isProClaim { try? await supabase.flagProVerificationPending() }
             }
             onComplete?()

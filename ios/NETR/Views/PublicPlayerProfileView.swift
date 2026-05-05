@@ -7,6 +7,7 @@ struct PublicPlayerProfileView: View {
     var onFollowChanged: (() -> Void)? = nil
 
     @State private var viewModel = ProfileViewModel()
+    @State private var crewVM = CrewViewModel()
     @State private var ratingAnimated: Bool = false
     @State private var commentPost: SupabaseFeedPost?
     @State private var showComments: Bool = false
@@ -63,6 +64,9 @@ struct PublicPlayerProfileView: View {
         .task(id: userId) {
             await viewModel.loadProfile(userId: userId)
             await viewModel.loadUserPosts()
+            // Crews are gated on show_crews; load eagerly so the section
+            // can render once the profile flags arrive.
+            await crewVM.loadCrewsForUser(userId)
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -209,9 +213,154 @@ struct PublicPlayerProfileView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 24)
 
+            // Milestones — gated on show_milestones (default true)
+            if viewModel.userProfile?.showMilestones ?? true,
+               !viewModel.milestones.isEmpty {
+                Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
+                milestonesPublicSection
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+            }
+
+            // Crews — gated on show_crews (default true)
+            if viewModel.userProfile?.showCrews ?? true,
+               !crewVM.myCrews.isEmpty {
+                Divider().background(NETRTheme.border).padding(.horizontal, 20).padding(.bottom, 20)
+                crewsPublicSection
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+            }
+
             Spacer(minLength: 100)
         }
         .background(NETRTheme.background)
+    }
+
+    // MARK: - Milestones (read-only, public)
+
+    private var milestonesPublicSection: some View {
+        let sorted = viewModel.milestones.sorted {
+            $0.milestoneType.prestige > $1.milestoneType.prestige
+        }
+        return VStack(alignment: .leading, spacing: 10) {
+            Text("MILESTONES")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NETRTheme.subtext)
+                .tracking(1.5)
+
+            if let top = sorted.first {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(top.milestoneType.badgeColor.opacity(0.15))
+                            .frame(width: 38, height: 38)
+                        Image(systemName: top.milestoneType.sfSymbol)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(top.milestoneType.badgeColor)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("PEAK LEVEL")
+                            .font(.system(size: 8, weight: .bold))
+                            .tracking(1)
+                            .foregroundStyle(top.milestoneType.badgeColor.opacity(0.7))
+                        Text(top.milestoneType.displayName)
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(top.milestoneType.badgeColor)
+                        if let sub = top.subtitle {
+                            Text(sub)
+                                .font(.system(size: 11))
+                                .foregroundStyle(NETRTheme.subtext)
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .background(top.milestoneType.badgeColor.opacity(0.07))
+                .overlay(RoundedRectangle(cornerRadius: 12)
+                    .stroke(top.milestoneType.badgeColor.opacity(0.2), lineWidth: 1))
+                .clipShape(.rect(cornerRadius: 12))
+            }
+
+            if sorted.count > 1 {
+                VStack(spacing: 8) {
+                    ForEach(sorted.dropFirst()) { milestone in
+                        HStack(spacing: 6) {
+                            Image(systemName: milestone.milestoneType.sfSymbol)
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(milestone.milestoneType.badgeColor)
+                            Text(milestone.milestoneType.displayName)
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(NETRTheme.text)
+                            if let sub = milestone.subtitle {
+                                Text("· \(sub)")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(NETRTheme.subtext)
+                            }
+                            Spacer()
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(NETRTheme.card)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(NETRTheme.border, lineWidth: 1))
+                        .clipShape(.rect(cornerRadius: 8))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Crews (read-only, public)
+
+    private var crewsPublicSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Text("CREWS")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NETRTheme.subtext)
+                    .tracking(1.5)
+                Text("·")
+                    .foregroundStyle(NETRTheme.muted)
+                Text("\(crewVM.myCrews.count)")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            VStack(spacing: 8) {
+                let primaryFirst = crewVM.myCrews.sorted { lhs, rhs in
+                    if lhs.isPrimary != rhs.isPrimary { return lhs.isPrimary }
+                    return lhs.name < rhs.name
+                }
+                ForEach(primaryFirst, id: \.id) { crew in
+                    HStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(NETRTheme.neonGreen.opacity(0.12))
+                                .frame(width: 34, height: 34)
+                            LucideIcon(crew.icon, size: 14)
+                                .foregroundStyle(NETRTheme.neonGreen)
+                        }
+                        Text(crew.name)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(NETRTheme.text)
+                        if crew.isPrimary {
+                            Text("PRIMARY")
+                                .font(.system(size: 8, weight: .bold))
+                                .tracking(0.6)
+                                .foregroundStyle(NETRTheme.gold)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(NETRTheme.gold.opacity(0.1), in: .rect(cornerRadius: 4))
+                        }
+                        Spacer()
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(NETRTheme.card)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(NETRTheme.border, lineWidth: 1))
+                    .clipShape(.rect(cornerRadius: 10))
+                }
+            }
+        }
     }
 
     // MARK: - Avatar + Follow
@@ -312,11 +461,25 @@ struct PublicPlayerProfileView: View {
                     .foregroundStyle(NETRTheme.subtext)
                 Text("·")
                     .foregroundStyle(NETRTheme.muted)
-                // Position + optional age badge
+                // Position + optional age + gender badge
                 HStack(spacing: 4) {
                     Text(user.positionLabel)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(NETRRating.color(for: user.rating))
+                    if let g = viewModel.userProfile?.genderShortLabel {
+                        Text("·")
+                            .foregroundStyle(NETRTheme.muted)
+                            .font(.system(size: 12))
+                        Text(g)
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundStyle(NETRTheme.background)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                (g == "F" ? Color.pink : NETRTheme.neonGreen).opacity(0.85),
+                                in: Capsule()
+                            )
+                    }
                     let showAge = viewModel.userProfile?.showAge ?? false
                     let age = user.age
                     if showAge && age > 0 {

@@ -14,7 +14,12 @@ struct SettingsView: View {
     @AppStorage("biometricsEnabled") private var biometricsEnabled: Bool = true
     @AppStorage("profilePrivate") private var profilePrivate: Bool = false
     @AppStorage("locationEnabled") private var locationEnabled: Bool = true
-    @AppStorage("showLeagues") private var showLeagues: Bool = true
+    /// Privacy toggles for the public-profile sections. Synced from
+    /// SupabaseManager.currentProfile in the .task block. Default true so
+    /// the rows aren't accidentally hidden before the profile loads.
+    @State private var showMilestonesPublic: Bool = true
+    @State private var showCrewsPublic: Bool = true
+    @State private var showLeaguesPublic: Bool = true
     @State private var showMyGames: Bool = false
     @State private var showNotificationPreferences: Bool = false
     @State private var showEditProfile: Bool = false
@@ -76,6 +81,9 @@ struct SettingsView: View {
             // Sync private profile state from Supabase
             if let profile = supabase.currentProfile {
                 profilePrivate = profile.isPrivate ?? false
+                showMilestonesPublic = profile.showMilestones ?? true
+                showCrewsPublic = profile.showCrews ?? true
+                showLeaguesPublic = profile.showLeagues ?? true
             }
         }
         .sheet(isPresented: $showMyGames) {
@@ -536,48 +544,84 @@ struct SettingsView: View {
             .padding(.horizontal, 16)
 
             VStack(spacing: 0) {
-                HStack(spacing: 12) {
-                    LucideIcon("trophy")
-                        .foregroundStyle(NETRTheme.neonGreen)
-                        .frame(width: 24)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Show Leagues on my profile")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(NETRTheme.text)
-                        Text(showLeagues
-                             ? "Other users can see your league activity"
-                             : "League activity is hidden from your profile")
-                            .font(.caption)
-                            .foregroundStyle(NETRTheme.subtext)
-                    }
-
-                    Spacer()
-
-                    Toggle("", isOn: $showLeagues)
-                        .tint(NETRTheme.neonGreen)
-                        .labelsHidden()
-                        .onChange(of: showLeagues) { _, newValue in
-                            Task {
-                                guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
-                                do {
-                                    try await SupabaseManager.shared.client
-                                        .from("profiles")
-                                        .update(["show_leagues": AnyJSON.bool(newValue)])
-                                        .eq("id", value: userId)
-                                        .execute()
-                                } catch {
-                                    print("[NETR] Show leagues update error: \(error)")
-                                }
-                            }
-                        }
-                }
-                .padding(14)
+                profileBoolToggleRow(
+                    icon: "trophy",
+                    iconColor: NETRTheme.gold,
+                    title: "Show milestones on profile",
+                    subtitle: "HS, AAU, college, pro & more — others can see your career",
+                    binding: $showMilestonesPublic,
+                    column: "show_milestones"
+                )
+                Divider().background(NETRTheme.border).padding(.leading, 50)
+                profileBoolToggleRow(
+                    icon: "users",
+                    iconColor: NETRTheme.neonGreen,
+                    title: "Show my crews on profile",
+                    subtitle: "Other players can see the crews you're in",
+                    binding: $showCrewsPublic,
+                    column: "show_crews"
+                )
+                Divider().background(NETRTheme.border).padding(.leading, 50)
+                profileBoolToggleRow(
+                    icon: "shield",
+                    iconColor: NETRTheme.purple,
+                    title: "Show leagues on profile",
+                    subtitle: "League affiliations visible on your profile",
+                    binding: $showLeaguesPublic,
+                    column: "show_leagues"
+                )
             }
             .background(NETRTheme.card, in: .rect(cornerRadius: 14))
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(NETRTheme.border, lineWidth: 1))
             .padding(.horizontal, 16)
         }
+    }
+
+    /// Reusable toggle row for boolean columns on `profiles`. Writes the
+    /// new value back to Supabase on change.
+    private func profileBoolToggleRow(
+        icon: String,
+        iconColor: Color,
+        title: String,
+        subtitle: String,
+        binding: Binding<Bool>,
+        column: String
+    ) -> some View {
+        HStack(spacing: 12) {
+            LucideIcon(icon)
+                .foregroundStyle(iconColor)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(NETRTheme.text)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(NETRTheme.subtext)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: binding)
+                .labelsHidden()
+                .tint(NETRTheme.neonGreen)
+                .onChange(of: binding.wrappedValue) { _, newValue in
+                    Task {
+                        guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
+                        do {
+                            try await SupabaseManager.shared.client
+                                .from("profiles")
+                                .update([column: AnyJSON.bool(newValue)])
+                                .eq("id", value: userId)
+                                .execute()
+                        } catch {
+                            print("[NETR] \(column) update error: \(error)")
+                        }
+                    }
+                }
+        }
+        .padding(14)
     }
 
     private var aboutSection: some View {
@@ -696,10 +740,8 @@ struct SettingsView: View {
     private func deleteAccountAndSignOut() async {
         guard let userId = SupabaseManager.shared.session?.user.id.uuidString else { return }
         let client = SupabaseManager.shared.client
-        // Crew tables store IDs as lowercase; other tables use the raw uuidString
-        let lowerUserId = userId.lowercased()
 
-        // Helper to delete rows matching userId from a table
+        // Helper to delete from a table with logging on failure
         func deleteFrom(_ table: String, column: String) async {
             do {
                 try await client.from(table).delete().eq(column, value: userId).execute()
@@ -707,21 +749,6 @@ struct SettingsView: View {
                 print("[NETR] Delete from \(table) error: \(error)")
             }
         }
-
-        // Helper for tables that store IDs lowercase (crew tables)
-        func deleteFromLower(_ table: String, column: String) async {
-            do {
-                try await client.from(table).delete().eq(column, value: lowerUserId).execute()
-            } catch {
-                print("[NETR] Delete from \(table) (lower) error: \(error)")
-            }
-        }
-
-        // Handle crew admin responsibilities before removing membership.
-        // Transfer admin to the next oldest member, or delete the crew if this
-        // user is the only member. The DB trigger also does this, but running it
-        // here first gives cleaner state if the trigger migration hasn't been applied.
-        await transferOrDeleteAdminCrews(client: client, lowerUserId: lowerUserId)
 
         // Delete user data from all tables (continue on individual failures)
         await deleteFrom("feed_posts", column: "author_id")
@@ -736,62 +763,12 @@ struct SettingsView: View {
         await deleteFrom("notifications", column: "user_id")
         await deleteFrom("notification_preferences", column: "user_id")
         await deleteFrom("court_favorites", column: "user_id")
-
-        // Crew cleanup (IDs stored lowercase in crew tables)
-        await deleteFromLower("crew_members", column: "user_id")
-        await deleteFromLower("crew_messages", column: "sender_id")
-        // Also try uppercase variant in case of legacy data
-        await deleteFrom("crew_members", column: "user_id")
-        await deleteFrom("crew_messages", column: "sender_id")
-
-        // Profile deletion fires the DB trigger which cascades any remaining crew rows
         await deleteFrom("profiles", column: "id")
 
         do {
             try await supabase.signOut()
         } catch {
             print("[NETR] Sign out after delete error: \(error)")
-        }
-    }
-
-    private func transferOrDeleteAdminCrews(client: SupabaseClient, lowerUserId: String) async {
-        nonisolated struct CrewIdRow: Decodable, Sendable { let id: String }
-        nonisolated struct MemberRow: Decodable, Sendable {
-            let userId: String
-            nonisolated enum CodingKeys: String, CodingKey { case userId = "user_id" }
-        }
-
-        var adminCrewIds = Set<String>()
-        for adminId in [lowerUserId, lowerUserId.uppercased()] {
-            let rows: [CrewIdRow] = (try? await client
-                .from("crews")
-                .select("id")
-                .eq("admin_id", value: adminId)
-                .execute()
-                .value) ?? []
-            rows.forEach { adminCrewIds.insert($0.id) }
-        }
-
-        for crewId in adminCrewIds {
-            let others: [MemberRow] = (try? await client
-                .from("crew_members")
-                .select("user_id")
-                .eq("crew_id", value: crewId)
-                .neq("user_id", value: lowerUserId)
-                .order("joined_at", ascending: true)
-                .limit(1)
-                .execute()
-                .value) ?? []
-
-            if let next = others.first {
-                try? await client
-                    .from("crews")
-                    .update(["admin_id": next.userId])
-                    .eq("id", value: crewId)
-                    .execute()
-            } else {
-                try? await client.from("crews").delete().eq("id", value: crewId).execute()
-            }
         }
     }
 }

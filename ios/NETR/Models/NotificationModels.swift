@@ -127,6 +127,9 @@ nonisolated struct NotificationPreferences: Codable, Sendable {
     var gameAtFavoriteCourt: Bool
     var mentions: Bool
     var reposts: Bool
+    /// Controls the local Daily Games reminders (Mystery Player +
+    /// Connections, scheduled by LocalNotificationScheduler at 9am/9:15am/8pm).
+    var dailyGames: Bool
 
     nonisolated enum CodingKeys: String, CodingKey {
         case userId = "user_id"
@@ -147,6 +150,62 @@ nonisolated struct NotificationPreferences: Codable, Sendable {
         case gameAtFavoriteCourt = "game_at_favorite_court"
         case mentions
         case reposts
+        case dailyGames = "daily_games"
+    }
+
+    init(
+        userId: String, pushEnabled: Bool, follows: Bool, likes: Bool,
+        comments: Bool, directMessages: Bool, ratingReceived: Bool,
+        ratingMilestones: Bool, scoreUpdated: Bool, gameInvites: Bool,
+        gameReminders: Bool, gameStarting: Bool, gameNearby: Bool,
+        nearbyRadiusMiles: Int, gameAtHomeCourt: Bool,
+        gameAtFavoriteCourt: Bool, mentions: Bool, reposts: Bool,
+        dailyGames: Bool
+    ) {
+        self.userId = userId
+        self.pushEnabled = pushEnabled
+        self.follows = follows
+        self.likes = likes
+        self.comments = comments
+        self.directMessages = directMessages
+        self.ratingReceived = ratingReceived
+        self.ratingMilestones = ratingMilestones
+        self.scoreUpdated = scoreUpdated
+        self.gameInvites = gameInvites
+        self.gameReminders = gameReminders
+        self.gameStarting = gameStarting
+        self.gameNearby = gameNearby
+        self.nearbyRadiusMiles = nearbyRadiusMiles
+        self.gameAtHomeCourt = gameAtHomeCourt
+        self.gameAtFavoriteCourt = gameAtFavoriteCourt
+        self.mentions = mentions
+        self.reposts = reposts
+        self.dailyGames = dailyGames
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        userId = try c.decode(String.self, forKey: .userId)
+        pushEnabled = try c.decodeIfPresent(Bool.self, forKey: .pushEnabled) ?? true
+        follows = try c.decodeIfPresent(Bool.self, forKey: .follows) ?? true
+        likes = try c.decodeIfPresent(Bool.self, forKey: .likes) ?? true
+        comments = try c.decodeIfPresent(Bool.self, forKey: .comments) ?? true
+        directMessages = try c.decodeIfPresent(Bool.self, forKey: .directMessages) ?? true
+        ratingReceived = try c.decodeIfPresent(Bool.self, forKey: .ratingReceived) ?? true
+        ratingMilestones = try c.decodeIfPresent(Bool.self, forKey: .ratingMilestones) ?? true
+        scoreUpdated = try c.decodeIfPresent(Bool.self, forKey: .scoreUpdated) ?? true
+        gameInvites = try c.decodeIfPresent(Bool.self, forKey: .gameInvites) ?? true
+        gameReminders = try c.decodeIfPresent(Bool.self, forKey: .gameReminders) ?? true
+        gameStarting = try c.decodeIfPresent(Bool.self, forKey: .gameStarting) ?? true
+        gameNearby = try c.decodeIfPresent(Bool.self, forKey: .gameNearby) ?? true
+        nearbyRadiusMiles = try c.decodeIfPresent(Int.self, forKey: .nearbyRadiusMiles) ?? 5
+        gameAtHomeCourt = try c.decodeIfPresent(Bool.self, forKey: .gameAtHomeCourt) ?? true
+        gameAtFavoriteCourt = try c.decodeIfPresent(Bool.self, forKey: .gameAtFavoriteCourt) ?? true
+        mentions = try c.decodeIfPresent(Bool.self, forKey: .mentions) ?? true
+        reposts = try c.decodeIfPresent(Bool.self, forKey: .reposts) ?? true
+        // Default true so existing rows (no daily_games column yet) keep
+        // getting Daily Games reminders until the user opts out explicitly.
+        dailyGames = try c.decodeIfPresent(Bool.self, forKey: .dailyGames) ?? true
     }
 
     static func defaultPreferences(userId: String) -> NotificationPreferences {
@@ -168,7 +227,8 @@ nonisolated struct NotificationPreferences: Codable, Sendable {
             gameAtHomeCourt: true,
             gameAtFavoriteCourt: true,
             mentions: true,
-            reposts: true
+            reposts: true,
+            dailyGames: true
         )
     }
 }

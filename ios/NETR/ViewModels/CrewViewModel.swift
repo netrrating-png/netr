@@ -97,6 +97,48 @@ class CrewViewModel {
         isLoading = false
     }
 
+    // MARK: - Load crews for an arbitrary user (for public profile view)
+
+    /// Public-profile equivalent of `loadMyCrews()` — fetches the crews a
+    /// *specific* user belongs to. Used by `PublicPlayerProfileView` to
+    /// render the other player's crew list (gated on `show_crews`).
+    func loadCrewsForUser(_ userId: String) async {
+        let lower = userId.lowercased()
+        let possibleIds = Array(Set([userId, lower, userId.uppercased()]))
+        do {
+            let memberRows: [CrewMember] = try await client
+                .from("crew_members")
+                .select("id, crew_id, user_id, joined_at, is_primary, last_read_at")
+                .in("user_id", values: possibleIds)
+                .execute()
+                .value
+
+            let crewIds = memberRows.map { $0.crewId }
+            guard !crewIds.isEmpty else {
+                myCrews = []
+                return
+            }
+
+            let crews: [Crew] = try await client
+                .from("crews")
+                .select("id, name, icon, creator_id, admin_id, created_at, password")
+                .in("id", values: crewIds)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+
+            let memberMap = Dictionary(uniqueKeysWithValues: memberRows.map { ($0.crewId, $0) })
+            myCrews = crews.compactMap { crew in
+                guard let row = memberMap[crew.id] else { return nil }
+                return MyCrew(crew: crew, memberRow: row)
+            }
+        } catch is CancellationError {
+            // Cancelled by SwiftUI during navigation — not a real error.
+        } catch {
+            print("[NETR Crews] loadCrewsForUser error: \(error)")
+        }
+    }
+
     // MARK: - Load Members (for leaderboard)
     func loadMembers(crewId: String) async {
         // Inner profile struct for decoding
